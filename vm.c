@@ -423,20 +423,26 @@ bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...)
 
 static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count)
 {
+    size_t osize;
+    size_t newcapacity;
+    size_t newsize;
     LitFiber* fiber = vm->fiber;
 
-    if(fiber->frame_count == LIT_CALL_FRAMES_MAX)
-    {
-        lit_runtime_error(vm, "Stack overflow");
-        return true;
-    }
-
+    #if 0
+    //if(fiber->frame_count == LIT_CALL_FRAMES_MAX)
+    //{
+        //lit_runtime_error(vm, "call stack overflow");
+        //return true;
+    //}
+    #endif
     if(fiber->frame_count + 1 > fiber->frame_capacity)
     {
-        size_t new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
-        fiber->frames = (LitCallFrame*)lit_reallocate(vm->state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity,
-                                                      sizeof(LitCallFrame) * new_capacity);
-        fiber->frame_capacity = new_capacity;
+        //newcapacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
+        newcapacity = (fiber->frame_capacity * 2);
+        newsize = (sizeof(LitCallFrame) * newcapacity);
+        osize = (sizeof(LitCallFrame) * fiber->frame_capacity);
+        fiber->frames = (LitCallFrame*)lit_reallocate(vm->state, fiber->frames, osize, newsize);
+        fiber->frame_capacity = newcapacity;
     }
 
     size_t function_arg_count = function->arg_count;
@@ -1260,7 +1266,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
         op_case(OR)
         {
             uint16_t offset = vm_readshort();
-
             if(lit_is_falsey(vm_peek(0)))
             {
                 vm_drop();
@@ -1269,14 +1274,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             {
                 ip += offset;
             }
-
             continue;
         }
 
         op_case(NULL_OR)
         {
             uint16_t offset = vm_readshort();
-
             if(IS_NULL(vm_peek(0)))
             {
                 vm_drop();
@@ -1285,17 +1288,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             {
                 ip += offset;
             }
-
             continue;
         }
 
         op_case(CALL)
         {
             uint8_t arg_count = vm_readbyte();
-
             vm_writeframe();
             vm_callvalue(vm_peek(arg_count), arg_count);
-
             continue;
         }
 
