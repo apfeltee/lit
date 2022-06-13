@@ -1,0 +1,129 @@
+# don't actually include run, run.exe, run.elf*, etc
+run
+run.*
+old
+old/
+old/*
+new
+new/
+new/*
+backup
+backup/
+backup/*
+big
+big/
+big/*
+uftrace*
+uftrace.*
+*.stackdump
+*.class
+push.sh
+*.p.txt
+*.gcov
+*.gcno
+.ninja*
+*build*/
+*build*/*
+CMakeFiles*
+CMakeFiles*/*
+cmakefiles*
+misc/*
+.github
+.github/
+.github/*
+x64
+x64/
+x64/*
+# why tf is .gitignore so inconsistent with its pattern matching?
+all/*
+.vc
+.vc/
+.vc/*
+.vs
+.vs/
+.vs/*
+.v*
+.v*/
+.v*/*
+
+# generated files and/or testing helpers
+doit.sh
+# should perhaps be more specific?
+*.rb
+*.sh
+*.log
+drmemory*
+drstrace*
+callgrind.out*
+infer-out
+infer-out*
+infer-out/*
+infer-out*/*
+uftrace.data
+uftrace.data*
+uftrace.data/*
+uftrace.data*/*
+
+# visualstudio clutter
+Debug
+Debug/*
+x86
+x86/*
+*.exp
+*.ilk
+*.lib
+
+## files emitted by each stage
+td.*.txt
+td?.*.txt
+
+# kate leaving junk all over the place
+*.kate-swp
+
+# ignore cmake build directory
+build/
+
+#### big fat warning: this will catch D lang files. funny, that.
+*.d
+*.dep
+*.depends
+
+# extra stuff from https://www.gitignore.io
+### C++ ###
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+# this will also match modula3 source files. but who still uses modula3?
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Executables
+*.exe
+*.out
+*.app
+
+# debug files
+*.dbg
+*.pdb
+*.mdb
+*.tbh
+*.tbt
+*.tbs
+*.core
