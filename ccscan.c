@@ -103,9 +103,14 @@ static char peek_next(LitScanner* scanner)
 
 static bool skip_whitespace(LitScanner* scanner)
 {
+    char a;
+    char b;
+    char c;
+    (void)a;
+    (void)b;
     while(true)
     {
-        char c = peek(scanner);
+        c = peek(scanner);
 
         switch(c)
         {
@@ -141,8 +146,8 @@ static bool skip_whitespace(LitScanner* scanner)
                     advance(scanner);
                     advance(scanner);
 
-                    char a = peek(scanner);
-                    char b = peek_next(scanner);
+                    a = peek(scanner);
+                    b = peek_next(scanner);
 
                     while((peek(scanner) != '*' || peek_next(scanner) != '/') && !is_at_end(scanner))
                     {

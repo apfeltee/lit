@@ -8,35 +8,29 @@ int lit_decode_num_bytes(uint8_t byte)
     {
         return 0;
     }
-
     if((byte & 0xf8) == 0xf0)
     {
         return 4;
     }
-
     if((byte & 0xf0) == 0xe0)
     {
         return 3;
     }
-
     if((byte & 0xe0) == 0xc0)
     {
         return 2;
     }
-
     return 1;
 }
 
 int lit_ustring_length(LitString* string)
 {
     int length = 0;
-
     for(uint32_t i = 0; i < string->length;)
     {
         i += lit_decode_num_bytes(string->chars[i]);
         length++;
     }
-
     return length;
 }
 

@@ -60,13 +60,9 @@ function run()
         {
             x = do_add(xmin, do_mul(of_int(j), deltax))
             if(inside(x, y))
-            {
                 print("#")
-            }
             else
-            {
                 print("-")
-            }
         }
         print("\n")
     }

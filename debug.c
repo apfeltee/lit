@@ -79,7 +79,7 @@ static size_t print_jump_op(const char* name, int sign, LitChunk* chunk, size_t 
 {
     uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
     jump |= chunk->code[offset + 2];
-    printf("%s%-16s%s %4d -> %d\n", COLOR_YELLOW, name, COLOR_RESET, offset, offset + 3 + sign * jump);
+    printf("%s%-16s%s %4d -> %d\n", COLOR_YELLOW, name, COLOR_RESET, (int)offset, (int)(offset + 3 + sign * jump));
     return offset + 3;
 }
 
@@ -132,7 +132,7 @@ size_t lit_disassemble_instruction(LitChunk* chunk, size_t offset, const char* s
         }
     }
 
-    printf("%04d ", offset);
+    printf("%04d ", (int)offset);
 
     if(same)
     {
@@ -140,7 +140,7 @@ size_t lit_disassemble_instruction(LitChunk* chunk, size_t offset, const char* s
     }
     else
     {
-        printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);
+        printf("%s%4d%s ", COLOR_BLUE, (int)line, COLOR_RESET);
     }
 
     uint8_t instruction = chunk->code[offset];
@@ -270,7 +270,7 @@ size_t lit_disassemble_instruction(LitChunk* chunk, size_t offset, const char* s
                 int is_local = chunk->code[offset++];
                 int index = chunk->code[offset++];
 
-                printf("%04d      |                     %s %d\n", offset - 2, is_local ? "local" : "upvalue", index);
+                printf("%04d      |                     %s %d\n", (int)(offset - 2), is_local ? "local" : "upvalue", index);
             }
 
             return offset;
@@ -349,6 +349,7 @@ size_t lit_disassemble_instruction(LitChunk* chunk, size_t offset, const char* s
 
 void lit_trace_frame(LitFiber* fiber)
 {
+    (void)fiber;
 #ifdef LIT_TRACE_STACK
     if(fiber == NULL)
     {

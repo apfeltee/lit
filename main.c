@@ -21,6 +21,7 @@ static LitState* repl_state;
 
 void interupt_handler(int signal_id)
 {
+    (void)signal_id;
     lit_free_state(repl_state);
     printf("\nExiting.\n");
 
@@ -154,21 +155,25 @@ static void show_help()
 
 static void show_optimization_help()
 {
-    printf("Lit has a lot of optimzations. You can turn each one on or off or use a predefined optimization level to set them to a default value.\n");
-    printf("The more optimizations are enabled, the longer it takes to compile, but the program should run better. So I recommend using low optimization for development and high optimization for release.\n");
-    printf("\nTo enable an optimization, run lit with argument -O[optimization], for example -Oconstant-folding. Using flag -Oall will enable all optimizations.\n");
-    printf("To disable an optimization, run lit with argument -Ono-[optimization], for example -Ono-constant-folding. Using flag -Oall will disable all optimizations.\n");
+    int i;
+    printf(
+        "Lit has a lot of optimzations.\n"
+        "You can turn each one on or off or use a predefined optimization level to set them to a default value.\n"
+        "The more optimizations are enabled, the longer it takes to compile, but the program should run better.\n"
+        "So I recommend using low optimization for development and high optimization for release.\n"
+        "To enable an optimization, run lit with argument -O[optimization], for example -Oconstant-folding.\n"
+        "Using flag -Oall will enable all optimizations.\n"
+        "To disable an optimization, run lit with argument -Ono-[optimization], for example -Ono-constant-folding.\n"
+        "Using flag -Oall will disable all optimizations.\n"
+    );
     printf("Here is a list of all supported optimizations:\n\n");
-
-    for(int i = 0; i < OPTIMIZATION_TOTAL; i++)
+    for(i = 0; i < OPTIMIZATION_TOTAL; i++)
     {
         printf(" %s  %s\n", lit_get_optimization_name((LitOptimization)i),
                lit_get_optimization_description((LitOptimization)i));
     }
-
     printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.\n\n");
-
-    for(int i = 0; i < OPTIMIZATION_LEVEL_TOTAL; i++)
+    for(i = 0; i < OPTIMIZATION_LEVEL_TOTAL; i++)
     {
         printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptimizationLevel)i));
     }
@@ -183,13 +188,13 @@ int main(int argc, const char* argv[])
 {
     int i;
     int args_left;
+    int num_files_to_run;
     bool dump;
     bool show_repl;
     bool evaled;
     bool showed_help;
     bool create_native;
     bool perform_tests;
-    size_t num_files_to_run;
     char* bytecode_file;
     const char* arg;
     char* files_to_run[argc - 1];

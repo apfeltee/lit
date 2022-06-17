@@ -14,13 +14,11 @@ static bool ensure_fiber(LitVm* vm, LitFiber* fiber)
         lit_runtime_error(vm, "no fiber to run on");
         return true;
     }
-
     if(fiber->frame_count == LIT_CALL_FRAMES_MAX)
     {
         lit_runtime_error(vm, "fiber frame overflow");
         return true;
     }
-
     if(fiber->frame_count + 1 > fiber->frame_capacity)
     {
         //newcapacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
@@ -36,47 +34,47 @@ static bool ensure_fiber(LitVm* vm, LitFiber* fiber)
 
 static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count)
 {
-    LitVm* vm = state->vm;
-    LitFiber* fiber = vm->fiber;
-
+    bool vararg;
+    int amount;
+    size_t i;
+    size_t vararg_count;
+    size_t function_arg_count;
+    LitVm* vm;
+    LitFiber* fiber;
+    LitCallFrame* frame;
+    LitArray* array;
+    (void)argument_count;
+    (void)vararg_count;
+    vm = state->vm;
+    fiber = vm->fiber;
     if(callee == NULL)
     {
         lit_runtime_error(vm, "attempt to call a null value");
         return NULL;
     }
-
     if(ensure_fiber(vm, fiber))
     {
         return NULL;
     }
-
     lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int)(fiber->stack_top - fiber->stack));
-
-    LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+    frame = &fiber->frames[fiber->frame_count++];
     frame->slots = fiber->stack_top;
-
     PUSH(OBJECT_VALUE(callee));
-
-    for(uint8_t i = 0; i < argument_count; i++)
+    for(i = 0; i < argument_count; i++)
     {
         PUSH(arguments[i]);
     }
-
-    size_t function_arg_count = callee->arg_count;
-
+    function_arg_count = callee->arg_count;
     if(argument_count != function_arg_count)
     {
-        bool vararg = callee->vararg;
-
+        vararg = callee->vararg;
         if(argument_count < function_arg_count)
         {
-            int amount = (int)function_arg_count - argument_count - (vararg ? 1 : 0);
-
-            for(int i = 0; i < amount; i++)
+            amount = (int)function_arg_count - argument_count - (vararg ? 1 : 0);
+            for(i = 0; i < (size_t)amount; i++)
             {
                 PUSH(NULL_VALUE);
             }
-
             if(vararg)
             {
                 PUSH(OBJECT_VALUE(lit_create_array(vm->state)));
@@ -84,12 +82,10 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
         }
         else if(callee->vararg)
         {
-            LitArray* array = lit_create_array(vm->state);
-            size_t vararg_count = argument_count - function_arg_count + 1;
-
+            array = lit_create_array(vm->state);
+            vararg_count = argument_count - function_arg_count + 1;
             lit_values_ensure_size(vm->state, &array->values, vararg_count);
-
-            for(size_t i = 0; i < vararg_count; i++)
+            for(i = 0; i < vararg_count; i++)
             {
                 array->values.values[i] = fiber->stack_top[(int)i - (int)vararg_count];
             }
@@ -104,8 +100,8 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
     }
     else if(callee->vararg)
     {
-        LitArray* array = lit_create_array(vm->state);
-        size_t vararg_count = argument_count - function_arg_count + 1;
+        array = lit_create_array(vm->state);
+        vararg_count = argument_count - function_arg_count + 1;
 
         lit_values_write(vm->state, &array->values, *(fiber->stack_top - 1));
         *(fiber->stack_top - 1) = OBJECT_VALUE(array);
@@ -381,7 +377,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
 
         lit_write_chunk(state, chunk, OP_INVOKE, 1);
         lit_emit_byte(state, chunk, 0);
-        lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "tostring")));
+        lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
         lit_emit_byte(state, chunk, OP_RETURN);
     }
 

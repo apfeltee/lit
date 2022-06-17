@@ -14,6 +14,7 @@ void lit_enable_compilation_time_measurement()
 
 static void default_error(LitState* state, const char* message)
 {
+    (void)state;
     fflush(stdout);
     fprintf(stderr, "%s%s%s\n", COLOR_RED, message, COLOR_RESET);
     fflush(stderr);
@@ -21,6 +22,7 @@ static void default_error(LitState* state, const char* message)
 
 static void default_printf(LitState* state, const char* message)
 {
+    (void)state;
     printf("%s", message);
 }
 
@@ -510,17 +512,17 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...)
 {
+    size_t buffer_size;
+    char* buffer;
     va_list args;
-    va_start(args, message);
     va_list args_copy;
+    va_start(args, message);
     va_copy(args_copy, args);
-    size_t buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
+    buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
     va_end(args_copy);
-
-    char buffer[buffer_size];
+    buffer = (char*)malloc(buffer_size+1);
     vsnprintf(buffer, buffer_size, message, args);
     va_end(args);
-
     state->error_fn(state, buffer);
     state->had_error = true;
 }

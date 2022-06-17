@@ -353,18 +353,18 @@
     }
 
 
-#define LIT_CHECK_NUMBER(id) lit_check_number(vm, args, arg_count, id)
-#define LIT_GET_NUMBER(id, def) lit_get_number(vm, args, arg_count, id, def)
+#define LIT_CHECK_NUMBER(vm, args, argc, id) lit_check_number(vm, argv, argc, id)
+#define LIT_GET_NUMBER(id, def) lit_get_number(vm, argv, argc, id, def)
 
-#define LIT_CHECK_BOOL(id) lit_check_bool(vm, args, arg_count, id)
-#define LIT_GET_BOOL(id, def) lit_get_bool(vm, args, arg_count, id, def)
+#define LIT_CHECK_BOOL(id) lit_check_bool(vm, argv, argc, id)
+#define LIT_GET_BOOL(id, def) lit_get_bool(vm, argv, argc, id, def)
 
-#define LIT_CHECK_STRING(id) lit_check_string(vm, args, arg_count, id)
-#define LIT_GET_STRING(id, def) lit_get_string(vm, args, arg_count, id, def)
+#define LIT_CHECK_STRING(id) lit_check_string(vm, argv, argc, id)
+#define LIT_GET_STRING(id, def) lit_get_string(vm, argv, argc, id, def)
 
-#define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, args, arg_count, id)
-#define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, args, arg_count, id)
-#define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, args, arg_count, id)
+#define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, argv, argc, id)
+#define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, argv, argc, id)
+#define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, argv, argc, id)
 
 #define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
 #define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, id)
@@ -373,23 +373,23 @@
 
 
 #define LIT_ENSURE_ARGS(count)                                                   \
-    if(arg_count != count)                                                       \
+    if(argc != count)                                                       \
     {                                                                            \
-        lit_runtime_error(vm, "Expected %i argument, got %i", count, arg_count); \
+        lit_runtime_error(vm, "Expected %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                       \
     }
 
 #define LIT_ENSURE_MIN_ARGS(count)                                                       \
-    if(arg_count < count)                                                                \
+    if(argc < count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "Expected minimum %i argument, got %i", count, arg_count); \
+        lit_runtime_error(vm, "Expected minimum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 
 #define LIT_ENSURE_MAX_ARGS(count)                                                       \
-    if(arg_count > count)                                                                \
+    if(argc > count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "Expected maximum %i argument, got %i", count, arg_count); \
+        lit_runtime_error(vm, "Expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 

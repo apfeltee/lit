@@ -20,24 +20,20 @@ void lit_free_api(LitState* state)
 LitValue lit_get_global(LitState* state, LitString* name)
 {
     LitValue global;
-
     if(!lit_table_get(&state->vm->globals->values, name, &global))
     {
         return NULL_VALUE;
     }
-
     return global;
 }
 
 LitFunction* lit_get_global_function(LitState* state, LitString* name)
 {
     LitValue function = lit_get_global(state, name);
-
     if(IS_FUNCTION(function))
     {
         return AS_FUNCTION(function);
     }
-
     return NULL;
 }
 
@@ -78,17 +74,16 @@ double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id
         lit_runtime_error_exiting(vm, "Expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
-
     return AS_NUMBER(args[id]);
 }
 
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
 {
+    (void)vm;
     if(arg_count <= id || !IS_NUMBER(args[id]))
     {
         return def;
     }
-
     return AS_NUMBER(args[id]);
 }
 
@@ -105,11 +100,11 @@ bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 
 bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def)
 {
+    (void)vm;
     if(arg_count <= id || !IS_BOOL(args[id]))
     {
         return def;
     }
-
     return AS_BOOL(args[id]);
 }
 
@@ -126,6 +121,7 @@ const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8
 
 const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def)
 {
+    (void)vm;
     if(arg_count <= id || !IS_STRING(args[id]))
     {
         return def;

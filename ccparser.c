@@ -66,10 +66,12 @@ void lit_init_parser(LitState* state, LitParser* parser)
 
 void lit_free_parser(LitParser* parser)
 {
+    (void)parser;
 }
 
 static void string_error(LitParser* parser, LitToken* token, const char* message)
 {
+    (void)token;
     if(parser->panic_mode)
     {
         return;
@@ -226,6 +228,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 
 static LitExpression* parse_number(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     return (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
 }
 
@@ -276,6 +279,7 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters)
 
 static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     if(prs_match(parser, TOKEN_RIGHT_PAREN))
     {
         consume(parser, TOKEN_ARROW, "=> after lambda arguments");
@@ -378,7 +382,9 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign)
 {
-    LitCallExpression* expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
+    (void)can_assign;
+    LitCallExpression* expression;
+    expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
 
     while(!check(parser, TOKEN_RIGHT_PAREN))
     {
@@ -413,6 +419,7 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
 
 static LitExpression* parse_unary(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     LitTokenType op = parser->previous.type;
     size_t line = parser->previous.line;
     LitExpression* expression = parse_precedence(parser, PREC_UNARY, true);
@@ -422,6 +429,7 @@ static LitExpression* parse_unary(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool can_assign)
 {
+    (void)can_assign;
     bool invert = parser->previous.type == TOKEN_BANG;
 
     if(invert)
@@ -447,6 +455,7 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 
 static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can_assign)
 {
+    (void)can_assign;
     LitTokenType op = parser->previous.type;
     size_t line = parser->previous.line;
 
@@ -455,6 +464,7 @@ static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can
 
 static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_assign)
 {
+    (void)can_assign;
     LitTokenType op = parser->previous.type;
     size_t line = parser->previous.line;
 
@@ -463,6 +473,7 @@ static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_
 
 static LitExpression* parse_null_filter(LitParser* parser, LitExpression* prev, bool can_assign)
 {
+    (void)can_assign;
     LitTokenType op = parser->previous.type;
     size_t line = parser->previous.line;
 
@@ -506,6 +517,7 @@ static LitTokenType convert_compound_operator(LitTokenType op)
 
 static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, bool can_assign)
 {
+    (void)can_assign;
     LitTokenType op = parser->previous.type;
     size_t line = parser->previous.line;
 
@@ -530,6 +542,7 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
 
 static LitExpression* parse_literal(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
 
     switch(parser->previous.type)
@@ -556,9 +569,9 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_string(LitParser* parser, bool can_assign)
 {
-    LitExpression* expression
-    = (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
-
+    (void)can_assign;
+    LitExpression* expression;
+    expression = (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
     if(prs_match(parser, TOKEN_LEFT_BRACKET))
     {
         return parse_subscript(parser, expression, can_assign);
@@ -569,8 +582,9 @@ static LitExpression* parse_string(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
 {
-    LitInterpolationExpression* expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
-
+    LitInterpolationExpression* expression;
+    (void)can_assign;
+    expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
     do
     {
         if(AS_STRING(parser->previous.value)->length > 0)
@@ -602,7 +616,9 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_object(LitParser* parser, bool can_assign)
 {
-    LitObjectExpression* object = lit_create_object_expression(parser->state, parser->previous.line);
+    (void)can_assign;
+    LitObjectExpression* object;
+    object = lit_create_object_expression(parser->state, parser->previous.line);
     ignore_new_lines(parser);
 
     while(!check(parser, TOKEN_RIGHT_BRACE))
@@ -632,7 +648,9 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool isnew)
 {
-    LitExpression* expression = (LitExpression*)lit_create_var_expression(parser->state, parser->previous.line,
+    (void)can_assign;
+    LitExpression* expression;
+    expression = (LitExpression*)lit_create_var_expression(parser->state, parser->previous.line,
                                                                           parser->previous.start, parser->previous.length);
 
     if(isnew)
@@ -685,12 +703,14 @@ static LitExpression* parse_variable_expression(LitParser* parser, bool can_assi
 
 static LitExpression* parse_new_expression(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     consume(parser, TOKEN_IDENTIFIER, "class name after 'new'");
     return parse_variable_expression_base(parser, false, true);
 }
 
 static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
     bool ignored = parser->previous.type == TOKEN_SMALL_ARROW;
 
@@ -722,12 +742,14 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 
 static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
     return (LitExpression*)lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
 }
 
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
 
     if(prs_match(parser, TOKEN_DOT) || prs_match(parser, TOKEN_SMALL_ARROW))
@@ -747,6 +769,7 @@ static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     LitArrayExpression* array = lit_create_array_expression(parser->state, parser->previous.line);
     ignore_new_lines(parser);
 
@@ -808,6 +831,7 @@ static LitExpression* parse_this(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_super(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
 
     if(!(prs_match(parser, TOKEN_DOT) || prs_match(parser, TOKEN_SMALL_ARROW)))
@@ -835,6 +859,7 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign)
 
 static LitExpression* parse_reference(LitParser* parser, bool can_assign)
 {
+    (void)can_assign;
     size_t line = parser->previous.line;
     ignore_new_lines(parser);
 

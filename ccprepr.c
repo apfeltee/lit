@@ -139,8 +139,6 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                 }
                 else
                 {
-                    int length = (int)(current - macro_start);
-
                     if(memcmp(macro_start, "define", 6) == 0 || memcmp(macro_start, "undef", 5) == 0
                        || memcmp(macro_start, "ifdef", 5) == 0 || memcmp(macro_start, "ifndef", 6) == 0)
                     {
