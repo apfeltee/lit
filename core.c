@@ -145,7 +145,7 @@ static LitValue string_splice(LitVm* vm, LitString* string, int from, int to)
     to = fmin(to, length - 1);
     if(from > to)
     {
-        lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
+        lit_runtime_error_exiting(vm, "String.splice argument 'from' is larger than argument 'to'");
     }
     from = lit_uchar_offset(string->chars, from);
     to = lit_uchar_offset(string->chars, to);
@@ -212,7 +212,7 @@ static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to)
     }
     if(from > to)
     {
-        lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
+        lit_runtime_error_exiting(vm, "Array.splice argument 'from' is larger than argument 'to'");
     }
     from = fmax(from, 0);
     to = fmin(to, (int)length - 1);
@@ -356,9 +356,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
     {
         if(folders)
         {
-            lit_runtime_error_exiting(vm, "Can't recursively require folders (beg @egordorichev for mercy)");
+            lit_runtime_error_exiting(vm, "cannot recursively require folders");
         }
-
         char dir_path[length - 1];
         dir_path[length - 2] = '\0';
         memcpy((void*)dir_path, path, length - 2);
@@ -393,7 +392,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
                 DIR* dir = opendir(module_name);
                 if(dir == NULL)
                 {
-                    lit_runtime_error_exiting(vm, "Failed to open folder '%s'", module_name);
+                    lit_runtime_error_exiting(vm, "failed to open folder '%s'", module_name);
                 }
                 while((ep = readdir(dir)))
                 {
@@ -410,7 +409,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
                             dir_path[length] = '.';
                             if(!attempt_to_require(vm, argv + argc, 0, dir_path, false, false))
                             {
-                                lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
+                                lit_runtime_error_exiting(vm, "failed to require module '%s'", name);
                             }
                             else
                             {
@@ -423,7 +422,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
             #endif
             if(!found)
             {
-                lit_runtime_error_exiting(vm, "Folder '%s' contains no modules that can be required", module_name);
+                lit_runtime_error_exiting(vm, "folder '%s' contains no modules that can be required", module_name);
             }
             return found;
         }
@@ -509,7 +508,7 @@ static LitValue invalid_constructor(LitVm* vm, LitValue instance, size_t argc, L
 {
     (void)argc;
     (void)argv;
-    lit_runtime_error_exiting(vm, "Can't create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
+    lit_runtime_error_exiting(vm, "cannot create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
     return NULL_VALUE;
 }
 
@@ -596,7 +595,7 @@ static LitValue class_subscript(LitVm* vm, LitValue instance, size_t argc, LitVa
     {
         if(!IS_STRING(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "Class index must be a string");
+            lit_runtime_error_exiting(vm, "class index must be a string");
         }
 
         lit_table_set(vm->state, &klass->static_fields, AS_STRING(argv[0]), argv[1]);
@@ -605,7 +604,7 @@ static LitValue class_subscript(LitVm* vm, LitValue instance, size_t argc, LitVa
 
     if(!IS_STRING(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Class index must be a string");
+        lit_runtime_error_exiting(vm, "class index must be a string");
     }
 
     LitValue value;
@@ -655,14 +654,14 @@ static LitValue object_subscript(LitVm* vm, LitValue instance, size_t argc, LitV
     (void)argv;
     if(!IS_INSTANCE(instance))
     {
-        lit_runtime_error_exiting(vm, "Can't modify built-in types");
+        lit_runtime_error_exiting(vm, "cannot modify built-in types");
     }
     LitInstance* inst = AS_INSTANCE(instance);
     if(argc == 2)
     {
         if(!IS_STRING(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "Object index must be a string");
+            lit_runtime_error_exiting(vm, "object index must be a string");
         }
 
         lit_table_set(vm->state, &inst->fields, AS_STRING(argv[0]), argv[1]);
@@ -670,7 +669,7 @@ static LitValue object_subscript(LitVm* vm, LitValue instance, size_t argc, LitV
     }
     if(!IS_STRING(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Object index must be a string");
+        lit_runtime_error_exiting(vm, "object index must be a string");
     }
     LitValue value;
     if(lit_table_get(&inst->fields, AS_STRING(argv[0]), &value))
@@ -928,7 +927,7 @@ static LitValue string_replace(LitVm* vm, LitValue instance, size_t argc, LitVal
 
         if(!IS_STRING(argv[0]) || !IS_STRING(argv[1]))
     {
-        lit_runtime_error_exiting(vm, "Expected 2 string arguments");
+        lit_runtime_error_exiting(vm, "expected 2 string arguments");
     }
 
     LitString* string = AS_STRING(instance);
@@ -997,7 +996,7 @@ static LitValue string_subscript(LitVm* vm, LitValue instance, size_t argc, LitV
 
     if(argc != 1)
     {
-        lit_runtime_error_exiting(vm, "Can't modify strings with the subscript op");
+        lit_runtime_error_exiting(vm, "cannot modify strings with the subscript op");
     }
 
     if(index < 0)
@@ -1335,7 +1334,7 @@ static LitValue array_subscript(LitVm* vm, LitValue instance, size_t argc, LitVa
     {
         if(!IS_NUMBER(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "Array index must be a number");
+            lit_runtime_error_exiting(vm, "array index must be a number");
         }
 
         LitValues* values = &AS_ARRAY(instance)->values;
@@ -1358,7 +1357,7 @@ static LitValue array_subscript(LitVm* vm, LitValue instance, size_t argc, LitVa
             return array_splice(vm, AS_ARRAY(instance), (int)range->from, (int)range->to);
         }
 
-        lit_runtime_error_exiting(vm, "Array index must be a number");
+        lit_runtime_error_exiting(vm, "array index must be a number");
         return NULL_VALUE;
     }
 
@@ -1427,7 +1426,7 @@ static LitValue array_addAll(LitVm* vm, LitValue instance, size_t argc, LitValue
 
         if(!IS_ARRAY(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Expected array as the argument");
+        lit_runtime_error_exiting(vm, "expected array as the argument");
     }
 
     LitArray* array = AS_ARRAY(instance);
@@ -1694,7 +1693,7 @@ static LitValue map_subscript(LitVm* vm, LitValue instance, size_t argc, LitValu
 {
     if(!IS_STRING(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Map index must be a string");
+        lit_runtime_error_exiting(vm, "map index must be a string");
     }
 
     LitMap* map = AS_MAP(instance);
@@ -1735,7 +1734,7 @@ static LitValue map_addAll(LitVm* vm, LitValue instance, size_t argc, LitValue* 
 
         if(!IS_MAP(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Expected map as the argument");
+        lit_runtime_error_exiting(vm, "expected map as the argument");
     }
 
     lit_map_add_all(vm->state, AS_MAP(argv[0]), AS_MAP(instance));
@@ -2074,7 +2073,7 @@ static bool require_primitive(LitVm* vm, size_t argc, LitValue* argv)
         }
     }
 
-    lit_runtime_error_exiting(vm, "Failed to require module '%s'", name->chars);
+    lit_runtime_error_exiting(vm, "failed to require module '%s'", name->chars);
     return false;
 }
 

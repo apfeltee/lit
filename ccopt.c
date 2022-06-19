@@ -2,8 +2,8 @@
 #include "lit.h"
 
 static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
-static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expressions);
-static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements);
+static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressions);
+static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements);
 static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
 
 static const char* optimization_level_descriptions[OPTIMIZATION_LEVEL_TOTAL]
@@ -556,7 +556,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
     }
 }
 
-static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expressions)
+static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressions)
 {
     for(size_t i = 0; i < expressions->count; i++)
     {
@@ -889,7 +889,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
     }
 }
 
-static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements)
+static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements)
 {
     for(size_t i = 0; i < statements->count; i++)
     {
@@ -897,7 +897,7 @@ static void optimize_statements(LitOptimizer* optimizer, LitStatements* statemen
     }
 }
 
-void lit_optimize(LitOptimizer* optimizer, LitStatements* statements)
+void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements)
 {
     if(!optimization_states_setup)
     {

@@ -218,14 +218,14 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
     return NULL;
 }
 
-static void free_statements(LitState* state, LitStatements* statements)
+static void free_statements(LitState* state, LitStmtList* statements)
 {
     for(size_t i = 0; i < statements->count; i++)
     {
         lit_free_statement(state, statements->values[i]);
     }
 
-    lit_free_stataments(state, statements);
+    lit_free_statements(state, statements);
 }
 
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code)
@@ -268,8 +268,8 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
             t = clock();
         }
 
-        LitStatements statements;
-        lit_init_stataments(&statements);
+        LitStmtList statements;
+        lit_init_statements(&statements);
 
         if(lit_parse(state->parser, module_name->chars, code, &statements))
         {
@@ -516,6 +516,7 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...)
     char* buffer;
     va_list args;
     va_list args_copy;
+    (void)state;
     va_start(args, message);
     va_copy(args_copy, args);
     buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;

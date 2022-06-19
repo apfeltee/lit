@@ -71,7 +71,7 @@ double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id
 {
     if(arg_count <= id || !IS_NUMBER(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected a number as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
     return AS_NUMBER(args[id]);
@@ -91,7 +91,7 @@ bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_BOOL(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected a boolean as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected a boolean as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
@@ -112,7 +112,7 @@ const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8
 {
     if(arg_count <= id || !IS_STRING(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
@@ -134,7 +134,7 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 {
     if(arg_count <= id || !IS_STRING(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
@@ -145,7 +145,7 @@ LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, ui
 {
     if(arg_count <= id || !IS_INSTANCE(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected an instance as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected an instance as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
@@ -156,7 +156,7 @@ LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint
 {
     if(arg_count <= id || !IS_REFERENCE(args[id]))
     {
-        lit_runtime_error_exiting(vm, "Expected a reference as argument #%i, got a %s", (int)id,
+        lit_runtime_error_exiting(vm, "expected a reference as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 

@@ -375,21 +375,21 @@
 #define LIT_ENSURE_ARGS(count)                                                   \
     if(argc != count)                                                       \
     {                                                                            \
-        lit_runtime_error(vm, "Expected %i argument, got %i", count, argc); \
+        lit_runtime_error(vm, "expected %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                       \
     }
 
 #define LIT_ENSURE_MIN_ARGS(count)                                                       \
     if(argc < count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "Expected minimum %i argument, got %i", count, argc); \
+        lit_runtime_error(vm, "expected minimum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 
 #define LIT_ENSURE_MAX_ARGS(count)                                                       \
     if(argc > count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "Expected maximum %i argument, got %i", count, argc); \
+        lit_runtime_error(vm, "expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 
@@ -408,7 +408,7 @@
         LitValue _d;                                                                              \
         if(!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
         {                                                                                         \
-            lit_runtime_error_exiting(vm, "Failed to extract userdata");                          \
+            lit_runtime_error_exiting(vm, "failed to extract userdata");                          \
         }                                                                                         \
         (type*)AS_USERDATA(_d)->data;                                                             \
     })
@@ -419,7 +419,7 @@
         LitValue _d;                                                                          \
         if(!lit_table_get(&AS_INSTANCE(from)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
         {                                                                                     \
-            lit_runtime_error_exiting(vm, "Failed to extract userdata");                      \
+            lit_runtime_error_exiting(vm, "failed to extract userdata");                      \
         }                                                                                     \
         (type*)AS_USERDATA(_d)->data;                                                         \
     })
@@ -811,9 +811,9 @@ typedef struct LitVariables LitVariables;
 typedef struct LitBytes LitBytes;
 typedef struct LitUInts LitUInts;
 typedef struct LitValues LitValues;
-typedef struct LitExpressions LitExpressions;
+typedef struct LitExprList LitExprList;
 typedef struct LitParameters LitParameters;
-typedef struct LitStatements LitStatements;
+typedef struct LitStmtList LitStmtList;
 typedef struct LitPrivates LitPrivates;
 typedef struct LitLocals LitLocals;
 
@@ -1131,7 +1131,7 @@ struct LitStatement
 /*
  * Expressions
  */
-struct LitExpressions
+struct LitExprList
 {
     size_t capacity;
     size_t count;
@@ -1178,7 +1178,7 @@ struct LitCallExpression
 {
     LitExpression expression;
     LitExpression* callee;
-    LitExpressions args;
+    LitExprList args;
     LitExpression* init;
 };
 
@@ -1227,14 +1227,14 @@ struct LitLambdaExpression
 struct LitArrayExpression
 {
     LitExpression expression;
-    LitExpressions values;
+    LitExprList values;
 };
 
 struct LitObjectExpression
 {
     LitExpression expression;
     LitValues keys;
-    LitExpressions values;
+    LitExprList values;
 };
 struct LitSubscriptExpression
 {
@@ -1269,7 +1269,7 @@ struct LitIfExpression
 struct LitInterpolationExpression
 {
     LitExpression expression;
-    LitExpressions expressions;
+    LitExprList expressions;
 };
 struct LitReferenceExpression
 {
@@ -1279,7 +1279,7 @@ struct LitReferenceExpression
 /*
  * Statements
  */
-struct LitStatements
+struct LitStmtList
 {
     size_t capacity;
     size_t count;
@@ -1296,7 +1296,7 @@ struct LitExpressionStatement
 struct LitBlockStatement
 {
     LitStatement statement;
-    LitStatements statements;
+    LitStmtList statements;
 };
 struct LitVarStatement
 {
@@ -1312,8 +1312,8 @@ struct LitIfStatement
     LitExpression* condition;
     LitStatement* if_branch;
     LitStatement* else_branch;
-    LitExpressions* elseif_conditions;
-    LitStatements* elseif_branches;
+    LitExprList* elseif_conditions;
+    LitStmtList* elseif_branches;
 };
 struct LitWhileStatement
 {
@@ -1366,7 +1366,7 @@ struct LitClassStatement
     LitStatement statement;
     LitString* name;
     LitString* parent;
-    LitStatements fields;
+    LitStmtList fields;
 };
 struct LitFieldStatement
 {
@@ -1565,17 +1565,17 @@ void lit_free_values(LitState* state, LitValues* array);
 void lit_values_write(LitState* state, LitValues* array, LitValue value);
 
 
-void lit_init_expressions(LitExpressions* array);
-void lit_free_expressions(LitState* state, LitExpressions* array);
-void lit_expressions_write(LitState* state, LitExpressions* array, LitExpression* value);
+void lit_init_expressions(LitExprList* array);
+void lit_free_expressions(LitState* state, LitExprList* array);
+void lit_expressions_write(LitState* state, LitExprList* array, LitExpression* value);
 
 void lit_init_parameters(LitParameters* array);
 void lit_free_parameters(LitState* state, LitParameters* array);
 void lit_parameters_write(LitState* state, LitParameters* array, LitParameter value);
 
-void lit_init_stataments(LitStatements* array);
-void lit_free_stataments(LitState* state, LitStatements* array);
-void lit_stataments_write(LitState* state, LitStatements* array, LitStatement* value);
+void lit_init_statements(LitStmtList* array);
+void lit_free_statements(LitState* state, LitStmtList* array);
+void lit_statements_write(LitState* state, LitStmtList* array, LitStatement* value);
 
 
 void lit_init_privates(LitPrivates* array);
@@ -1796,8 +1796,8 @@ LitIfStatement* lit_create_if_statement(LitState* state,
                                         LitExpression* condition,
                                         LitStatement* if_branch,
                                         LitStatement* else_branch,
-                                        LitExpressions* elseif_conditions,
-                                        LitStatements* elseif_branches);
+                                        LitExprList* elseif_conditions,
+                                        LitStmtList* elseif_branches);
 
 LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitStatement* body);
 
@@ -1818,20 +1818,20 @@ LitClassStatement* lit_create_class_statement(LitState* state, size_t line, LitS
 LitFieldStatement*
 lit_create_field_statement(LitState* state, size_t line, LitString* name, LitStatement* getter, LitStatement* setter, bool is_static);
 
-LitExpressions* lit_allocate_expressions(LitState* state);
-void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);
+LitExprList* lit_allocate_expressions(LitState* state);
+void lit_free_allocated_expressions(LitState* state, LitExprList* expressions);
 
-LitStatements* lit_allocate_statements(LitState* state);
-void lit_free_allocated_statements(LitState* state, LitStatements* statements);
+LitStmtList* lit_allocate_statements(LitState* state);
+void lit_free_allocated_statements(LitState* state, LitStmtList* statements);
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 
-LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name);
+LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* module_name);
 
 void lit_init_parser(LitState* state, LitParser* parser);
 void lit_free_parser(LitParser* parser);
 
-bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStatements* statements);
+bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStmtList* statements);
 char* lit_read_file(const char* path);
 bool lit_file_exists(const char* path);
 bool lit_dir_exists(const char* path);
@@ -1900,7 +1900,7 @@ LitString* lit_format_error(LitState* state, size_t line, LitError error, ...);
 void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source);
 LitToken lit_scan_token(LitScanner* scanner);
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
-void lit_optimize(LitOptimizer* optimizer, LitStatements* statements);
+void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements);
 const char* lit_get_optimization_level_description(LitOptimizationLevel level);
 
 bool lit_is_optimization_enabled(LitOptimization optimization);

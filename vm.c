@@ -246,13 +246,10 @@ static void reset_vm(LitState* state, LitVm* vm)
     vm->state = state;
     vm->objects = NULL;
     vm->fiber = NULL;
-
     vm->gray_stack = NULL;
     vm->gray_count = 0;
     vm->gray_capacity = 0;
-
     lit_init_table(&vm->strings);
-
     vm->globals = NULL;
     vm->modules = NULL;
 }
@@ -260,7 +257,6 @@ static void reset_vm(LitState* state, LitVm* vm)
 void lit_init_vm(LitState* state, LitVm* vm)
 {
     reset_vm(state, vm);
-
     vm->globals = lit_create_map(state);
     vm->modules = lit_create_map(state);
 }
@@ -269,38 +265,34 @@ void lit_free_vm(LitVm* vm)
 {
     lit_free_table(vm->state, &vm->strings);
     lit_free_objects(vm->state, vm->objects);
-
     reset_vm(vm->state, vm);
 }
 
 void lit_trace_vm_stack(LitVm* vm)
 {
-    LitFiber* fiber = vm->fiber;
-
+    LitValue* top;
+    LitValue* slot;
+    LitFiber* fiber;
+    fiber = vm->fiber;
     if(fiber->stack_top == fiber->stack || fiber->frame_count == 0)
     {
         return;
     }
-
-    LitValue* top = fiber->frames[fiber->frame_count - 1].slots;
+    top = fiber->frames[fiber->frame_count - 1].slots;
     printf("        | %s", COLOR_GREEN);
-
-    for(LitValue* slot = fiber->stack; slot < top; slot++)
+    for(slot = fiber->stack; slot < top; slot++)
     {
         printf("[ ");
         lit_print_value(*slot);
         printf(" ]");
     }
-
     printf("%s", COLOR_RESET);
-
-    for(LitValue* slot = top; slot < fiber->stack_top; slot++)
+    for(slot = top; slot < fiber->stack_top; slot++)
     {
         printf("[ ");
         lit_print_value(*slot);
         printf(" ]");
     }
-
     printf("\n");
 }
 

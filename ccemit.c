@@ -8,7 +8,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
 
-static void resolve_statements(LitEmitter* emitter, LitStatements* statements)
+static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
 {
     for(size_t i = 0; i < statements->count; i++)
     {
@@ -1402,7 +1402,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
 
         case BLOCK_STATEMENT:
         {
-            LitStatements statements = ((LitBlockStatement*)statement)->statements;
+            LitStmtList statements = ((LitBlockStatement*)statement)->statements;
             begin_scope(emitter);
 
             for(size_t i = 0; i < statements.count; i++)
@@ -1601,7 +1601,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                 {
                     if(stmt->body->type == BLOCK_STATEMENT)
                     {
-                        LitStatements* statements = &((LitBlockStatement*)stmt->body)->statements;
+                        LitStmtList* statements = &((LitBlockStatement*)stmt->body)->statements;
 
                         for(size_t i = 0; i < statements->count; i++)
                         {
@@ -1668,7 +1668,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                 {
                     if(stmt->body->type == BLOCK_STATEMENT)
                     {
-                        LitStatements* statements = &((LitBlockStatement*)stmt->body)->statements;
+                        LitStmtList* statements = &((LitBlockStatement*)stmt->body)->statements;
 
                         for(size_t i = 0; i < statements->count; i++)
                         {
@@ -2002,7 +2002,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
     return false;
 }
 
-LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name)
+LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* module_name)
 {
     emitter->last_line = 1;
     emitter->emit_reference = 0;

@@ -5,14 +5,19 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-#if defined(__unix__) || defined(__linux__)
+//#if defined(__unix__) || defined(__linux__)
     #include <dirent.h>
+//#endif
+
+
+#ifndef __TINYC__
+    #if __has_include(<readline/readline.h>)
+        #include <readline/readline.h>
+        #include <readline/history.h>
+        #define LIT_HAVE_READLINE
+    #endif
 #endif
-#if __has_include(<readline/readline.h>)
-    #include <readline/readline.h>
-    #include <readline/history.h>
-    #define LIT_HAVE_READLINE
-#endif
+
 
 #include "lit.h"
 
