@@ -29,24 +29,20 @@ static void default_printf(LitState* state, const char* message)
 LitState* lit_new_state()
 {
     LitState* state = (LitState*)malloc(sizeof(LitState));
-
-    state->class_class = NULL;
-    state->object_class = NULL;
-    state->number_class = NULL;
-    state->string_class = NULL;
-    state->bool_class = NULL;
-    state->function_class = NULL;
-    state->fiber_class = NULL;
-    state->module_class = NULL;
-    state->array_class = NULL;
-    state->map_class = NULL;
-    state->range_class = NULL;
-
+    state->classvalue_class = NULL;
+    state->objectvalue_class = NULL;
+    state->numbervalue_class = NULL;
+    state->stringvalue_class = NULL;
+    state->boolvalue_class = NULL;
+    state->functionvalue_class = NULL;
+    state->fibervalue_class = NULL;
+    state->modulevalue_class = NULL;
+    state->arrayvalue_class = NULL;
+    state->mapvalue_class = NULL;
+    state->rangevalue_class = NULL;
     state->bytes_allocated = 0;
-
     state->next_gc = 256 * 1024;
     state->allow_gc = false;
-
     state->error_fn = default_error;
     state->print_fn = default_printf;
     state->had_error = false;
@@ -54,27 +50,19 @@ LitState* lit_new_state()
     state->root_count = 0;
     state->root_capacity = 0;
     state->last_module = NULL;
-
     state->preprocessor = (LitPreprocessor*)malloc(sizeof(LitPreprocessor));
     lit_init_preprocessor(state, state->preprocessor);
-
     state->scanner = (LitScanner*)malloc(sizeof(LitScanner));
-
     state->parser = (LitParser*)malloc(sizeof(LitParser));
     lit_init_parser(state, (LitParser*)state->parser);
-
     state->emitter = (LitEmitter*)malloc(sizeof(LitEmitter));
     lit_init_emitter(state, state->emitter);
-
     state->optimizer = (LitOptimizer*)malloc(sizeof(LitOptimizer));
     lit_init_optimizer(state, state->optimizer);
-
     state->vm = (LitVm*)malloc(sizeof(LitVm));
-
     lit_init_vm(state, state->vm);
     lit_init_api(state);
     lit_open_core_library(state);
-
     return state;
 }
 
@@ -85,28 +73,19 @@ int64_t lit_free_state(LitState* state)
         free(state->roots);
         state->roots = NULL;
     }
-
     lit_free_api(state);
-
     lit_free_preprocessor(state->preprocessor);
     free(state->preprocessor);
-
     free(state->scanner);
-
     lit_free_parser(state->parser);
     free(state->parser);
-
     lit_free_emitter(state->emitter);
     free(state->emitter);
-
     free(state->optimizer);
-
     lit_free_vm(state->vm);
     free(state->vm);
-
     int64_t amount = state->bytes_allocated;
     free(state);
-
     return amount;
 }
 
@@ -122,7 +101,6 @@ void lit_push_value_root(LitState* state, LitValue value)
         state->root_capacity = LIT_GROW_CAPACITY(state->root_capacity);
         state->roots = (LitValue*)realloc(state->roots, state->root_capacity * sizeof(LitValue));
     }
-
     state->roots[state->root_count++] = value;
 }
 
@@ -142,7 +120,6 @@ void lit_pop_roots(LitState* state, uint8_t amount)
     state->root_count -= amount;
 }
 
-
 LitClass* lit_get_class_for(LitState* state, LitValue value)
 {
     if(IS_OBJECT(value))
@@ -150,10 +127,15 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
         switch(OBJECT_TYPE(value))
         {
             case OBJECT_STRING:
-                return state->string_class;
+                {
+                    return state->stringvalue_class;
+                }
+                break;
             case OBJECT_USERDATA:
-                return state->object_class;
-
+                {
+                    return state->objectvalue_class;
+                }
+                break;
             case OBJECT_FIELD:
             case OBJECT_FUNCTION:
             case OBJECT_CLOSURE:
@@ -162,69 +144,87 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
             case OBJECT_BOUND_METHOD:
             case OBJECT_PRIMITIVE_METHOD:
             case OBJECT_NATIVE_METHOD:
-            {
-                return state->function_class;
-            }
-
+                {
+                    return state->functionvalue_class;
+                }
+                break;
             case OBJECT_FIBER:
-                return state->fiber_class;
+                {
+                    return state->fibervalue_class;
+                }
+                break;
             case OBJECT_MODULE:
-                return state->module_class;
+                {
+                    return state->modulevalue_class;
+                }
+                break;
             case OBJECT_UPVALUE:
-            {
-                LitUpvalue* upvalue = AS_UPVALUE(value);
-
-                if(upvalue->location == NULL)
                 {
-                    return lit_get_class_for(state, upvalue->closed);
+                    LitUpvalue* upvalue = AS_UPVALUE(value);
+                    if(upvalue->location == NULL)
+                    {
+                        return lit_get_class_for(state, upvalue->closed);
+                    }
+                    return lit_get_class_for(state, *upvalue->location);
                 }
-
-                return lit_get_class_for(state, *upvalue->location);
-            }
-
+                break;
             case OBJECT_INSTANCE:
-                return AS_INSTANCE(value)->klass;
-            case OBJECT_CLASS:
-                return state->class_class;
-            case OBJECT_ARRAY:
-                return state->array_class;
-            case OBJECT_MAP:
-                return state->map_class;
-            case OBJECT_RANGE:
-                return state->range_class;
-
-            case OBJECT_REFERENCE:
-            {
-                LitValue* slot = AS_REFERENCE(value)->slot;
-
-                if(slot != NULL)
                 {
-                    return lit_get_class_for(state, *slot);
+                    return AS_INSTANCE(value)->klass;
                 }
+                break;
+            case OBJECT_CLASS:
+                {
+                    return state->classvalue_class;
+                }
+                break;
+            case OBJECT_ARRAY:
+                {
+                    return state->arrayvalue_class;
+                }
+                break;
+            case OBJECT_MAP:
+                {
+                    return state->mapvalue_class;
+                }
+                break;
+            case OBJECT_RANGE:
+                {
+                    return state->rangevalue_class;
+                }
+                break;
+            case OBJECT_REFERENCE:
+                {
+                    LitValue* slot = AS_REFERENCE(value)->slot;
 
-                return state->object_class;
-            }
+                    if(slot != NULL)
+                    {
+                        return lit_get_class_for(state, *slot);
+                    }
+
+                    return state->objectvalue_class;
+                }
+                break;
         }
     }
     else if(IS_NUMBER(value))
     {
-        return state->number_class;
+        return state->numbervalue_class;
     }
     else if(IS_BOOL(value))
     {
-        return state->bool_class;
+        return state->boolvalue_class;
     }
-
     return NULL;
 }
 
 static void free_statements(LitState* state, LitStmtList* statements)
 {
-    for(size_t i = 0; i < statements->count; i++)
+    size_t i;
+    for(i = 0; i < statements->count; i++)
     {
         lit_free_statement(state, statements->values[i]);
     }
-
     lit_free_statements(state, statements);
 }
 
@@ -235,13 +235,15 @@ LitInterpretResult lit_interpret(LitState* state, const char* module_name, char*
 
 LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code)
 {
-    bool allowed_gc = state->allow_gc;
-
+    clock_t t;
+    clock_t total_t;
+    bool allowed_gc;
+    LitModule* module;
+    LitStmtList statements;
+    allowed_gc = state->allow_gc;
     state->allow_gc = false;
     state->had_error = false;
-
-    LitModule* module = NULL;
-
+    module = NULL;
     // This is a lbc format
     if((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER)
     {
@@ -249,51 +251,40 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
     }
     else
     {
-        clock_t t = 0;
-        clock_t total_t = 0;
-
+        t = 0;
+        total_t = 0;
         if(measure_compilation_time)
         {
             total_t = t = clock();
         }
-
         if(!lit_preprocess(state->preprocessor, code))
         {
             return NULL;
         }
-
         if(measure_compilation_time)
         {
             printf("-----------------------\nPreprocessing:  %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-
-        LitStmtList statements;
         lit_init_statements(&statements);
-
         if(lit_parse(state->parser, module_name->chars, code, &statements))
         {
             free_statements(state, &statements);
             return NULL;
         }
-
         if(measure_compilation_time)
         {
             printf("Parsing:        %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-
         lit_optimize(state->optimizer, &statements);
-
         if(measure_compilation_time)
         {
             printf("Optimization:   %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-
         module = lit_emit(state->emitter, &statements, module_name);
         free_statements(state, &statements);
-
         if(measure_compilation_time)
         {
             printf("Emitting:       %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
@@ -301,7 +292,6 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
                    (double)(clock() - total_t) / CLOCKS_PER_SEC * 1000 + last_source_time);
         }
     }
-
     state->allow_gc = allowed_gc;
     return state->had_error ? NULL : module;
 }
@@ -309,156 +299,141 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 LitModule* lit_get_module(LitState* state, const char* name)
 {
     LitValue value;
-
     if(lit_table_get(&state->vm->modules->values, CONST_STRING(state, name), &value))
     {
         return AS_MODULE(value);
     }
-
     return NULL;
 }
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code)
 {
-    LitModule* module = lit_compile_module(state, module_name, code);
-
+    LitModule* module;
+    LitFiber* fiber;
+    LitInterpretResult result;
+    module = lit_compile_module(state, module_name, code);
     if(module == NULL)
     {
         return (LitInterpretResult){ INTERPRET_COMPILE_ERROR, NULL_VALUE };
     }
-
-    LitInterpretResult result = lit_interpret_module(state, module);
-    LitFiber* fiber = module->main_fiber;
-
+    result = lit_interpret_module(state, module);
+    fiber = module->main_fiber;
     if(!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack)
     {
         lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
     }
-
     state->last_module = module;
     return result;
 }
 
 char* lit_patch_file_name(char* file_name)
 {
-    int name_length = strlen(file_name);
-
+    int i;
+    int name_length;
+    char c;
+    name_length = strlen(file_name);
     // Check, if our file_name ends with .lit or lbc, and remove it
-    if(name_length > 4
-       && (memcmp(file_name + name_length - 4, ".lit", 4) == 0 || memcmp(file_name + name_length - 4, ".lbc", 4) == 0))
+    if(name_length > 4 && (memcmp(file_name + name_length - 4, ".lit", 4) == 0 || memcmp(file_name + name_length - 4, ".lbc", 4) == 0))
     {
         file_name[name_length - 4] = '\0';
         name_length -= 4;
     }
-
     // Check, if our file_name starts with ./ and remove it (useless, and makes the module name be ..main)
     if(name_length > 2 && memcmp(file_name, "./", 2) == 0)
     {
         file_name += 2;
         name_length -= 2;
     }
-
-    for(int i = 0; i < name_length; i++)
+    for(i = 0; i < name_length; i++)
     {
-        char c = file_name[i];
-
+        c = file_name[i];
         if(c == '/' || c == '\\')
         {
             file_name[i] = '.';
         }
     }
-
     return file_name;
 }
 
 char* copy_string(const char* string)
 {
-    size_t length = strlen(string) + 1;
-    char* new_string = (char*)malloc(length);
+    size_t length;
+    char* new_string;
+    length = strlen(string) + 1;
+    new_string = (char*)malloc(length);
     memcpy(new_string, string, length);
-
     return new_string;
 }
 
 bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files, const char* output_file)
 {
-    lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+    size_t i;
+    char* file_name;
+    char* source;
+    FILE* file;
+    LitString* module_name;
+    LitModule* module;
     LitModule* compiled_modules[num_files];
-
-    for(size_t i = 0; i < num_files; i++)
+    lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+    for(i = 0; i < num_files; i++)
     {
-        char* file_name = copy_string(files[i]);
-        char* source = lit_read_file(file_name);
-
+        file_name = copy_string(files[i]);
+        source = lit_read_file(file_name);
         if(source == NULL)
         {
             lit_error(state, COMPILE_ERROR, "Failed to open file '%s'", file_name);
             return false;
         }
-
         file_name = lit_patch_file_name(file_name);
-
-        LitString* module_name = lit_copy_string(state, file_name, strlen(file_name));
-        LitModule* module = lit_compile_module(state, module_name, source);
-
+        module_name = lit_copy_string(state, file_name, strlen(file_name));
+        module = lit_compile_module(state, module_name, source);
         compiled_modules[i] = module;
-
         free((void*)source);
         free((void*)file_name);
-
         if(module == NULL)
         {
             return false;
         }
     }
-
-    FILE* file = fopen(output_file, "w+b");
-
+    file = fopen(output_file, "w+b");
     if(file == NULL)
     {
         lit_error(state, COMPILE_ERROR, "Failed to open for writing file '%s'", output_file);
         return false;
     }
-
     lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
     lit_write_uint8_t(file, LIT_BYTECODE_VERSION);
     lit_write_uint16_t(file, num_files);
-
-    for(size_t i = 0; i < num_files; i++)
+    for(i = 0; i < num_files; i++)
     {
         lit_save_module(compiled_modules[i], file);
     }
-
     lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
     fclose(file);
-
     return true;
 }
 
 static char* read_source(LitState* state, const char* file, char** patched_file_name)
 {
-    clock_t t = 0;
-
+    clock_t t;
+    char* file_name;
+    char* source;
+    t = 0;
     if(measure_compilation_time)
     {
         t = clock();
     }
-
-    char* file_name = copy_string(file);
-    char* source = lit_read_file(file_name);
-
+    file_name = copy_string(file);
+    source = lit_read_file(file_name);
     if(source == NULL)
     {
         lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
     }
-
     file_name = lit_patch_file_name(file_name);
-
     if(measure_compilation_time)
     {
         printf("Reading source: %gms\n", last_source_time = (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
     }
-
     *patched_file_name = file_name;
     return source;
 }
@@ -483,17 +458,17 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file)
 LitInterpretResult lit_dump_file(LitState* state, const char* file)
 {
     char* patched_file_name;
-    char* source = read_source(state, file, &patched_file_name);
-
+    char* source;
+    LitInterpretResult result;
+    LitString* module_name;
+    LitModule* module;
+    source = read_source(state, file, &patched_file_name);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
-
-    LitInterpretResult result;
-    LitString* module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
-    LitModule* module = lit_compile_module(state, module_name, source);
-
+    module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
+    module = lit_compile_module(state, module_name, source);
     if(module == NULL)
     {
         result = INTERPRET_RUNTIME_FAIL;
@@ -503,10 +478,8 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
         lit_disassemble_module(module, source);
         result = (LitInterpretResult){ INTERPRET_OK, NULL_VALUE };
     }
-
     free((void*)source);
     free((void*)patched_file_name);
-
     return result;
 }
 
@@ -530,16 +503,15 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...)
 
 void lit_printf(LitState* state, const char* message, ...)
 {
+    size_t buffer_size;
     va_list args;
     va_start(args, message);
     va_list args_copy;
     va_copy(args_copy, args);
-    size_t buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
+    buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
     va_end(args_copy);
-
     char buffer[buffer_size];
     vsnprintf(buffer, buffer_size, message, args);
     va_end(args);
-
     state->print_fn(state, buffer);
 }

@@ -270,7 +270,7 @@
     lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
     if(klass->super == NULL) \
     {                                                       \
-        LIT_INHERIT_CLASS(state->object_class);             \
+        LIT_INHERIT_CLASS(state->objectvalue_class);             \
     }                                                       \
     }
 
@@ -1071,19 +1071,20 @@ struct LitState
     LitFunction* api_function;
     LitFiber* api_fiber;
     LitString* api_name;
+    // class class
     // Mental note:
     // When adding another class here, DO NOT forget to mark it in lit_mem.c or it will be GC-ed
-    LitClass* class_class;
-    LitClass* object_class;
-    LitClass* number_class;
-    LitClass* string_class;
-    LitClass* bool_class;
-    LitClass* function_class;
-    LitClass* fiber_class;
-    LitClass* module_class;
-    LitClass* array_class;
-    LitClass* map_class;
-    LitClass* range_class;
+    LitClass* classvalue_class;
+    LitClass* objectvalue_class;
+    LitClass* numbervalue_class;
+    LitClass* stringvalue_class;
+    LitClass* boolvalue_class;
+    LitClass* functionvalue_class;
+    LitClass* fibervalue_class;
+    LitClass* modulevalue_class;
+    LitClass* arrayvalue_class;
+    LitClass* mapvalue_class;
+    LitClass* rangevalue_class;
     LitModule* last_module;
 };
 

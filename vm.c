@@ -884,7 +884,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
 
         op_case(OBJECT)
         {
-            vm_push(OBJECT_VALUE(lit_create_instance(state, state->object_class)));
+            vm_push(OBJECT_VALUE(lit_create_instance(state, state->objectvalue_class)));
             continue;
         }
 
@@ -1331,7 +1331,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
 
             vm_push(OBJECT_VALUE(klass));
 
-            klass->super = state->object_class;
+            klass->super = state->objectvalue_class;
 
             lit_table_add_all(state, &klass->super->methods, &klass->methods);
             lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);

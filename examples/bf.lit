@@ -93,12 +93,12 @@ function bf(src, input)
                         }
                         else
                         {
-                            break;
+                            break
                         }
                     }
                     else if(src[ip] == "[")
                     {
-                        bcount += 1;
+                        bcount += 1
                     }
                }
            }
