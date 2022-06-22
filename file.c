@@ -20,6 +20,34 @@
     #define	S_ISREG(m)	(((m)&S_IFMT) == S_IFREG)	/* file */
 #endif
 
+#define LIT_INSERT_DATA(type, cleanup)                                                                                      \
+    (                                                                                                                       \
+    {                                                                                                                       \
+        LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(type));                                               \
+        userdata->cleanup_fn = cleanup;                                                                                     \
+        lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata)); \
+        (type*)userdata->data;                                                                                              \
+    })
+
+#define LIT_EXTRACT_DATA(type) \
+    ({ \
+        LitValue _d; \
+        if(!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
+        { \
+            lit_runtime_error_exiting(vm, "failed to extract userdata"); \
+        } \
+        (type*)AS_USERDATA(_d)->data; \
+    })
+
+#define LIT_EXTRACT_DATA_FROM(from, type) \
+    ({ \
+        LitValue _d; \
+        if(!lit_table_get(&AS_INSTANCE(from)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
+        { \
+            lit_runtime_error_exiting(vm, "failed to extract userdata"); \
+        } \
+        (type*)AS_USERDATA(_d)->data; \
+    })
 
 
 /*
@@ -213,7 +241,7 @@ static LitValue file_readByte(LitVm* vm, LitValue instance, size_t argc, LitValu
     (void)instance;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(lit_read_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file));
+    return lit_number_to_value(lit_read_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 static LitValue file_readShort(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -222,7 +250,7 @@ static LitValue file_readShort(LitVm* vm, LitValue instance, size_t argc, LitVal
     (void)instance;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(lit_read_uint16_t(LIT_EXTRACT_DATA(LitFileData)->file));
+    return lit_number_to_value(lit_read_uint16_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 static LitValue file_readNumber(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -231,7 +259,7 @@ static LitValue file_readNumber(LitVm* vm, LitValue instance, size_t argc, LitVa
     (void)instance;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(lit_read_uint32_t(LIT_EXTRACT_DATA(LitFileData)->file));
+    return lit_number_to_value(lit_read_uint32_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 static LitValue file_readBool(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -273,12 +301,12 @@ static LitValue file_getLastModified(LitVm* vm, LitValue instance, size_t argc, 
 
     if(stat(file_name, &buffer) != 0)
     {
-        return NUMBER_VALUE(0);
+        return lit_number_to_value(0);
     }
     #if defined(__unix__) || defined(__linux__)
-    return NUMBER_VALUE(buffer.st_mtim.tv_sec);
+    return lit_number_to_value(buffer.st_mtim.tv_sec);
     #else
-        return NUMBER_VALUE(0);
+        return lit_number_to_value(0);
     #endif
 }
 

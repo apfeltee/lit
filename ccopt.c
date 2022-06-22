@@ -129,7 +129,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
         {
             if(IS_NUMBER(value))
             {
-                return NUMBER_VALUE(-AS_NUMBER(value));
+                return lit_number_to_value(-lit_value_to_number(value));
             }
 
             break;
@@ -144,7 +144,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
         {
             if(IS_NUMBER(value))
             {
-                return NUMBER_VALUE(~((int)AS_NUMBER(value)));
+                return lit_number_to_value(~((int)lit_value_to_number(value)));
             }
 
             break;
@@ -164,83 +164,126 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
 #define BINARY_OP(op)                                      \
     if(IS_NUMBER(a) && IS_NUMBER(b))                       \
     {                                                      \
-        return NUMBER_VALUE(AS_NUMBER(a) op AS_NUMBER(b)); \
+        return lit_number_to_value(lit_value_to_number(a) op lit_value_to_number(b)); \
     }                                                      \
     return NULL_VALUE;
 
 #define BITWISE_OP(op)                                               \
     if(IS_NUMBER(a) && IS_NUMBER(b))                                 \
     {                                                                \
-        return NUMBER_VALUE((int)AS_NUMBER(a) op(int) AS_NUMBER(b)); \
+        return lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
     }                                                                \
     return NULL_VALUE;
 
 #define FN_OP(fn)                                            \
     if(IS_NUMBER(a) && IS_NUMBER(b))                         \
     {                                                        \
-        return NUMBER_VALUE(fn(AS_NUMBER(a), AS_NUMBER(b))); \
+        return lit_number_to_value(fn(lit_value_to_number(a), lit_value_to_number(b))); \
     }                                                        \
     return NULL_VALUE;
 
     switch(op)
     {
         case TOKEN_PLUS:
-            BINARY_OP(+)
-        case TOKEN_MINUS:
-            BINARY_OP(-)
-        case TOKEN_STAR:
-            BINARY_OP(*)
-        case TOKEN_SLASH:
-            BINARY_OP(/)
-        case TOKEN_STAR_STAR:
-            FN_OP(pow)
-        case TOKEN_PERCENT:
-            FN_OP(fmod)
-
-        case TOKEN_GREATER:
-            BINARY_OP(>)
-        case TOKEN_GREATER_EQUAL:
-            BINARY_OP(>=)
-        case TOKEN_LESS:
-            BINARY_OP(<)
-        case TOKEN_LESS_EQUAL:
-            BINARY_OP(<=)
-        case TOKEN_LESS_LESS:
-            BITWISE_OP(<<)
-        case TOKEN_GREATER_GREATER:
-            BITWISE_OP(>>)
-        case TOKEN_BAR:
-            BITWISE_OP(|)
-        case TOKEN_AMPERSAND:
-            BITWISE_OP(&)
-        case TOKEN_CARET:
-            BITWISE_OP(^)
-
-        case TOKEN_SHARP:
-        {
-            if(IS_NUMBER(a) && IS_NUMBER(b))
             {
-                return NUMBER_VALUE(floor(AS_NUMBER(a) / AS_NUMBER(b)));
+                BINARY_OP(+);
             }
-
-            return NULL_VALUE;
-        }
-
+            break;
+        case TOKEN_MINUS:
+            {
+                BINARY_OP(-);
+            }
+            break;
+        case TOKEN_STAR:
+            {
+                BINARY_OP(*);
+            }
+            break;
+        case TOKEN_SLASH:
+            {
+                BINARY_OP(/);
+            }
+            break;
+        case TOKEN_STAR_STAR:
+            {
+                FN_OP(pow);
+            }
+            break;
+        case TOKEN_PERCENT:
+            {
+                FN_OP(fmod);
+            }
+            break;
+        case TOKEN_GREATER:
+            {
+                BINARY_OP(>);
+            }
+            break;
+        case TOKEN_GREATER_EQUAL:
+            {
+                BINARY_OP(>=);
+            }
+            break;
+        case TOKEN_LESS:
+            {
+                BINARY_OP(<);
+            }
+            break;
+        case TOKEN_LESS_EQUAL:
+            {
+                BINARY_OP(<=);
+            }
+            break;
+        case TOKEN_LESS_LESS:
+            {
+                BITWISE_OP(<<);
+            }
+            break;
+        case TOKEN_GREATER_GREATER:
+            {
+                BITWISE_OP(>>);
+            }
+            break;
+        case TOKEN_BAR:
+            {
+                BITWISE_OP(|);
+            }
+            break;
+        case TOKEN_AMPERSAND:
+            {
+                BITWISE_OP(&);
+            }
+            break;
+        case TOKEN_CARET:
+            {
+                BITWISE_OP(^);
+            }
+            break;
+        case TOKEN_SHARP:
+            {
+                if(IS_NUMBER(a) && IS_NUMBER(b))
+                {
+                    return lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b)));
+                }
+                return NULL_VALUE;
+            }
+            break;
         case TOKEN_EQUAL_EQUAL:
-        {
-            return BOOL_VALUE(a == b);
-        }
-
+            {
+                return BOOL_VALUE(a == b);
+            }
+            break;
         case TOKEN_BANG_EQUAL:
-        {
-            return BOOL_VALUE(a != b);
-        }
-
+            {
+                return BOOL_VALUE(a != b);
+            }
+            break;
         case TOKEN_IS:
         default:
-        {
+            {
+            }
             break;
-        }
+
     }
 
 #undef FN_OP
@@ -252,23 +295,23 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
 
 static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExpression* expression, LitValue value, bool left)
 {
-    LitTokenType op = expression->op;
-    LitExpression* branch = left ? expression->left : expression->right;
-
+    double number;
+    LitTokenType op;
+    op = expression->op;
+    LitExpression* branch;
+    branch = left ? expression->left : expression->right;
     if(IS_NUMBER(value))
     {
-        double number = AS_NUMBER(value);
-
+        number = lit_value_to_number(value);
         if(op == TOKEN_STAR)
         {
             if(number == 0)
             {
-                return NUMBER_VALUE(0);
+                return lit_number_to_value(0);
             }
             else if(number == 1)
             {
                 lit_free_expression(optimizer->state, left ? expression->right : expression->left);
-
                 expression->left = branch;
                 expression->right = NULL;
             }
@@ -276,78 +319,72 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
         else if((op == TOKEN_PLUS || op == TOKEN_MINUS) && number == 0)
         {
             lit_free_expression(optimizer->state, left ? expression->right : expression->left);
-
             expression->left = branch;
             expression->right = NULL;
         }
         else if(((left && op == TOKEN_SLASH) || op == TOKEN_STAR_STAR) && number == 1)
         {
             lit_free_expression(optimizer->state, left ? expression->right : expression->left);
-
             expression->left = branch;
             expression->right = NULL;
         }
     }
-
     return NULL_VALUE;
 }
 
 static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expression)
 {
+    LitUnaryExpression* uexpr;
+    LitBinaryExpression* bexpr;
+    LitValue a;
+    LitValue b;
+    LitValue branch;
     if(expression == NULL)
     {
         return NULL_VALUE;
     }
-
     switch(expression->type)
     {
         case LITERAL_EXPRESSION:
-        {
-            return ((LitLiteralExpression*)expression)->value;
-        }
-
+            {
+                return ((LitLiteralExpression*)expression)->value;
+            }
+            break;
         case UNARY_EXPRESSION:
-        {
-            LitUnaryExpression* expr = (LitUnaryExpression*)expression;
-            LitValue branch = evaluate_expression(optimizer, expr->right);
-
-            if(branch != NULL_VALUE)
             {
-                return evaluate_unary_op(branch, expr->op);
+                uexpr = (LitUnaryExpression*)expression;
+                branch = evaluate_expression(optimizer, uexpr->right);
+                if(branch != NULL_VALUE)
+                {
+                    return evaluate_unary_op(branch, uexpr->op);
+                }
             }
-
             break;
-        }
-
         case BINARY_EXPRESSION:
-        {
-            LitBinaryExpression* expr = (LitBinaryExpression*)expression;
-
-            LitValue a = evaluate_expression(optimizer, expr->left);
-            LitValue b = evaluate_expression(optimizer, expr->right);
-
-            if(a != NULL_VALUE && b != NULL_VALUE)
             {
-                return evaluate_binary_op(a, b, expr->op);
+                bexpr = (LitBinaryExpression*)expression;
+                a = evaluate_expression(optimizer, bexpr->left);
+                b = evaluate_expression(optimizer, bexpr->right);
+                if(a != NULL_VALUE && b != NULL_VALUE)
+                {
+                    return evaluate_binary_op(a, b, bexpr->op);
+                }
+                else if(a != NULL_VALUE)
+                {
+                    return attempt_to_optimize_binary(optimizer, bexpr, a, false);
+                }
+                else if(b != NULL_VALUE)
+                {
+                    return attempt_to_optimize_binary(optimizer, bexpr, b, true);
+                }
             }
-            else if(a != NULL_VALUE)
-            {
-                return attempt_to_optimize_binary(optimizer, expr, a, false);
-            }
-            else if(b != NULL_VALUE)
-            {
-                return attempt_to_optimize_binary(optimizer, expr, b, true);
-            }
-
             break;
-        }
-
         default:
-        {
-            return NULL_VALUE;
-        }
+            {
+                return NULL_VALUE;
+            }
+            break;
     }
-
     return NULL_VALUE;
 }
 
@@ -768,7 +805,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
                 break;
             }
 
-            bool reverse = AS_NUMBER(from) > AS_NUMBER(to);
+            bool reverse = lit_value_to_number(from) > lit_value_to_number(to);
 
             LitVarStatement* var = (LitVarStatement*)stmt->var;
             size_t line = range->expression.line;
@@ -783,7 +820,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
             // i++ (or i--)
             LitExpression* var_get = (LitExpression*)lit_create_var_expression(state, line, var->name, var->length);
             LitBinaryExpression* assign_value = lit_create_binary_expression(
-            state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, NUMBER_VALUE(1)),
+            state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_number_to_value(1)),
             reverse ? TOKEN_MINUS_MINUS : TOKEN_PLUS);
             assign_value->ignore_left = true;
 
@@ -891,7 +928,8 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
 
 static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements)
 {
-    for(size_t i = 0; i < statements->count; i++)
+    size_t i;
+    for(i = 0; i < statements->count; i++)
     {
         optimize_statement(optimizer, &statements->values[i]);
     }
@@ -903,16 +941,13 @@ void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements)
     {
         setup_optimization_states();
     }
-
     if(!any_optimization_enabled)
     {
         return;
     }
-
     opt_begin_scope(optimizer);
     optimize_statements(optimizer, statements);
     opt_end_scope(optimizer);
-
     lit_free_variables(optimizer->state, &optimizer->variables);
 }
 
@@ -927,43 +962,40 @@ bool lit_is_optimization_enabled(LitOptimization optimization)
     {
         setup_optimization_states();
     }
-
     return optimization_states[(int)optimization];
 }
 
 void lit_set_optimization_enabled(LitOptimization optimization, bool enabled)
 {
+    size_t i;
     if(!optimization_states_setup)
     {
         setup_optimization_states();
     }
-
     optimization_states[(int)optimization] = enabled;
-
     if(enabled)
     {
         any_optimization_enabled = true;
     }
     else
     {
-        for(size_t i = 0; i < OPTIMIZATION_TOTAL; i++)
+        for(i = 0; i < OPTIMIZATION_TOTAL; i++)
         {
             if(optimization_states[i])
             {
                 return;
             }
         }
-
         any_optimization_enabled = false;
     }
 }
 
 void lit_set_all_optimization_enabled(bool enabled)
 {
+    size_t i;
     optimization_states_setup = true;
     any_optimization_enabled = enabled;
-
-    for(size_t i = 0; i < OPTIMIZATION_TOTAL; i++)
+    for(i = 0; i < OPTIMIZATION_TOTAL; i++)
     {
         optimization_states[i] = enabled;
     }
@@ -974,53 +1006,44 @@ void lit_set_optimization_level(LitOptimizationLevel level)
     switch(level)
     {
         case OPTIMIZATION_LEVEL_NONE:
-        {
-            lit_set_all_optimization_enabled(false);
+            {
+                lit_set_all_optimization_enabled(false);
+            }
             break;
-        }
-
         case OPTIMIZATION_LEVEL_REPL:
-        {
-            lit_set_all_optimization_enabled(true);
-
-            lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
-            lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
-            lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
-            lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
-            lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
-
+            {
+                lit_set_all_optimization_enabled(true);
+                lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+                lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
+                lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
+                lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+                lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
+            }
             break;
-        }
-
         case OPTIMIZATION_LEVEL_DEBUG:
-        {
-            lit_set_all_optimization_enabled(true);
-
-            lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
-            lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
-            lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
-
+            {
+                lit_set_all_optimization_enabled(true);
+                lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+                lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+                lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
+            }
             break;
-        }
-
         case OPTIMIZATION_LEVEL_RELEASE:
-        {
-            lit_set_all_optimization_enabled(true);
-            lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
-
+            {
+                lit_set_all_optimization_enabled(true);
+                lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+            }
             break;
-        }
-
         case OPTIMIZATION_LEVEL_EXTREME:
-        {
-            lit_set_all_optimization_enabled(true);
+            {
+                lit_set_all_optimization_enabled(true);
+            }
             break;
-        }
-
         case OPTIMIZATION_LEVEL_TOTAL:
-        {
+            {
+            }
             break;
-        }
+
     }
 }
 
@@ -1038,3 +1061,4 @@ const char* lit_get_optimization_level_description(LitOptimizationLevel level)
 {
     return optimization_level_descriptions[(int)level];
 }
+

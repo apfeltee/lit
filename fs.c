@@ -269,7 +269,7 @@ static void save_chunk(FILE* file, LitChunk* chunk)
         else
         {
             lit_write_uint8_t(file, 0);
-            lit_write_double(file, AS_NUMBER(constant));
+            lit_write_double(file, lit_value_to_number(constant));
         }
     }
 }
@@ -317,7 +317,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 
         if(type == 0)
         {
-            chunk->constants.values[i] = NUMBER_VALUE(lit_read_edouble(file));
+            chunk->constants.values[i] = lit_number_to_value(lit_read_edouble(file));
         }
         else
         {
@@ -362,7 +362,7 @@ void lit_save_module(LitModule* module, FILE* file)
             if(privates->entries[i].key != NULL)
             {
                 lit_write_string(file, privates->entries[i].key);
-                lit_write_uint16_t(file, (uint16_t)AS_NUMBER(privates->entries[i].value));
+                lit_write_uint16_t(file, (uint16_t)lit_value_to_number(privates->entries[i].value));
             }
         }
     }
@@ -410,7 +410,7 @@ LitModule* lit_load_module(LitState* state, const char* input)
             if(enabled)
             {
                 LitString* name = lit_read_estring(state, &file);
-                lit_table_set(state, privates, name, NUMBER_VALUE(lit_read_euint16_t(&file)));
+                lit_table_set(state, privates, name, lit_number_to_value(lit_read_euint16_t(&file)));
             }
         }
 

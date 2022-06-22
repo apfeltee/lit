@@ -662,7 +662,7 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
     rule = get_rule(op);
     if(op == TOKEN_PLUS_PLUS || op == TOKEN_MINUS_MINUS)
     {
-        expression = (LitExpression*)lit_create_literal_expression(parser->state, line, NUMBER_VALUE(1));
+        expression = (LitExpression*)lit_create_literal_expression(parser->state, line, lit_number_to_value(1));
     }
     else
     {

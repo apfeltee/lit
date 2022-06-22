@@ -44,7 +44,7 @@ void lit_free_object(LitState* state, LitObject* object)
 #ifdef LIT_LOG_ALLOCATION
     printf("(");
     lit_print_value(OBJECT_VALUE(object));
-    printf(") %p free %s\n", (void*)object, lit_object_type_names[object->type]);
+    printf(") %p free %s\n", (void*)object, lit_get_value_type(object->type));
 #endif
 
     switch(object->type)

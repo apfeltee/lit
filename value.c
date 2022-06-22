@@ -2,6 +2,31 @@
 #include <stdio.h>
 #include "lit.h"
 
+
+static const char* lit_object_type_names[] =
+{
+    "string",
+    "function",
+    "native_function",
+    "native_primitive",
+    "native_method",
+    "primitive_method",
+    "fiber",
+    "module",
+    "closure",
+    "upvalue",
+    "class",
+    "instance",
+    "bound_method",
+    "array",
+    "map",
+    "userdata",
+    "range",
+    "field",
+    "reference"
+};
+
+
 void lit_init_values(LitValues* array)
 {
     array->values = NULL;
@@ -31,7 +56,7 @@ void lit_values_write(LitState* state, LitValues* array, LitValue value)
 static void print_array(LitArray* array, size_t size)
 {
     size_t i;
-    printf("(%u) [", size);
+    printf("(%u) [", (unsigned int)size);
     if(size > 0)
     {
         printf(" ");
@@ -63,11 +88,11 @@ static void print_map(LitMap* map, size_t size)
     bool had_before;
     size_t i;
     LitTableEntry* entry;
-    printf("(%u) {", size);
+    printf("(%u) {", (unsigned int)size);
     had_before = false;
     if(size > 0)
     {
-        for(i = 0; i < map->values.capacity; i++)
+        for(i = 0; i < (size_t)map->values.capacity; i++)
         {
             entry = &map->values.entries[i];
             if(entry->key != NULL)
@@ -253,7 +278,7 @@ void lit_print_value(LitValue value)
     }
     else if(IS_NUMBER(value))
     {
-        printf("%g", AS_NUMBER(value));
+        printf("%g", lit_value_to_number(value));
     }
     else if(IS_OBJECT(value))
     {

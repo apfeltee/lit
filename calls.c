@@ -335,7 +335,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
         }
         else if(IS_NUMBER(object))
         {
-            return AS_STRING(lit_number_to_string(state, AS_NUMBER(object)));
+            return AS_STRING(lit_number_to_string(state, lit_value_to_number(object)));
         }
         else if(IS_BOOL(object))
         {

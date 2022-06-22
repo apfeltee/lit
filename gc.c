@@ -1,23 +1,23 @@
 
 #include "lit.h"
 
-static LitValue gc_memory_used(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
+static LitValue objfn_gc_memory_used(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
 {
     (void)instance;
     (void)arg_count;
     (void)args;
-    return NUMBER_VALUE(vm->state->bytes_allocated);
+    return lit_number_to_value(vm->state->bytes_allocated);
 }
 
-static LitValue gc_next_round(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
+static LitValue objfn_gc_next_round(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
 {
     (void)instance;
     (void)arg_count;
     (void)args;
-    return NUMBER_VALUE(vm->state->next_gc);
+    return lit_number_to_value(vm->state->next_gc);
 }
 
-static LitValue gc_trigger(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
+static LitValue objfn_gc_trigger(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args)
 {
     (void)instance;
     (void)arg_count;
@@ -27,15 +27,17 @@ static LitValue gc_trigger(LitVm* vm, LitValue instance, size_t arg_count, LitVa
     collected = lit_collect_garbage(vm);
     vm->state->allow_gc = false;
 
-    return NUMBER_VALUE(collected);
+    return lit_number_to_value(collected);
 }
 
 void lit_open_gc_library(LitState* state)
 {
     LIT_BEGIN_CLASS("GC")
-    LIT_BIND_STATIC_GETTER("memoryUsed", gc_memory_used)
-    LIT_BIND_STATIC_GETTER("nextRound", gc_next_round)
-
-    LIT_BIND_STATIC_METHOD("trigger", gc_trigger)
+    {
+        LIT_BIND_STATIC_GETTER("memoryUsed", objfn_gc_memory_used)
+        LIT_BIND_STATIC_GETTER("nextRound", objfn_gc_next_round)
+        LIT_BIND_STATIC_METHOD("trigger", objfn_gc_trigger)
+    }
     LIT_END_CLASS()
 }
+

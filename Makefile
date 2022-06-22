@@ -1,7 +1,7 @@
 
 INCFLAGS =
 
-CC = clang -Wall -Wextra
+CC = gcc -Wall -Wextra
 # ricing intensifies
 #CFLAGS = $(INCFLAGS) -Ofast -march=native -flto -ffast-math -funroll-loops
 CFLAGS = $(INCFLAGS) -Og -g3 -ggdb3

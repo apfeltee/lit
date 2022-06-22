@@ -139,7 +139,6 @@
 #define IS_OBJECT(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
 #define AS_BOOL(v) ((v) == TRUE_VALUE)
-#define AS_NUMBER(v) lit_value_to_number(v)
 #define AS_OBJECT(v) ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
 
 #define BOOL_VALUE(boolean) \
@@ -148,7 +147,7 @@
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
 #define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
-#define NUMBER_VALUE(num) lit_number_to_value(num)
+
 
 #define OBJECT_VALUE(obj) \
     (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
@@ -392,37 +391,6 @@
         lit_runtime_error(vm, "expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
-
-#define LIT_INSERT_DATA(type, cleanup)                                                                                      \
-    (                                                                                                                       \
-    {                                                                                                                       \
-        LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(type));                                               \
-        userdata->cleanup_fn = cleanup;                                                                                     \
-        lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata)); \
-        (type*)userdata->data;                                                                                              \
-    })
-
-#define LIT_EXTRACT_DATA(type)                                                                    \
-    (                                                                                             \
-    {                                                                                             \
-        LitValue _d;                                                                              \
-        if(!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
-        {                                                                                         \
-            lit_runtime_error_exiting(vm, "failed to extract userdata");                          \
-        }                                                                                         \
-        (type*)AS_USERDATA(_d)->data;                                                             \
-    })
-
-#define LIT_EXTRACT_DATA_FROM(from, type)                                                     \
-    (                                                                                         \
-    {                                                                                         \
-        LitValue _d;                                                                          \
-        if(!lit_table_get(&AS_INSTANCE(from)->fields, CONST_STRING(vm->state, "_data"), &_d)) \
-        {                                                                                     \
-            lit_runtime_error_exiting(vm, "failed to extract userdata");                      \
-        }                                                                                     \
-        (type*)AS_USERDATA(_d)->data;                                                         \
-    })
 
 
 #define TABLE_MAX_LOAD 0.75
@@ -1514,29 +1482,6 @@ struct LitPreprocessor
 };
 
 
-static const char* lit_object_type_names[] =
-{
-    "string",
-    "function",
-    "native_function",
-    "native_primitive",
-    "native_method",
-    "primitive_method",
-    "fiber",
-    "module",
-    "closure",
-    "upvalue",
-    "class",
-    "instance",
-    "bound_method",
-    "array",
-    "map",
-    "userdata",
-    "range",
-    "field",
-    "reference"
-};
-
 static inline double lit_value_to_number(LitValue value)
 {
     return *((double*)&value);
@@ -1549,7 +1494,7 @@ static inline LitValue lit_number_to_value(double num)
 
 static inline bool lit_is_falsey(LitValue value)
 {
-    return (IS_BOOL(value) && value == FALSE_VALUE) || IS_NULL(value) || (IS_NUMBER(value) && AS_NUMBER(value) == 0);
+    return (IS_BOOL(value) && value == FALSE_VALUE) || IS_NULL(value) || (IS_NUMBER(value) && lit_value_to_number(value) == 0);
 }
 
 void lit_init_uints(LitUInts* array);

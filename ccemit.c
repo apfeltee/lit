@@ -10,12 +10,12 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
 
 static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
 {
-    for(size_t i = 0; i < statements->count; i++)
+    size_t i;
+    for(i = 0; i < statements->count; i++)
     {
         resolve_statement(emitter, statements->values[i]);
     }
 }
-
 
 void lit_init_privates(LitPrivates* array)
 {
@@ -23,11 +23,13 @@ void lit_init_privates(LitPrivates* array)
     array->capacity = 0;
     array->count = 0;
 }
+
 void lit_free_privates(LitState* state, LitPrivates* array)
 {
     LIT_FREE_ARRAY(state, LitPrivate, array->values, array->capacity);
     lit_init_privates(array);
 }
+
 void lit_privates_write(LitState* state, LitPrivates* array, LitPrivate value)
 {
     if(array->capacity < array->count + 1)
@@ -45,11 +47,13 @@ void lit_init_locals(LitLocals* array)
     array->capacity = 0;
     array->count = 0;
 }
+
 void lit_free_locals(LitState* state, LitLocals* array)
 {
     LIT_FREE_ARRAY(state, LitLocal, array->values, array->capacity);
     lit_init_locals(array);
 }
+
 void lit_locals_write(LitState* state, LitLocals* array, LitLocal value)
 {
     if(array->capacity < array->count + 1)
@@ -360,7 +364,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
         LitValue index;
         lit_table_get(private_names, key, &index);
 
-        return AS_NUMBER(index);
+        return lit_value_to_number(index);
     }
 
     LitState* state = emitter->state;
@@ -368,7 +372,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
 
     lit_privates_write(state, privates, (LitPrivate){ false, constant });
 
-    lit_table_set(state, private_names, lit_copy_string(state, name, length), NUMBER_VALUE(index));
+    lit_table_set(state, private_names, lit_copy_string(state, name, length), lit_number_to_value(index));
     emitter->module->private_count++;
 
     return index;
@@ -384,7 +388,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, size_t length,
         LitValue index;
         lit_table_get(private_names, key, &index);
 
-        int number_index = AS_NUMBER(index);
+        int number_index = lit_value_to_number(index);
 
         if(!emitter->privates.values[number_index].initialized)
         {
@@ -1380,6 +1384,48 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
 {
+
+    LitClassStatement* clstmt;
+    LitCompiler compiler;
+    LitExpression* expression;
+    LitExpressionStatement* expr;
+    LitField* field;
+    LitFieldStatement* fieldstmt;
+    LitFunction* function;
+    LitFunction* getter;
+    LitFunction* setter;
+    LitFunctionStatement* funcstmt;
+    LitLocal* local;
+    LitLocals* locals;
+    LitMethodStatement* mthstmt;
+    LitStatement* blockstmt;
+    LitStatement* s;
+    LitStmtList* statements;
+    LitString* name;
+    LitVarStatement* var;
+    LitVarStatement* varstmt;
+    bool constructor;
+    bool isexport;
+    bool isprivate;
+    bool islocal;
+    bool vararg;
+    int depth;
+    int ii;
+    int index;
+    size_t body_jump;
+    size_t exit_jump;
+    size_t i;
+    size_t increment_start;
+    size_t localcnt;
+    size_t iterator;
+    size_t line;
+    size_t sequence;
+    size_t start;
+    uint16_t local_count;
+    uint8_t super;
+
+
+
     if(statement == NULL)
     {
         return false;
@@ -1388,54 +1434,52 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
     switch(statement->type)
     {
         case EXPRESSION_STATEMENT:
-        {
-            LitExpressionStatement* expr = (LitExpressionStatement*)statement;
-            emit_expression(emitter, expr->expression);
-
-            if(expr->pop)
             {
-                emit_op(emitter, statement->line, OP_POP);
-            }
-
-            break;
-        }
-
-        case BLOCK_STATEMENT:
-        {
-            LitStmtList statements = ((LitBlockStatement*)statement)->statements;
-            begin_scope(emitter);
-
-            for(size_t i = 0; i < statements.count; i++)
-            {
-                LitStatement* stmt = statements.values[i];
-
-                if(emit_statement(emitter, stmt))
+                expr = (LitExpressionStatement*)statement;
+                emit_expression(emitter, expr->expression);
+                if(expr->pop)
                 {
-                    break;
+                    emit_op(emitter, statement->line, OP_POP);
                 }
             }
-
-            end_scope(emitter, emitter->last_line);
             break;
-        }
+
+        case BLOCK_STATEMENT:
+            {
+                statements = &((LitBlockStatement*)statement)->statements;
+                begin_scope(emitter);
+                {
+                    for(i = 0; i < statements->count; i++)
+                    {
+                        blockstmt = statements->values[i];
+
+                        if(emit_statement(emitter, blockstmt))
+                        {
+                            break;
+                        }
+                    }
+                }
+                end_scope(emitter, emitter->last_line);
+            }
+            break;
 
         case VAR_STATEMENT:
         {
-            LitVarStatement* stmt = (LitVarStatement*)statement;
+            varstmt = (LitVarStatement*)statement;
 
-            size_t line = statement->line;
-            bool isprivate = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+            line = statement->line;
+            isprivate = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
-            int index = isprivate ? resolve_private(emitter, stmt->name, stmt->length, statement->line) :
-                                  add_local(emitter, stmt->name, stmt->length, statement->line, stmt->constant);
+            index = isprivate ? resolve_private(emitter, varstmt->name, varstmt->length, statement->line) :
+                                  add_local(emitter, varstmt->name, varstmt->length, statement->line, varstmt->constant);
 
-            if(stmt->init == NULL)
+            if(varstmt->init == NULL)
             {
                 emit_op(emitter, line, OP_NULL);
             }
             else
             {
-                emit_expression(emitter, stmt->init);
+                emit_expression(emitter, varstmt->init);
             }
 
             if(isprivate)
@@ -1461,32 +1505,32 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
 
         case IF_STATEMENT:
         {
-            LitIfStatement* stmt = (LitIfStatement*)statement;
+            LitIfStatement* ifstmt = (LitIfStatement*)statement;
 
             uint64_t else_jump = 0;
             uint64_t end_jump = 0;
 
-            if(stmt->condition == NULL)
+            if(ifstmt->condition == NULL)
             {
                 else_jump = emit_jump(emitter, OP_JUMP, statement->line);
             }
             else
             {
-                emit_expression(emitter, stmt->condition);
+                emit_expression(emitter, ifstmt->condition);
                 else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-                emit_statement(emitter, stmt->if_branch);
+                emit_statement(emitter, ifstmt->if_branch);
 
                 end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
             }
 
-            //uint64_t end_jumps[stmt->elseif_branches == NULL ? 1 : stmt->elseif_branches->count];
+            //uint64_t end_jumps[ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count];
             uint64_t end_jumps[512];
 
-            if(stmt->elseif_branches != NULL)
+            if(ifstmt->elseif_branches != NULL)
             {
-                for(size_t i = 0; i < stmt->elseif_branches->count; i++)
+                for(size_t i = 0; i < ifstmt->elseif_branches->count; i++)
                 {
-                    LitExpression* e = stmt->elseif_conditions->values[i];
+                    LitExpression* e = ifstmt->elseif_conditions->values[i];
 
                     if(e == NULL)
                     {
@@ -1496,16 +1540,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                     patch_jump(emitter, else_jump, e->line);
                     emit_expression(emitter, e);
                     else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-                    emit_statement(emitter, stmt->elseif_branches->values[i]);
+                    emit_statement(emitter, ifstmt->elseif_branches->values[i]);
 
                     end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
                 }
             }
 
-            if(stmt->else_branch != NULL)
+            if(ifstmt->else_branch != NULL)
             {
-                patch_jump(emitter, else_jump, stmt->else_branch->line);
-                emit_statement(emitter, stmt->else_branch);
+                patch_jump(emitter, else_jump, ifstmt->else_branch->line);
+                emit_statement(emitter, ifstmt->else_branch);
             }
             else
             {
@@ -1517,16 +1561,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                 patch_jump(emitter, end_jump, emitter->last_line);
             }
 
-            if(stmt->elseif_branches != NULL)
+            if(ifstmt->elseif_branches != NULL)
             {
-                for(size_t i = 0; i < stmt->elseif_branches->count; i++)
+                for(size_t i = 0; i < ifstmt->elseif_branches->count; i++)
                 {
-                    if(stmt->elseif_branches->values[i] == NULL)
+                    if(ifstmt->elseif_branches->values[i] == NULL)
                     {
                         continue;
                     }
 
-                    patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
+                    patch_jump(emitter, end_jumps[i], ifstmt->elseif_branches->values[i]->line);
                 }
             }
 
@@ -1535,16 +1579,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
 
         case WHILE_STATEMENT:
         {
-            LitWhileStatement* stmt = (LitWhileStatement*)statement;
+            LitWhileStatement* whilestmt = (LitWhileStatement*)statement;
 
             size_t start = emitter->chunk->count;
             emitter->loop_start = start;
             emitter->compiler->loop_depth++;
 
-            emit_expression(emitter, stmt->condition);
+            emit_expression(emitter, whilestmt->condition);
 
             uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-            emit_statement(emitter, stmt->body);
+            emit_statement(emitter, whilestmt->body);
 
             patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
             emit_loop(emitter, start, emitter->last_line);
@@ -1557,88 +1601,78 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
 
         case FOR_STATEMENT:
         {
-            LitForStatement* stmt = (LitForStatement*)statement;
+            LitForStatement* forstmt = (LitForStatement*)statement;
             begin_scope(emitter);
             emitter->compiler->loop_depth++;
 
-            if(stmt->c_style)
+            if(forstmt->c_style)
             {
-                if(stmt->var != NULL)
+                if(forstmt->var != NULL)
                 {
-                    emit_statement(emitter, stmt->var);
+                    emit_statement(emitter, forstmt->var);
                 }
-                else if(stmt->init != NULL)
+                else if(forstmt->init != NULL)
                 {
-                    emit_expression(emitter, stmt->init);
+                    emit_expression(emitter, forstmt->init);
                 }
 
                 size_t start = emitter->chunk->count;
                 size_t exit_jump = 0;
 
-                if(stmt->condition != NULL)
+                if(forstmt->condition != NULL)
                 {
-                    emit_expression(emitter, stmt->condition);
+                    emit_expression(emitter, forstmt->condition);
                     exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
                 }
 
-                if(stmt->increment != NULL)
+                if(forstmt->increment != NULL)
                 {
-                    size_t body_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
-                    size_t increment_start = emitter->chunk->count;
-
-                    emit_expression(emitter, stmt->increment);
+                    body_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+                    increment_start = emitter->chunk->count;
+                    emit_expression(emitter, forstmt->increment);
                     emit_op(emitter, emitter->last_line, OP_POP);
 
                     emit_loop(emitter, start, emitter->last_line);
                     start = increment_start;
                     patch_jump(emitter, body_jump, emitter->last_line);
                 }
-
                 emitter->loop_start = start;
                 begin_scope(emitter);
-
-                if(stmt->body != NULL)
+                if(forstmt->body != NULL)
                 {
-                    if(stmt->body->type == BLOCK_STATEMENT)
+                    if(forstmt->body->type == BLOCK_STATEMENT)
                     {
-                        LitStmtList* statements = &((LitBlockStatement*)stmt->body)->statements;
-
-                        for(size_t i = 0; i < statements->count; i++)
+                        statements = &((LitBlockStatement*)forstmt->body)->statements;
+                        for(i = 0; i < statements->count; i++)
                         {
                             emit_statement(emitter, statements->values[i]);
                         }
                     }
                     else
                     {
-                        emit_statement(emitter, stmt->body);
+                        emit_statement(emitter, forstmt->body);
                     }
                 }
-
                 patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
                 end_scope(emitter, emitter->last_line);
-
                 emit_loop(emitter, start, emitter->last_line);
-
-                if(stmt->condition != NULL)
+                if(forstmt->condition != NULL)
                 {
                     patch_jump(emitter, exit_jump, emitter->last_line);
                 }
             }
             else
             {
-                size_t sequence = add_local(emitter, "seq ", 4, statement->line, false);
+                sequence = add_local(emitter, "seq ", 4, statement->line, false);
                 mark_local_initialized(emitter, sequence);
-                emit_expression(emitter, stmt->condition);
+                emit_expression(emitter, forstmt->condition);
                 emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
-
-                size_t iterator = add_local(emitter, "iter ", 5, statement->line, false);
+                iterator = add_local(emitter, "iter ", 5, statement->line, false);
                 mark_local_initialized(emitter, iterator);
                 emit_op(emitter, emitter->last_line, OP_NULL);
                 emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
-
-                size_t start = emitter->chunk->count;
+                start = emitter->chunk->count;
                 emitter->loop_start = emitter->chunk->count;
-
                 // iter = seq.iterator(iter)
                 emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
                 emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
@@ -1646,51 +1680,42 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                 emit_short(emitter, emitter->last_line,
                            add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
                 emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
-
                 // If iter is null, just get out of the loop
-                size_t exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL_POPPING, emitter->last_line);
-
+                exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL_POPPING, emitter->last_line);
                 begin_scope(emitter);
-
                 // var i = seq.iteratorValue(iter)
-                LitVarStatement* var = (LitVarStatement*)stmt->var;
-                size_t local = add_local(emitter, var->name, var->length, statement->line, false);
-                mark_local_initialized(emitter, local);
-
+                var = (LitVarStatement*)forstmt->var;
+                localcnt = add_local(emitter, var->name, var->length, statement->line, false);
+                mark_local_initialized(emitter, localcnt);
                 emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
                 emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
                 emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 1);
                 emit_short(emitter, emitter->last_line,
                            add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
-                emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
-
-                if(stmt->body != NULL)
+                emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, localcnt);
+                if(forstmt->body != NULL)
                 {
-                    if(stmt->body->type == BLOCK_STATEMENT)
+                    if(forstmt->body->type == BLOCK_STATEMENT)
                     {
-                        LitStmtList* statements = &((LitBlockStatement*)stmt->body)->statements;
-
-                        for(size_t i = 0; i < statements->count; i++)
+                        statements = &((LitBlockStatement*)forstmt->body)->statements;
+                        for(i = 0; i < statements->count; i++)
                         {
                             emit_statement(emitter, statements->values[i]);
                         }
                     }
                     else
                     {
-                        emit_statement(emitter, stmt->body);
+                        emit_statement(emitter, forstmt->body);
                     }
                 }
-
                 patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
                 end_scope(emitter, emitter->last_line);
                 emit_loop(emitter, start, emitter->last_line);
                 patch_jump(emitter, exit_jump, emitter->last_line);
             }
-
             patch_loop_jumps(emitter, &emitter->breaks, emitter->last_line);
             end_scope(emitter, emitter->last_line);
             emitter->compiler->loop_depth--;
-
             break;
         }
 
@@ -1700,7 +1725,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
             {
                 error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "continue");
             }
-
             lit_uints_write(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, statement->line));
             break;
         }
@@ -1711,18 +1735,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
             {
                 error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "break");
             }
-
             emit_op(emitter, statement->line, OP_POP_LOCALS);
-
-            int depth = emitter->compiler->scope_depth;
-            uint16_t local_count = 0;
-
-            LitLocals* locals = &emitter->compiler->locals;
-
-            for(int i = locals->count - 1; i >= 0; i--)
+            depth = emitter->compiler->scope_depth;
+            local_count = 0;
+            locals = &emitter->compiler->locals;
+            for(ii = locals->count - 1; ii >= 0; ii--)
             {
-                LitLocal* local = &locals->values[i];
-
+                local = &locals->values[ii];
                 if(local->depth < depth)
                 {
                     break;
@@ -1733,287 +1752,234 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                     local_count++;
                 }
             }
-
             emit_short(emitter, statement->line, local_count);
             lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
             break;
         }
 
         case FUNCTION_STATEMENT:
-        {
-            LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
-
-            bool isexport = stmt->exported;
-            bool isprivate = !isexport && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
-            bool local = !(isexport || isprivate);
-
-            int index;
-
-            if(!isexport)
             {
-                index = isprivate ? resolve_private(emitter, stmt->name, stmt->length, statement->line) :
-                                  add_local(emitter, stmt->name, stmt->length, statement->line, false);
-            }
-
-            LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
-
-            if(local)
-            {
-                mark_local_initialized(emitter, index);
-            }
-            else if(isprivate)
-            {
-                mark_private_initialized(emitter, index);
-            }
-
-            LitCompiler compiler;
-            init_compiler(emitter, &compiler, FUNCTION_REGULAR);
-
-            begin_scope(emitter);
-
-            bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
-            emit_statement(emitter, stmt->body);
-            end_scope(emitter, emitter->last_line);
-
-            LitFunction* function = end_compiler(emitter, name);
-            function->arg_count = stmt->parameters.count;
-            function->max_slots += function->arg_count;
-            function->vararg = vararg;
-
-            if(function->upvalue_count > 0)
-            {
-                emit_op(emitter, emitter->last_line, OP_CLOSURE);
-                emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
-
-                for(size_t i = 0; i < function->upvalue_count; i++)
+                funcstmt = (LitFunctionStatement*)statement;
+                isexport = funcstmt->exported;
+                isprivate = !isexport && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+                islocal = !(isexport || isprivate);
+                index = 0;
+                if(!isexport)
                 {
-                    emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+                    index = isprivate ? resolve_private(emitter, funcstmt->name, funcstmt->length, statement->line) :
+                                      add_local(emitter, funcstmt->name, funcstmt->length, statement->line, false);
                 }
-            }
-            else
-            {
-                emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
-            }
-
-            if(isexport)
-            {
-                emit_op(emitter, emitter->last_line, OP_SET_GLOBAL);
-                emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(name)));
-            }
-            else if(isprivate)
-            {
-                emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
-            }
-            else
-            {
-                emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
-            }
-
-            emit_op(emitter, emitter->last_line, OP_POP);
-
-            break;
-        }
-
-        case RETURN_STATEMENT:
-        {
-            if(emitter->compiler->type == FUNCTION_CONSTRUCTOR)
-            {
-                error(emitter, statement->line, ERROR_RETURN_FROM_CONSTRUCTOR);
-            }
-
-            LitExpression* expression = ((LitReturnStatement*)statement)->expression;
-
-            if(expression == NULL)
-            {
-                emit_op(emitter, emitter->last_line, OP_NULL);
-            }
-            else
-            {
-                emit_expression(emitter, expression);
-            }
-
-            emit_op(emitter, emitter->last_line, OP_RETURN);
-
-            if(emitter->compiler->scope_depth == 0)
-            {
-                emitter->compiler->skip_return = true;
-            }
-
-            return true;
-        }
-
-        case METHOD_STATEMENT:
-        {
-            LitMethodStatement* stmt = (LitMethodStatement*)statement;
-            bool constructor = stmt->name->length == 11 && memcmp(stmt->name->chars, "constructor", 11) == 0;
-
-            if(constructor && stmt->is_static)
-            {
-                error(emitter, statement->line, ERROR_STATIC_CONSTRUCTOR);
-            }
-
-            LitCompiler compiler;
-            init_compiler(emitter, &compiler,
-                          constructor ? FUNCTION_CONSTRUCTOR : (stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD));
-
-            begin_scope(emitter);
-
-            bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
-            emit_statement(emitter, stmt->body);
-            end_scope(emitter, emitter->last_line);
-
-            LitFunction* function = end_compiler(
-            emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), stmt->name)));
-            function->arg_count = stmt->parameters.count;
-            function->max_slots += function->arg_count;
-            function->vararg = vararg;
-
-            if(function->upvalue_count > 0)
-            {
-                emit_op(emitter, emitter->last_line, OP_CLOSURE);
-                emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
-
-                for(size_t i = 0; i < function->upvalue_count; i++)
+                name = lit_copy_string(emitter->state, funcstmt->name, funcstmt->length);
+                if(islocal)
                 {
-                    emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+                    mark_local_initialized(emitter, index);
                 }
-            }
-            else
-            {
-                emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
-            }
-
-            emit_op(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
-            emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
-
-            break;
-        }
-
-        case CLASS_STATEMENT:
-        {
-            LitClassStatement* stmt = (LitClassStatement*)statement;
-            emitter->class_name = stmt->name;
-
-            if(stmt->parent != NULL)
-            {
-                emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
-                emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
-            }
-
-            emit_op(emitter, statement->line, OP_CLASS);
-            emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name)));
-
-            if(stmt->parent != NULL)
-            {
-                emit_op(emitter, emitter->last_line, OP_INHERIT);
-                emitter->class_has_super = true;
-
+                else if(isprivate)
+                {
+                    mark_private_initialized(emitter, index);
+                }
+                init_compiler(emitter, &compiler, FUNCTION_REGULAR);
                 begin_scope(emitter);
-
-                uint8_t super = add_local(emitter, "super", 5, emitter->last_line, false);
-                mark_local_initialized(emitter, super);
-            }
-
-            for(size_t i = 0; i < stmt->fields.count; i++)
-            {
-                LitStatement* s = stmt->fields.values[i];
-
-                if(s->type == VAR_STATEMENT)
+                vararg = emit_parameters(emitter, &funcstmt->parameters, statement->line);
+                emit_statement(emitter, funcstmt->body);
+                end_scope(emitter, emitter->last_line);
+                function = end_compiler(emitter, name);
+                function->arg_count = funcstmt->parameters.count;
+                function->max_slots += function->arg_count;
+                function->vararg = vararg;
+                if(function->upvalue_count > 0)
                 {
-                    LitVarStatement* var = (LitVarStatement*)s;
+                    emit_op(emitter, emitter->last_line, OP_CLOSURE);
+                    emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
-                    emit_expression(emitter, var->init);
-
-                    emit_op(emitter, statement->line, OP_STATIC_FIELD);
-                    emit_short(emitter, statement->line,
-                               add_constant(emitter, statement->line,
-                                            OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
+                    for(i = 0; i < function->upvalue_count; i++)
+                    {
+                        emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+                    }
                 }
                 else
                 {
-                    emit_statement(emitter, s);
+                    emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
                 }
+                if(isexport)
+                {
+                    emit_op(emitter, emitter->last_line, OP_SET_GLOBAL);
+                    emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(name)));
+                }
+                else if(isprivate)
+                {
+                    emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+                }
+                else
+                {
+                    emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+                }
+                emit_op(emitter, emitter->last_line, OP_POP);
             }
-
-            emit_op(emitter, emitter->last_line, OP_POP);
-
-            if(stmt->parent != NULL)
-            {
-                end_scope(emitter, emitter->last_line);
-            }
-
-            emitter->class_name = NULL;
-            emitter->class_has_super = false;
-
             break;
-        }
 
+        case RETURN_STATEMENT:
+            {
+                if(emitter->compiler->type == FUNCTION_CONSTRUCTOR)
+                {
+                    error(emitter, statement->line, ERROR_RETURN_FROM_CONSTRUCTOR);
+                }
+                expression = ((LitReturnStatement*)statement)->expression;
+                if(expression == NULL)
+                {
+                    emit_op(emitter, emitter->last_line, OP_NULL);
+                }
+                else
+                {
+                    emit_expression(emitter, expression);
+                }
+                emit_op(emitter, emitter->last_line, OP_RETURN);
+                if(emitter->compiler->scope_depth == 0)
+                {
+                    emitter->compiler->skip_return = true;
+                }
+                return true;
+            }
+            break;
+        case METHOD_STATEMENT:
+            {
+                mthstmt = (LitMethodStatement*)statement;
+                constructor = mthstmt->name->length == 11 && memcmp(mthstmt->name->chars, "constructor", 11) == 0;
+                if(constructor && mthstmt->is_static)
+                {
+                    error(emitter, statement->line, ERROR_STATIC_CONSTRUCTOR);
+                }
+                init_compiler(emitter, &compiler,
+                              constructor ? FUNCTION_CONSTRUCTOR : (mthstmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD));
+                begin_scope(emitter);
+                vararg = emit_parameters(emitter, &mthstmt->parameters, statement->line);
+                emit_statement(emitter, mthstmt->body);
+                end_scope(emitter, emitter->last_line);
+                function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), mthstmt->name)));
+                function->arg_count = mthstmt->parameters.count;
+                function->max_slots += function->arg_count;
+                function->vararg = vararg;
+                if(function->upvalue_count > 0)
+                {
+                    emit_op(emitter, emitter->last_line, OP_CLOSURE);
+                    emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+                    for(i = 0; i < function->upvalue_count; i++)
+                    {
+                        emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+                    }
+                }
+                else
+                {
+                    emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+                }
+                emit_op(emitter, emitter->last_line, mthstmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
+                emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(mthstmt->name)));
+
+            }
+            break;
+
+        case CLASS_STATEMENT:
+            {
+                clstmt = (LitClassStatement*)statement;
+                emitter->class_name = clstmt->name;
+                if(clstmt->parent != NULL)
+                {
+                    emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
+                    emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(clstmt->parent)));
+                }
+                emit_op(emitter, statement->line, OP_CLASS);
+                emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(clstmt->name)));
+                if(clstmt->parent != NULL)
+                {
+                    emit_op(emitter, emitter->last_line, OP_INHERIT);
+                    emitter->class_has_super = true;
+                    begin_scope(emitter);
+                    super = add_local(emitter, "super", 5, emitter->last_line, false);
+                    
+                    mark_local_initialized(emitter, super);
+                }
+                for(i = 0; i < clstmt->fields.count; i++)
+                {
+                    s = clstmt->fields.values[i];
+                    if(s->type == VAR_STATEMENT)
+                    {
+                        var = (LitVarStatement*)s;
+                        emit_expression(emitter, var->init);
+                        emit_op(emitter, statement->line, OP_STATIC_FIELD);
+                        emit_short(emitter, statement->line,
+                                   add_constant(emitter, statement->line,
+                                                OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
+                    }
+                    else
+                    {
+                        emit_statement(emitter, s);
+                    }
+                }
+                emit_op(emitter, emitter->last_line, OP_POP);
+                if(clstmt->parent != NULL)
+                {
+                    end_scope(emitter, emitter->last_line);
+                }
+                emitter->class_name = NULL;
+                emitter->class_has_super = false;
+            }
+            break;
         case FIELD_STATEMENT:
-        {
-            LitFieldStatement* stmt = (LitFieldStatement*)statement;
-            LitFunction* getter = NULL;
-            LitFunction* setter = NULL;
-
-            if(stmt->getter != NULL)
             {
-                LitCompiler compiler;
-                init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
-
-                begin_scope(emitter);
-                emit_statement(emitter, stmt->getter);
-                end_scope(emitter, emitter->last_line);
-
-                getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @",
-                                                                           OBJECT_VALUE(emitter->class_name), stmt->name)));
+                fieldstmt = (LitFieldStatement*)statement;
+                getter = NULL;
+                setter = NULL;
+                if(fieldstmt->getter != NULL)
+                {
+                    init_compiler(emitter, &compiler, fieldstmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+                    begin_scope(emitter);
+                    emit_statement(emitter, fieldstmt->getter);
+                    end_scope(emitter, emitter->last_line);
+                    getter = end_compiler(emitter,
+                        AS_STRING(lit_string_format(emitter->state, "@:get @", OBJECT_VALUE(emitter->class_name), fieldstmt->name)));
+                }
+                if(fieldstmt->setter != NULL)
+                {
+                    init_compiler(emitter, &compiler, fieldstmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+                    mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false));
+                    begin_scope(emitter);
+                    emit_statement(emitter, fieldstmt->setter);
+                    end_scope(emitter, emitter->last_line);
+                    setter = end_compiler(emitter,
+                        AS_STRING(lit_string_format(emitter->state, "@:set @", OBJECT_VALUE(emitter->class_name), fieldstmt->name)));
+                    setter->arg_count = 1;
+                    setter->max_slots++;
+                }
+                field = lit_create_field(emitter->state, (LitObject*)getter, (LitObject*)setter);
+                emit_constant(emitter, statement->line, OBJECT_VALUE(field));
+                emit_op(emitter, statement->line, fieldstmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
+                emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(fieldstmt->name)));
             }
-
-            if(stmt->setter != NULL)
-            {
-                LitCompiler compiler;
-                init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
-                mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false));
-
-                begin_scope(emitter);
-                emit_statement(emitter, stmt->setter);
-                end_scope(emitter, emitter->last_line);
-
-                setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @",
-                                                                           OBJECT_VALUE(emitter->class_name), stmt->name)));
-                setter->arg_count = 1;
-                setter->max_slots++;
-            }
-
-            LitField* field = lit_create_field(emitter->state, (LitObject*)getter, (LitObject*)setter);
-            emit_constant(emitter, statement->line, OBJECT_VALUE(field));
-            emit_op(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
-            emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
-
             break;
-        }
-
         default:
-        {
-            error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int)statement->type);
+            {
+                error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int)statement->type);
+            }
             break;
-        }
     }
-
     emitter->previous_was_expression_statement = statement->type == EXPRESSION_STATEMENT;
     return false;
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* module_name)
 {
-    emitter->last_line = 1;
-    emitter->emit_reference = 0;
-
-    LitState* state = emitter->state;
-
+    size_t i;
+    size_t total;
+    size_t old_privates_count;
+    bool isnew;
+    LitState* state;        
     LitValue module_value;
     LitModule* module;
-
-    bool isnew = false;
-
+    LitPrivates* privates;
+    emitter->last_line = 1;
+    emitter->emit_reference = 0;
+    state = emitter->state;
+    isnew = false;
     if(lit_table_get(&emitter->state->vm->modules->values, module_name, &module_value))
     {
         module = AS_MODULE(module_value);
@@ -2023,30 +1989,23 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
         module = lit_create_module(emitter->state, module_name);
         isnew = true;
     }
-
     emitter->module = module;
-    size_t old_privates_count = module->private_count;
-
+    old_privates_count = module->private_count;
     if(old_privates_count > 0)
     {
-        LitPrivates* privates = &emitter->privates;
+        privates = &emitter->privates;
         privates->count = old_privates_count - 1;
-
         lit_privates_write(state, privates, (LitPrivate){ true, false });
-
-        for(size_t i = 0; i < old_privates_count; i++)
+        for(i = 0; i < old_privates_count; i++)
         {
             privates->values[i].initialized = true;
         }
     }
-
     LitCompiler compiler;
     init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
-
     emitter->chunk = &compiler.function->chunk;
     resolve_statements(emitter, statements);
-
-    for(size_t i = 0; i < statements->count; i++)
+    for(i = 0; i < statements->count; i++)
     {
         LitStatement* stmt = statements->values[i];
 
@@ -2055,16 +2014,13 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
             break;
         }
     }
-
     end_scope(emitter, emitter->last_line);
     module->main_function = end_compiler(emitter, module_name);
-
     if(isnew)
     {
-        size_t total = emitter->privates.count;
+        total = emitter->privates.count;
         module->privates = LIT_ALLOCATE(emitter->state, LitValue, total);
-
-        for(size_t i = 0; i < total; i++)
+        for(i = 0; i < total; i++)
         {
             module->privates[i] = NULL_VALUE;
         }
@@ -2072,25 +2028,20 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     else
     {
         module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_count);
-
-        for(size_t i = old_privates_count; i < module->private_count; i++)
+        for(i = old_privates_count; i < module->private_count; i++)
         {
             module->privates[i] = NULL_VALUE;
         }
     }
-
     lit_free_privates(emitter->state, &emitter->privates);
-
     if(lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES))
     {
         lit_free_table(emitter->state, &emitter->module->private_names->values);
     }
-
     if(isnew && !state->had_error)
     {
         lit_table_set(state, &state->vm->modules->values, module_name, OBJECT_VALUE(module));
     }
-
     module->ran = true;
     return module;
 }

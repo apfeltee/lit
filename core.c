@@ -268,7 +268,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
     LitValue argv[1];
     if(IS_NUMBER(a) && IS_NUMBER(b))
     {
-        return AS_NUMBER(a) < AS_NUMBER(b);
+        return lit_value_to_number(a) < lit_value_to_number(b);
     }
     argv[0] = b;
     return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1).result);
@@ -530,7 +530,7 @@ static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, 
     (void)argc;
     LIT_ENSURE_ARGS(1);
     LitClass* klass = AS_CLASS(instance);
-    int index = argv[0] == NULL_VALUE ? -1 : AS_NUMBER(argv[0]);
+    int index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
     int methodsCapacity = (int)klass->methods.capacity;
     bool fields = index >= methodsCapacity;
 
@@ -548,7 +548,7 @@ static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, 
         value = table_iterator(&klass->static_fields, index - methodsCapacity);
     }
 
-    return value == -1 ? NULL_VALUE : NUMBER_VALUE(fields ? value + methodsCapacity : value);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(fields ? value + methodsCapacity : value);
 }
 
 
@@ -694,9 +694,9 @@ static LitValue objfn_object_iterator(LitVm* vm, LitValue instance, size_t argc,
     (void)argv;
     LIT_ENSURE_ARGS(1)
     LitInstance* self = AS_INSTANCE(instance);
-    int index = argv[0] == NULL_VALUE ? -1 : AS_NUMBER(argv[0]);
+    int index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
     int value = table_iterator(&self->fields, index);
-    return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(value);
 }
 
 
@@ -717,7 +717,7 @@ static LitValue objfn_number_tostring(LitVm* vm, LitValue instance, size_t argc,
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_number_to_string(vm->state, AS_NUMBER(instance)));
+    return OBJECT_VALUE(lit_number_to_string(vm->state, lit_value_to_number(instance)));
 }
 
 
@@ -726,7 +726,7 @@ static LitValue objfn_number_tochar(LitVm* vm, LitValue instance, size_t argc, L
     char ch;
     (void)argc;
     (void)argv;
-    ch = AS_NUMBER(instance);
+    ch = lit_value_to_number(instance);
     return OBJECT_VALUE(lit_copy_string(vm->state, &ch, 1));
 }
 
@@ -802,7 +802,7 @@ static LitValue objfn_string_tonumber(LitVm* vm, LitValue instance, size_t argc,
         return NULL_VALUE;
     }
 
-    return NUMBER_VALUE(result);
+    return lit_number_to_value(result);
 }
 
 
@@ -1032,7 +1032,7 @@ static LitValue objfn_string_length(LitVm* vm, LitValue instance, size_t argc, L
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(lit_ustring_length(AS_STRING(instance)));
+    return lit_number_to_value(lit_ustring_length(AS_STRING(instance)));
 }
 
 
@@ -1048,7 +1048,7 @@ static LitValue objfn_string_iterator(LitVm* vm, LitValue instance, size_t argc,
             return NULL_VALUE;
         }
 
-        return NUMBER_VALUE(0);
+        return lit_number_to_value(0);
     }
 
     int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
@@ -1068,7 +1068,7 @@ static LitValue objfn_string_iterator(LitVm* vm, LitValue instance, size_t argc,
         }
     } while((string->chars[index] & 0xc0) == 0x80);
 
-    return NUMBER_VALUE(index);
+    return lit_number_to_value(index);
 }
 
 
@@ -1245,7 +1245,7 @@ LitValue access_private(LitVm* vm, LitMap* map, LitString* name, LitValue* val)
 
     if(lit_table_get(&module->private_names->values, name, &value))
     {
-        int index = (int)AS_NUMBER(value);
+        int index = (int)lit_value_to_number(value);
 
         if(index > -1 && index < (int)module->private_count)
         {
@@ -1338,7 +1338,7 @@ static LitValue objfn_array_subscript(LitVm* vm, LitValue instance, size_t argc,
         }
 
         LitValues* values = &AS_ARRAY(instance)->values;
-        int index = AS_NUMBER(argv[0]);
+        int index = lit_value_to_number(argv[0]);
 
         if(index < 0)
         {
@@ -1362,7 +1362,7 @@ static LitValue objfn_array_subscript(LitVm* vm, LitValue instance, size_t argc,
     }
 
     LitValues* values = &AS_ARRAY(instance)->values;
-    int index = AS_NUMBER(argv[0]);
+    int index = lit_value_to_number(argv[0]);
 
     if(index < 0)
     {
@@ -1446,7 +1446,7 @@ static LitValue objfn_array_indexof(LitVm* vm, LitValue instance, size_t argc, L
     LIT_ENSURE_ARGS(1)
 
         int index = indexOf(AS_ARRAY(instance), argv[0]);
-    return index == -1 ? NULL_VALUE : NUMBER_VALUE(index);
+    return index == -1 ? NULL_VALUE : lit_number_to_value(index);
 }
 
 
@@ -1506,7 +1506,7 @@ static LitValue objfn_array_iterator(LitVm* vm, LitValue instance, size_t argc, 
     number = 0;
     if(IS_NUMBER(argv[0]))
     {
-        number = AS_NUMBER(argv[0]);
+        number = lit_value_to_number(argv[0]);
 
         if(number >= (int)array->values.count - 1)
         {
@@ -1515,7 +1515,7 @@ static LitValue objfn_array_iterator(LitVm* vm, LitValue instance, size_t argc, 
 
         number++;
     }
-    return array->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);
+    return array->values.count == 0 ? NULL_VALUE : lit_number_to_value(number);
 }
 
 
@@ -1684,7 +1684,7 @@ static LitValue objfn_array_length(LitVm* vm, LitValue instance, size_t argc, Li
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
+    return lit_number_to_value(AS_ARRAY(instance)->values.count);
 }
 
 
@@ -1768,10 +1768,10 @@ static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, Li
 {
     LIT_ENSURE_ARGS(1);
     (void)vm;
-    int index = argv[0] == NULL_VALUE ? -1 : AS_NUMBER(argv[0]);
+    int index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
 
     int value = table_iterator(&AS_MAP(instance)->values, index);
-    return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(value);
 }
 
 
@@ -1908,7 +1908,7 @@ static LitValue objfn_map_length(LitVm* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(AS_MAP(instance)->values.count);
+    return lit_number_to_value(AS_MAP(instance)->values.count);
 }
 
 /*
@@ -1924,7 +1924,7 @@ static LitValue objfn_range_iterator(LitVm* vm, LitValue instance, size_t argc, 
     (void)argc;
     if(IS_NUMBER(argv[0]))
     {
-        number = AS_NUMBER(argv[0]);
+        number = lit_value_to_number(argv[0]);
 
         if(range->to > range->from ? number >= range->to : number >= range->from)
         {
@@ -1933,7 +1933,7 @@ static LitValue objfn_range_iterator(LitVm* vm, LitValue instance, size_t argc, 
 
         number += (range->from - range->to) > 0 ? -1 : 1;
     }
-    return NUMBER_VALUE(number);
+    return lit_number_to_value(number);
 }
 
 
@@ -1960,7 +1960,7 @@ static LitValue objfn_range_from(LitVm* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argv;
     (void)argc;
-    return NUMBER_VALUE(AS_RANGE(instance)->from);
+    return lit_number_to_value(AS_RANGE(instance)->from);
 }
 
 
@@ -1968,7 +1968,7 @@ static LitValue objfn_range_set_from(LitVm* vm, LitValue instance, size_t argc, 
 {
     (void)vm;
     (void)argc;
-    AS_RANGE(instance)->from = AS_NUMBER(argv[0]);
+    AS_RANGE(instance)->from = lit_value_to_number(argv[0]);
     return argv[0];
 }
 
@@ -1978,7 +1978,7 @@ static LitValue objfn_range_to(LitVm* vm, LitValue instance, size_t argc, LitVal
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(AS_RANGE(instance)->to);
+    return lit_number_to_value(AS_RANGE(instance)->to);
 }
 
 
@@ -1986,7 +1986,7 @@ static LitValue objfn_range_set_to(LitVm* vm, LitValue instance, size_t argc, Li
 {
     (void)vm;
     (void)argc;
-    AS_RANGE(instance)->to = AS_NUMBER(argv[0]);
+    AS_RANGE(instance)->to = lit_value_to_number(argv[0]);
     return argv[0];
 }
 
@@ -1997,7 +1997,7 @@ static LitValue objfn_range_length(LitVm* vm, LitValue instance, size_t argc, Li
     (void)argc;
     (void)argv;
     LitRange* range = AS_RANGE(instance);
-    return NUMBER_VALUE(range->to - range->from);
+    return lit_number_to_value(range->to - range->from);
 }
 
 /*
@@ -2009,7 +2009,7 @@ static LitValue cfn_time(LitVm* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE((double)clock() / CLOCKS_PER_SEC);
+    return lit_number_to_value((double)clock() / CLOCKS_PER_SEC);
 }
 
 
@@ -2018,7 +2018,7 @@ static LitValue cfn_systemTime(LitVm* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return NUMBER_VALUE(time(NULL));
+    return lit_number_to_value(time(NULL));
 }
 
 

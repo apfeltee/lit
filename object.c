@@ -256,7 +256,7 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
     state->vm->objects = object;
 
 #ifdef LIT_LOG_ALLOCATION
-    printf("%p allocate %ld for %s\n", (void*)object, size, lit_object_type_names[type]);
+    printf("%p allocate %ld for %s\n", (void*)object, size, lit_get_value_type(type));
 #endif
 
     return object;
@@ -602,8 +602,8 @@ void lit_map_add_all(LitState* state, LitMap* from, LitMap* to)
 
 LitUserdata* lit_create_userdata(LitState* state, size_t size)
 {
-    LitUserdata* userdata = ALLOCATE_OBJECT(state, LitUserdata, OBJECT_USERDATA);
-
+    LitUserdata* userdata;
+    userdata = ALLOCATE_OBJECT(state, LitUserdata, OBJECT_USERDATA);
     if(size > 0)
     {
         userdata->data = lit_reallocate(state, NULL, 0, size);
@@ -612,36 +612,33 @@ LitUserdata* lit_create_userdata(LitState* state, size_t size)
     {
         userdata->data = NULL;
     }
-
     userdata->size = size;
     userdata->cleanup_fn = NULL;
-
     return userdata;
 }
 
 LitRange* lit_create_range(LitState* state, double from, double to)
 {
-    LitRange* range = ALLOCATE_OBJECT(state, LitRange, OBJECT_RANGE);
-
+    LitRange* range;
+    range = ALLOCATE_OBJECT(state, LitRange, OBJECT_RANGE);
     range->from = from;
     range->to = to;
-
     return range;
 }
 
 LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter)
 {
-    LitField* field = ALLOCATE_OBJECT(state, LitField, OBJECT_FIELD);
-
+    LitField* field;
+    field = ALLOCATE_OBJECT(state, LitField, OBJECT_FIELD);
     field->getter = getter;
     field->setter = setter;
-
     return field;
 }
 
 LitReference* lit_create_reference(LitState* state, LitValue* slot)
 {
-    LitReference* reference = ALLOCATE_OBJECT(state, LitReference, OBJECT_REFERENCE);
+    LitReference* reference;
+    reference = ALLOCATE_OBJECT(state, LitReference, OBJECT_REFERENCE);
     reference->slot = slot;
     return reference;
 }

@@ -489,7 +489,7 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...)
     char* buffer;
     va_list args;
     va_list args_copy;
-    (void)state;
+    (void)type;
     va_start(args, message);
     va_copy(args_copy, args);
     buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;

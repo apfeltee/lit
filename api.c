@@ -74,7 +74,7 @@ double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id
         lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
-    return AS_NUMBER(args[id]);
+    return lit_value_to_number(args[id]);
 }
 
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
@@ -84,7 +84,7 @@ double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
     {
         return def;
     }
-    return AS_NUMBER(args[id]);
+    return lit_value_to_number(args[id]);
 }
 
 bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)

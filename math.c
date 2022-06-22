@@ -5,6 +5,10 @@
 #include <math.h>
 #include "lit.h"
 
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846
+#endif
+
 #if !(defined(__unix__) || defined(__linux__))
     #define rand_r(v) (*v)
 #endif
@@ -12,61 +16,61 @@
 static LitValue math_abs(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(fabs(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(fabs(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_cos(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(cos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(cos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_sin(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(sin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(sin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_tan(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(tan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(tan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_acos(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(acos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(acos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_asin(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(asin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(asin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_atan(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(atan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(atan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_atan2(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(atan2(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
+    return lit_number_to_value(atan2(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
 static LitValue math_floor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(floor(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(floor(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_ceil(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(ceil(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(ceil(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_round(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -78,21 +82,21 @@ static LitValue math_round(LitVm* vm, LitValue instance, size_t argc, LitValue* 
     if(argc > 1)
     {
         places = (int)pow(10, LIT_CHECK_NUMBER(vm, argv, argc, 1));
-        return NUMBER_VALUE(round(value * places) / places);
+        return lit_number_to_value(round(value * places) / places);
     }
-    return NUMBER_VALUE(round(value));
+    return lit_number_to_value(round(value));
 }
 
 static LitValue math_min(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(fmin(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
+    return lit_number_to_value(fmin(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
 static LitValue math_max(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(fmax(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
+    return lit_number_to_value(fmax(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
 static LitValue math_mid(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -106,39 +110,39 @@ static LitValue math_mid(LitVm* vm, LitValue instance, size_t argc, LitValue* ar
     z = LIT_CHECK_NUMBER(vm, argv, argc, 2);
     if(x > y)
     {
-        return NUMBER_VALUE(fmax(x, fmin(y, z)));
+        return lit_number_to_value(fmax(x, fmin(y, z)));
     }
-    return NUMBER_VALUE(fmax(y, fmin(x, z)));
+    return lit_number_to_value(fmax(y, fmin(x, z)));
 }
 
 static LitValue math_toRadians(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(LIT_CHECK_NUMBER(vm, argv, argc, 0) * M_PI / 180.0);
+    return lit_number_to_value(LIT_CHECK_NUMBER(vm, argv, argc, 0) * M_PI / 180.0);
 }
 
 static LitValue math_toDegrees(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(LIT_CHECK_NUMBER(vm, argv, argc, 0) * 180.0 / M_PI);
+    return lit_number_to_value(LIT_CHECK_NUMBER(vm, argv, argc, 0) * 180.0 / M_PI);
 }
 
 static LitValue math_sqrt(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(sqrt(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(sqrt(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_log(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 static LitValue math_exp(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return NUMBER_VALUE(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
+    return lit_number_to_value(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
 /*
@@ -208,7 +212,7 @@ static LitValue random_int(LitVm* vm, LitValue instance, size_t argc, LitValue* 
     if(argc == 1)
     {
         int bound = (int)LIT_GET_NUMBER(0, 0);
-        return NUMBER_VALUE(rand_r((unsigned int*)data) % bound);
+        return lit_number_to_value(rand_r((unsigned int*)data) % bound);
     }
     else if(argc == 2)
     {
@@ -217,13 +221,13 @@ static LitValue random_int(LitVm* vm, LitValue instance, size_t argc, LitValue* 
 
         if(max - min == 0)
         {
-            return NUMBER_VALUE(max);
+            return lit_number_to_value(max);
         }
 
-        return NUMBER_VALUE(min + rand_r((unsigned int*)data) % (max - min));
+        return lit_number_to_value(min + rand_r((unsigned int*)data) % (max - min));
     }
 
-    return NUMBER_VALUE(rand_r((unsigned int*)data));
+    return lit_number_to_value(rand_r((unsigned int*)data));
 }
 
 static LitValue random_float(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -234,7 +238,7 @@ static LitValue random_float(LitVm* vm, LitValue instance, size_t argc, LitValue
     if(argc == 1)
     {
         int bound = (int)LIT_GET_NUMBER(0, 0);
-        return NUMBER_VALUE(value * bound);
+        return lit_number_to_value(value * bound);
     }
     else if(argc == 2)
     {
@@ -243,13 +247,13 @@ static LitValue random_float(LitVm* vm, LitValue instance, size_t argc, LitValue
 
         if(max - min == 0)
         {
-            return NUMBER_VALUE(max);
+            return lit_number_to_value(max);
         }
 
-        return NUMBER_VALUE(min + value * (max - min));
+        return lit_number_to_value(min + value * (max - min));
     }
 
-    return NUMBER_VALUE(value);
+    return lit_number_to_value(value);
 }
 
 static LitValue random_bool(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -333,8 +337,8 @@ void lit_open_math_library(LitState* state)
     {
         LIT_BEGIN_CLASS("Math");
         {
-            LIT_SET_STATIC_FIELD("Pi", NUMBER_VALUE(M_PI));
-            LIT_SET_STATIC_FIELD("Tau", NUMBER_VALUE(M_PI * 2));
+            LIT_SET_STATIC_FIELD("Pi", lit_number_to_value(M_PI));
+            LIT_SET_STATIC_FIELD("Tau", lit_number_to_value(M_PI * 2));
             LIT_BIND_STATIC_METHOD("abs", math_abs);
             LIT_BIND_STATIC_METHOD("sin", math_sin);
             LIT_BIND_STATIC_METHOD("cos", math_cos);
