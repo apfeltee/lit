@@ -3,22 +3,14 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#if defined(__unix__) || defined(__linux__)
-    
-    #include <dirent.h>
-#endif
 #ifdef LIT_OS_WINDOWS
     #include <windows.h>
     #define stat _stat
 #endif
+#include "dirwrap.h"
 #include "lit.h"
 
-#if defined (S_IFDIR) && !defined (S_ISDIR)
-    #define	S_ISDIR(m)	(((m)&S_IFMT) == S_IFDIR)	/* directory */
-#endif
-#if defined (S_IFREG) && !defined (S_ISREG)
-    #define	S_ISREG(m)	(((m)&S_IFMT) == S_IFREG)	/* file */
-#endif
+
 
 
 typedef struct LitFileData LitFileData;
@@ -61,14 +53,11 @@ void cleanup_file(LitState* state, LitUserdata* data, bool mark)
     {
         return;
     }
-    fprintf(stderr, "cleanup_file: data=%p\n", data);
     if(data != NULL)
     {
         fd = ((LitFileData*)data->data);
-        fprintf(stderr, "cleanup_file: fd=%p\n", fd);
         if(fd != NULL)
         {
-            fprintf(stderr, "cleanup_file: fd->handle=%p, fd->isopen=%d\n", fd->handle, fd->isopen);
             if((fd->handle != NULL) && (fd->isopen == true))
             {
                 fclose(fd->handle);
@@ -353,8 +342,6 @@ static LitValue directory_listFiles(LitVm* vm, LitValue instance, size_t argc, L
                 lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
             }
         }
-
-
         closedir(dir);
     }
     #endif
@@ -365,31 +352,30 @@ static LitValue directory_listDirectories(LitVm* vm, LitValue instance, size_t a
 {
     LitArray* array;
     LitState* state;
+    LitDirReader rd;
+    LitDirItem ent;
     (void)instance;
     state = vm->state;
     array = lit_create_array(state);
-    #if defined(__unix__) || defined(__linux__)
+
+    if(lit_dir_open(&rd, LIT_CHECK_STRING(0)))
     {
-        struct dirent* ep;
-
-        DIR* dir = opendir(LIT_CHECK_STRING(0));
-
-        if(dir == NULL)
+        while(true)
         {
-            return OBJECT_VALUE(array);
-        }
-
-        while((ep = readdir(dir)))
-        {
-            if(ep->d_type == DT_DIR && strcmp(ep->d_name, "..") != 0 && strcmp(ep->d_name, ".") != 0)
+            if(lit_dir_read(&rd, &ent))
             {
-                lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
+                if(ent.isdir && ((strcmp(ent.name, ".") != 0) || (strcmp(ent.name, "..") != 0)))
+                {
+                    lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ent.name));
+                }
+            }
+            else
+            {
+                break;
             }
         }
-
-        closedir(dir);
+        lit_dir_close(&rd);
     }
-    #endif
     return OBJECT_VALUE(array);
 }
 

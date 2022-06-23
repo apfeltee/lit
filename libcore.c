@@ -45,7 +45,12 @@ static inline LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, L
     COMPARE_inl(state, callee, a, b)
 #endif
 
-static void custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
+
+static bool should_update_locals;
+static bool util_attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous);
+
+
+static void util_custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
 {
     LitInterpretResult rt;
     LitState* state;
@@ -94,12 +99,11 @@ static void custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue calle
         l[i] = l[j];
         l[j] = tmp;
     }
-    custom_quick_sort(vm, l, i, callee);
-    custom_quick_sort(vm, l + i, length - i, callee);
+    util_custom_quick_sort(vm, l, i, callee);
+    util_custom_quick_sort(vm, l + i, length - i, callee);
 }
 
-
-static int table_iterator(LitTable* table, int number)
+static int util_table_iterator(LitTable* table, int number)
 {
     if(table->count == 0)
     {
@@ -121,7 +125,7 @@ static int table_iterator(LitTable* table, int number)
     return -1;
 }
 
-static LitValue table_iterator_key(LitTable* table, int index)
+static LitValue util_table_iterator_key(LitTable* table, int index)
 {
     if(table->capacity <= index)
     {
@@ -130,66 +134,52 @@ static LitValue table_iterator_key(LitTable* table, int index)
     return OBJECT_VALUE(table->entries[index].key);
 }
 
-static LitValue objfn_string_splice(LitVm* vm, LitString* string, int from, int to)
-{
-    int length = lit_ustring_length(string);
-    if(from < 0)
-    {
-        from = length + from;
-    }
-    if(to < 0)
-    {
-        to = length + to;
-    }
-    from = fmax(from, 0);
-    to = fmin(to, length - 1);
-    if(from > to)
-    {
-        lit_runtime_error_exiting(vm, "String.splice argument 'from' is larger than argument 'to'");
-    }
-    from = lit_uchar_offset(string->chars, from);
-    to = lit_uchar_offset(string->chars, to);
-    return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, from, to - from + 1));
-}
 
-static bool is_fiber_done(LitFiber* fiber)
+static bool util_is_fiber_done(LitFiber* fiber)
 {
     return fiber->frame_count == 0 || fiber->abort;
 }
 
-static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* argv, size_t argc, bool catcher)
+static void util_run_fiber(LitVm* vm, LitFiber* fiber, LitValue* argv, size_t argc, bool catcher)
 {
-    if(is_fiber_done(fiber))
+    bool vararg;
+    int i;
+    int to;
+    int vararg_count;
+    int objfn_function_arg_count;
+    LitArray* array;
+    LitCallFrame* frame;
+    if(util_is_fiber_done(fiber))
     {
         lit_runtime_error_exiting(vm, "Fiber already finished executing");
     }
     fiber->parent = vm->fiber;
     fiber->catcher = catcher;
     vm->fiber = fiber;
-    LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
+    frame = &fiber->frames[fiber->frame_count - 1];
     if(frame->ip == frame->function->chunk.code)
     {
         fiber->arg_count = argc;
         lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int)(fiber->stack_top - fiber->stack));
         frame->slots = fiber->stack_top;
         lit_push(vm, OBJECT_VALUE(frame->function));
-        bool vararg = frame->function->vararg;
-        int objfn_function_arg_count = frame->function->arg_count;
-        int to = objfn_function_arg_count - (vararg ? 1 : 0);
+        vararg = frame->function->vararg;
+        objfn_function_arg_count = frame->function->arg_count;
+        to = objfn_function_arg_count - (vararg ? 1 : 0);
         fiber->arg_count = objfn_function_arg_count;
-        for(int i = 0; i < to; i++)
+        for(i = 0; i < to; i++)
         {
             lit_push(vm, i < (int)argc ? argv[i] : NULL_VALUE);
         }
         if(vararg)
         {
-            LitArray* array = lit_create_array(vm->state);
+            array = lit_create_array(vm->state);
             lit_push(vm, OBJECT_VALUE(array));
-            int vararg_count = argc - objfn_function_arg_count + 1;
+            vararg_count = argc - objfn_function_arg_count + 1;
             if(vararg_count > 0)
             {
                 lit_values_ensure_size(vm->state, &array->values, vararg_count);
-                for(int i = 0; i < vararg_count; i++)
+                for(i = 0; i < vararg_count; i++)
                 {
                     array->values.values[i] = argv[i + objfn_function_arg_count - 1];
                 }
@@ -199,35 +189,10 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* argv, size_t argc, b
 }
 
 
-static LitValue objfn_array_splice(LitVm* vm, LitArray* array, int from, int to)
+static int util_indexOf(LitArray* array, LitValue value)
 {
-    size_t length = array->values.count;
-    if(from < 0)
-    {
-        from = (int)length + from;
-    }
-    if(to < 0)
-    {
-        to = (int)length + to;
-    }
-    if(from > to)
-    {
-        lit_runtime_error_exiting(vm, "Array.splice argument 'from' is larger than argument 'to'");
-    }
-    from = fmax(from, 0);
-    to = fmin(to, (int)length - 1);
-    length = fmin(length, to - from + 1);
-    LitArray* new_array = lit_create_array(vm->state);
-    for(size_t i = 0; i < length; i++)
-    {
-        lit_values_write(vm->state, &new_array->values, array->values.values[from + i]);
-    }
-    return OBJECT_VALUE(new_array);
-}
-
-static int indexOf(LitArray* array, LitValue value)
-{
-    for(size_t i = 0; i < array->values.count; i++)
+    size_t i;
+    for(i = 0; i < array->values.count; i++)
     {
         if(array->values.values[i] == value)
         {
@@ -238,22 +203,26 @@ static int indexOf(LitArray* array, LitValue value)
 }
 
 
-static LitValue removeAt(LitArray* array, size_t index)
+static LitValue util_removeAt(LitArray* array, size_t index)
 {
-    LitValues* values = &array->values;
-    size_t count = values->count;
+    size_t i;
+    size_t count;
+    LitValue value;
+    LitValues* values;
+    values = &array->values;
+    count = values->count;
     if(index >= count)
     {
         return NULL_VALUE;
     }
-    LitValue value = values->values[index];
+    value = values->values[index];
     if(index == count - 1)
     {
         values->values[index] = NULL_VALUE;
     }
     else
     {
-        for(size_t i = index; i < values->count - 1; i++)
+        for(i = index; i < values->count - 1; i++)
         {
             values->values[i] = values->values[i + 1];
         }
@@ -274,24 +243,27 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
     return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1).result);
 }
 
-static void basic_quick_sort(LitState* state, LitValue* l, int length)
+static void util_basic_quick_sort(LitState* state, LitValue* clist, int length)
 {
+    int i;
+    int j;
+    int pivot_index;
+    LitValue tmp;
+    LitValue pivot;
     if(length < 2)
     {
         return;
     }
-    int pivot_index = length / 2;
-    int i;
-    int j;
-    LitValue pivot = l[pivot_index];
+    pivot_index = length / 2;
+    pivot = clist[pivot_index];
     for(i = 0, j = length - 1;; i++, j--)
     {
-        while(i < pivot_index && compare(state, l[i], pivot))
+        while(i < pivot_index && compare(state, clist[i], pivot))
         {
             i++;
         }
 
-        while(j > pivot_index && compare(state, pivot, l[j]))
+        while(j > pivot_index && compare(state, pivot, clist[j]))
         {
             j--;
         }
@@ -300,22 +272,24 @@ static void basic_quick_sort(LitState* state, LitValue* l, int length)
         {
             break;
         }
-
-        LitValue tmp = l[i];
-        l[i] = l[j];
-        l[j] = tmp;
+        tmp = clist[i];
+        clist[i] = clist[j];
+        clist[j] = tmp;
     }
-    basic_quick_sort(state, l, i);
-    basic_quick_sort(state, l + i, length - i);
+    util_basic_quick_sort(state, clist, i);
+    util_basic_quick_sort(state, clist + i, length - i);
 }
 
-static bool interpret(LitVm* vm, LitModule* module)
+static bool util_interpret(LitVm* vm, LitModule* module)
 {
-    LitFunction* function = module->main_function;
-    LitFiber* fiber = lit_create_fiber(vm->state, module, function);
+    LitFunction* function;
+    LitFiber* fiber;
+    LitCallFrame* frame;
+    function = module->main_function;
+    fiber = lit_create_fiber(vm->state, module, function);
     fiber->parent = vm->fiber;
     vm->fiber = fiber;
-    LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
+    frame = &fiber->frames[fiber->frame_count - 1];
     if(frame->ip == frame->function->chunk.code)
     {
         frame->slots = fiber->stack_top;
@@ -324,28 +298,25 @@ static bool interpret(LitVm* vm, LitModule* module)
     return true;
 }
 
-
 static bool compile_and_interpret(LitVm* vm, LitString* objfn_module_name, char* source)
 {
-    LitModule* module = lit_compile_module(vm->state, objfn_module_name, source);
+    LitModule* module;
+    module = lit_compile_module(vm->state, objfn_module_name, source);
     if(module == NULL)
     {
         return false;
     }
     module->ran = true;
-    return interpret(vm, module);
+    return util_interpret(vm, module);
 }
 
-static bool test_file_exists(const char* filename)
+static bool util_test_file_exists(const char* filename)
 {
     struct stat buffer;
     return stat(filename, &buffer) == 0;
 }
 
-static bool should_update_locals;
-static bool attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous);
-
-static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const char* path, bool ignore_previous, bool folders)
+static bool util_attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const char* path, bool ignore_previous, bool folders)
 {
     bool found;
     size_t length;
@@ -361,7 +332,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
         char dir_path[length - 1];
         dir_path[length - 2] = '\0';
         memcpy((void*)dir_path, path, length - 2);
-        return attempt_to_require(vm, argv, argc, dir_path, ignore_previous, true);
+        return util_attempt_to_require(vm, argv, argc, dir_path, ignore_previous, true);
     }
     char objfn_module_name[length + 5];
     char objfn_module_name_dotted[length + 5];
@@ -407,7 +378,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
                             memcpy((void*)dir_path, path, length);
                             memcpy((void*)dir_path + length + 1, name, name_length - 4);
                             dir_path[length] = '.';
-                            if(!attempt_to_require(vm, argv + argc, 0, dir_path, false, false))
+                            if(!util_attempt_to_require(vm, argv + argc, 0, dir_path, false, false))
                             {
                                 lit_runtime_error_exiting(vm, "failed to require module '%s'", name);
                             }
@@ -418,6 +389,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
                         }
                     }
                 }
+                closedir(dir);
             }
             #endif
             if(!found)
@@ -432,7 +404,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
             dir_name[length + 5] = '\0';
             memcpy((void*)dir_name, objfn_module_name, length);
             memcpy((void*)dir_name + length, ".init", 5);
-            if(attempt_to_require(vm, argv, argc, dir_name, ignore_previous, false))
+            if(util_attempt_to_require(vm, argv, argc, dir_name, ignore_previous, false))
             {
                 return true;
             }
@@ -457,7 +429,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
             }
             else
             {
-                if(interpret(vm, loaded_module))
+                if(util_interpret(vm, loaded_module))
                 {
                     should_update_locals = true;
                 }
@@ -465,11 +437,11 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
             return true;
         }
     }
-    if(!test_file_exists(objfn_module_name))
+    if(!util_test_file_exists(objfn_module_name))
     {
         // .lit -> .lbc
         memcpy((void*)objfn_module_name + length + 2, "bc", 2);
-        if(!test_file_exists(objfn_module_name))
+        if(!util_test_file_exists(objfn_module_name))
         {
             return false;
         }
@@ -483,10 +455,11 @@ static bool attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const cha
     {
         should_update_locals = true;
     }
+    free(source);
     return true;
 }
 
-static bool attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous)
+static bool util_attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous)
 {
     size_t a_length = strlen(a);
     size_t b_length = strlen(b);
@@ -500,17 +473,22 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, 
     path[a_length] = '.';
     path[total_length] = '\0';
 
-    return attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
+    return util_attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
 }
 
 
-static LitValue invalid_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_invalid_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
     lit_runtime_error_exiting(vm, "cannot create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
     return NULL_VALUE;
 }
+
+
+
+
+
 
 
 /*
@@ -534,7 +512,7 @@ static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, 
     int methodsCapacity = (int)klass->methods.capacity;
     bool fields = index >= methodsCapacity;
 
-    int value = table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
+    int value = util_table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
 
     if(value == -1)
     {
@@ -545,7 +523,7 @@ static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, 
 
         index++;
         fields = true;
-        value = table_iterator(&klass->static_fields, index - methodsCapacity);
+        value = util_table_iterator(&klass->static_fields, index - methodsCapacity);
     }
 
     return value == -1 ? NULL_VALUE : lit_number_to_value(fields ? value + methodsCapacity : value);
@@ -560,7 +538,7 @@ static LitValue objfn_class_iteratorvalue(LitVm* vm, LitValue instance, size_t a
     size_t methodsCapacity = klass->methods.capacity;
     bool fields = index >= methodsCapacity;
 
-    return table_iterator_key(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
+    return util_table_iterator_key(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
 }
 
 
@@ -695,7 +673,7 @@ static LitValue objfn_object_iterator(LitVm* vm, LitValue instance, size_t argc,
     LIT_ENSURE_ARGS(1)
     LitInstance* self = AS_INSTANCE(instance);
     int index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
-    int value = table_iterator(&self->fields, index);
+    int value = util_table_iterator(&self->fields, index);
     return value == -1 ? NULL_VALUE : lit_number_to_value(value);
 }
 
@@ -705,7 +683,7 @@ static LitValue objfn_object_iteratorvalue(LitVm* vm, LitValue instance, size_t 
     size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     LitInstance* self = AS_INSTANCE(instance);
 
-    return table_iterator_key(&self->fields, index);
+    return util_table_iterator_key(&self->fields, index);
 }
 
 
@@ -735,13 +713,12 @@ static LitValue objfn_number_tochar(LitVm* vm, LitValue instance, size_t argc, L
  * Bool
  */
 
-static LitValue bool_toString(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_bool_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
     return OBJECT_CONST_STRING(vm->state, AS_BOOL(instance) ? "true" : "false");
 }
-
 
 /*
  * String
@@ -779,7 +756,6 @@ static LitValue objfn_string_plus(LitVm* vm, LitValue instance, size_t argc, Lit
     return OBJECT_VALUE(result);
 }
 
-
 static LitValue objfn_string_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
@@ -788,6 +764,27 @@ static LitValue objfn_string_tostring(LitVm* vm, LitValue instance, size_t argc,
     return instance;
 }
 
+static LitValue objfn_string_splice(LitVm* vm, LitString* string, int from, int to)
+{
+    int length = lit_ustring_length(string);
+    if(from < 0)
+    {
+        from = length + from;
+    }
+    if(to < 0)
+    {
+        to = length + to;
+    }
+    from = fmax(from, 0);
+    to = fmin(to, length - 1);
+    if(from > to)
+    {
+        lit_runtime_error_exiting(vm, "String.splice argument 'from' is larger than argument 'to'");
+    }
+    from = lit_uchar_offset(string->chars, from);
+    to = lit_uchar_offset(string->chars, to);
+    return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, from, to - from + 1));
+}
 
 static LitValue objfn_string_tonumber(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
@@ -1133,7 +1130,7 @@ static LitValue objfn_fiber_done(LitVm* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return BOOL_VALUE(is_fiber_done(AS_FIBER(instance)));
+    return BOOL_VALUE(util_is_fiber_done(AS_FIBER(instance)));
 }
 
 
@@ -1158,14 +1155,14 @@ static LitValue objfn_fiber_current(LitVm* vm, LitValue instance, size_t argc, L
 static bool objfn_fiber_run(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    run_fiber(vm, AS_FIBER(instance), argv, argc, false);
+    util_run_fiber(vm, AS_FIBER(instance), argv, argc, false);
     return true;
 }
 
 
 static bool objfn_fiber_try(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    run_fiber(vm, AS_FIBER(instance), argv, argc, true);
+    util_run_fiber(vm, AS_FIBER(instance), argv, argc, true);
     return true;
 }
 
@@ -1317,6 +1314,35 @@ static LitValue objfn_array_constructor(LitVm* vm, LitValue instance, size_t arg
 }
 
 
+static LitValue objfn_array_splice(LitVm* vm, LitArray* array, int from, int to)
+{
+    size_t i;
+    size_t length;
+    LitArray* new_array;
+    length = array->values.count;
+    if(from < 0)
+    {
+        from = (int)length + from;
+    }
+    if(to < 0)
+    {
+        to = (int)length + to;
+    }
+    if(from > to)
+    {
+        lit_runtime_error_exiting(vm, "Array.splice argument 'from' is larger than argument 'to'");
+    }
+    from = fmax(from, 0);
+    to = fmin(to, (int)length - 1);
+    length = fmin(length, to - from + 1);
+    new_array = lit_create_array(vm->state);
+    for(i = 0; i < length; i++)
+    {
+        lit_values_write(vm->state, &new_array->values, array->values.values[from + i]);
+    }
+    return OBJECT_VALUE(new_array);
+}
+
 static LitValue objfn_array_slice(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int from;
@@ -1445,7 +1471,7 @@ static LitValue objfn_array_indexof(LitVm* vm, LitValue instance, size_t argc, L
 {
     LIT_ENSURE_ARGS(1)
 
-        int index = indexOf(AS_ARRAY(instance), argv[0]);
+        int index = util_indexOf(AS_ARRAY(instance), argv[0]);
     return index == -1 ? NULL_VALUE : lit_number_to_value(index);
 }
 
@@ -1455,11 +1481,11 @@ static LitValue objfn_array_remove(LitVm* vm, LitValue instance, size_t argc, Li
     LIT_ENSURE_ARGS(1)
 
         LitArray* array = AS_ARRAY(instance);
-    int index = indexOf(array, argv[0]);
+    int index = util_indexOf(array, argv[0]);
 
     if(index != -1)
     {
-        return removeAt(array, (size_t)index);
+        return util_removeAt(array, (size_t)index);
     }
 
     return NULL_VALUE;
@@ -1475,14 +1501,14 @@ static LitValue objfn_array_removeat(LitVm* vm, LitValue instance, size_t argc, 
         return NULL_VALUE;
     }
 
-    return removeAt(AS_ARRAY(instance), (size_t)index);
+    return util_removeAt(AS_ARRAY(instance), (size_t)index);
 }
 
 
 static LitValue objfn_array_contains(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1)
-        return BOOL_VALUE(indexOf(AS_ARRAY(instance), argv[0]) != -1);
+        return BOOL_VALUE(util_indexOf(AS_ARRAY(instance), argv[0]) != -1);
 }
 
 
@@ -1573,11 +1599,11 @@ static LitValue objfn_array_sort(LitVm* vm, LitValue instance, size_t argc, LitV
 
     if(argc == 1 && IS_CALLABLE_FUNCTION(argv[0]))
     {
-        custom_quick_sort(vm, values->values, values->count, argv[0]);
+        util_custom_quick_sort(vm, values->values, values->count, argv[0]);
     }
     else
     {
-        basic_quick_sort(vm->state, values->values, values->count);
+        util_basic_quick_sort(vm->state, values->values, values->count);
     }
 
     return instance;
@@ -1615,7 +1641,7 @@ static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, 
     size_t i;
     size_t buffer_index;
     size_t value_amount;
-    size_t objfn_string_length;
+    size_t olength;
     LitArray* self;
     LitValues* values;
     LitValue val;
@@ -1635,10 +1661,10 @@ static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, 
     LitString* values_converted[value_amount];
 
     // "[ ]"
-    objfn_string_length = 3;
+    olength = 3;
     if(has_more)
     {
-        objfn_string_length += 3;
+        olength += 3;
     }
     for(i = 0; i < value_amount; i++)
     {
@@ -1652,9 +1678,9 @@ static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, 
             stringified = lit_to_string(state, val);
         }
         values_converted[i] = stringified;
-        objfn_string_length += stringified->length + (i == value_amount - 1 ? 1 : 2);
+        olength += stringified->length + (i == value_amount - 1 ? 1 : 2);
     }
-    char buffer[objfn_string_length + 1];
+    char buffer[olength + 1];
     memcpy(buffer, "[ ", 2);
     buffer_index = 2;
     for(i = 0; i < value_amount; i++)
@@ -1674,8 +1700,8 @@ static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, 
         }
     }
 
-    buffer[objfn_string_length] = '\0';
-    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, objfn_string_length));
+    buffer[olength] = '\0';
+    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
 }
 
 
@@ -1770,7 +1796,7 @@ static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, Li
     (void)vm;
     int index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
 
-    int value = table_iterator(&AS_MAP(instance)->values, index);
+    int value = util_table_iterator(&AS_MAP(instance)->values, index);
     return value == -1 ? NULL_VALUE : lit_number_to_value(value);
 }
 
@@ -1778,7 +1804,7 @@ static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, Li
 static LitValue objfn_map_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-    return table_iterator_key(&AS_MAP(instance)->values, index);
+    return util_table_iterator_key(&AS_MAP(instance)->values, index);
 }
 
 
@@ -1804,7 +1830,7 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
     size_t i;
     size_t index;
     size_t value_amount;
-    size_t objfn_string_length;
+    size_t olength;
     size_t buffer_index;
     LitState* state;
     LitMap* map;
@@ -1825,10 +1851,10 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
 
     LitString* values_converted[value_amount];
     LitString* keys[value_amount];
-    objfn_string_length = 3;
+    olength = 3;
     if(has_more)
     {
-        objfn_string_length += SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
+        olength += SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
     }
     i = 0;
     index = 0;
@@ -1846,7 +1872,7 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
 
             values_converted[i] = value;
             keys[i] = entry->key;
-            objfn_string_length += entry->key->length + 3 + value->length +
+            olength += entry->key->length + 3 + value->length +
                 #ifdef SINGLE_LINE_MAPS
                     (i == value_amount - 1 ? 1 : 2);
                 #else
@@ -1855,7 +1881,7 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
             i++;
         }
     } while(i < value_amount);
-    char buffer[objfn_string_length + 1];
+    char buffer[olength + 1];
     #ifdef SINGLE_LINE_MAPS
     memcpy(buffer, "{ ", 2);
     #else
@@ -1898,8 +1924,8 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
         }
         lit_pop_root(state);
     }
-    buffer[objfn_string_length] = '\0';
-    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, objfn_string_length));
+    buffer[olength] = '\0';
+    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
 }
 
 
@@ -2036,7 +2062,7 @@ static LitValue cfn_print(LitVm* vm, size_t argc, LitValue* argv)
     return NULL_VALUE;
 }
 
-static bool eval_primitive(LitVm* vm, size_t argc, LitValue* argv)
+static bool cfn_eval(LitVm* vm, size_t argc, LitValue* argv)
 {
     char* code;
     (void)argc;
@@ -2045,14 +2071,15 @@ static bool eval_primitive(LitVm* vm, size_t argc, LitValue* argv)
     return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
-static bool require_primitive(LitVm* vm, size_t argc, LitValue* argv)
+static bool cfn_require(LitVm* vm, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
+    char* buffer;
     LitString* name = LIT_CHECK_OBJECT_STRING(0);
     bool ignore_previous = argc > 1 && IS_BOOL(argv[1]) && AS_BOOL(argv[1]);
     // First check, if a file with this name exists in the local path
-    if(attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))
+    if(util_attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))
     {
         return should_update_locals;
     }
@@ -2063,12 +2090,18 @@ static bool require_primitive(LitVm* vm, size_t argc, LitValue* argv)
     if(index != NULL)
     {
         size_t length = index - objfn_module_name->chars;
-        char buffer[length + 1];
+        buffer = (char*)malloc(length + 1);
+        //char buffer[length + 1];
         memcpy((void*)buffer, objfn_module_name->chars, length);
         buffer[length] = '\0';
-        if(attempt_to_require_combined(vm, argv, argc, (const char*)&buffer, name->chars, ignore_previous))
+        if(util_attempt_to_require_combined(vm, argv, argc, (const char*)&buffer, name->chars, ignore_previous))
         {
+            free(buffer);
             return should_update_locals;
+        }
+        else
+        {
+            free(buffer);
         }
     }
     lit_runtime_error_exiting(vm, "failed to require module '%s'", name->chars);
@@ -2112,7 +2145,7 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("Number");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
             LIT_BIND_METHOD("toString", objfn_number_tostring);
             LIT_BIND_METHOD("toChar", objfn_number_tochar);
             state->numbervalue_class = klass;
@@ -2123,7 +2156,7 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("String");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
             LIT_BIND_METHOD("+", objfn_string_plus);
             LIT_BIND_METHOD("toString", objfn_string_tostring);
             LIT_BIND_METHOD("toNumber", objfn_string_tonumber);
@@ -2148,8 +2181,8 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("Bool");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
-            LIT_BIND_METHOD("toString", bool_toString);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
+            LIT_BIND_METHOD("toString", objfn_bool_tostring);
             state->boolvalue_class = klass;
         }
         LIT_END_CLASS();
@@ -2158,7 +2191,7 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("Function");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
             LIT_BIND_METHOD("toString", objfn_function_tostring);
             LIT_BIND_GETTER("name", objfn_function_name);
             state->functionvalue_class = klass;
@@ -2186,7 +2219,7 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("Module");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
             LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules));
             LIT_BIND_STATIC_GETTER("privates", objfn_module_privates);
             LIT_BIND_STATIC_GETTER("current", objfn_module_current);
@@ -2245,7 +2278,7 @@ void lit_open_core_library(LitState* state)
         LIT_BEGIN_CLASS("Range");
         {
             LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(invalid_constructor);
+            LIT_BIND_CONSTRUCTOR(objfn_invalid_constructor);
             LIT_BIND_METHOD("iterator", objfn_range_iterator);
             LIT_BIND_METHOD("iteratorValue", objfn_range_iteratorvalue);
             LIT_BIND_METHOD("toString", objfn_range_tostring);
@@ -2260,8 +2293,8 @@ void lit_open_core_library(LitState* state)
         lit_define_native(state, "time", cfn_time);
         lit_define_native(state, "systemTime", cfn_systemTime);
         lit_define_native(state, "print", cfn_print);
-        lit_define_native_primitive(state, "require", require_primitive);
-        lit_define_native_primitive(state, "eval", eval_primitive);
+        lit_define_native_primitive(state, "require", cfn_require);
+        lit_define_native_primitive(state, "eval", cfn_eval);
         lit_set_global(state, CONST_STRING(state, "globals"), OBJECT_VALUE(state->vm->globals));
     }
 }
