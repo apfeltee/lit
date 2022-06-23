@@ -32,12 +32,12 @@ static LitValue objfn_gc_trigger(LitVm* vm, LitValue instance, size_t arg_count,
 
 void lit_open_gc_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("GC")
+    LIT_BEGIN_CLASS("GC");
     {
-        LIT_BIND_STATIC_GETTER("memoryUsed", objfn_gc_memory_used)
-        LIT_BIND_STATIC_GETTER("nextRound", objfn_gc_next_round)
-        LIT_BIND_STATIC_METHOD("trigger", objfn_gc_trigger)
+        LIT_BIND_STATIC_GETTER("memoryUsed", objfn_gc_memory_used);
+        LIT_BIND_STATIC_GETTER("nextRound", objfn_gc_next_round);
+        LIT_BIND_STATIC_METHOD("trigger", objfn_gc_trigger);
     }
-    LIT_END_CLASS()
+    LIT_END_CLASS();
 }
 

@@ -20,6 +20,7 @@
     #define	S_ISREG(m)	(((m)&S_IFMT) == S_IFREG)	/* file */
 #endif
 
+/*
 #define LIT_INSERT_DATA(type, cleanup)                                                                                      \
     (                                                                                                                       \
     {                                                                                                                       \
@@ -28,6 +29,17 @@
         lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata)); \
         (type*)userdata->data;                                                                                              \
     })
+*/
+typedef void(*CleanupFunc)(LitState*, LitUserdata*, bool);
+
+
+static void* LIT_INSERT_DATA(LitVm* vm, LitValue instance, size_t typsz, CleanupFunc cleanup)
+{
+    LitUserdata* userdata = lit_create_userdata(vm->state, typsz);
+    userdata->cleanup_fn = cleanup;
+    lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
+    return userdata->data;
+}
 
 #define LIT_EXTRACT_DATA(type) \
     ({ \
@@ -60,6 +72,7 @@ typedef struct
     FILE* file;
 } LitFileData;
 
+
 void cleanup_file(LitState* state, LitUserdata* data, bool mark)
 {
     (void)state;
@@ -91,7 +104,7 @@ static LitValue file_constructor(LitVm* vm, LitValue instance, size_t argc, LitV
         lit_runtime_error_exiting(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
     }
 
-    LitFileData* data = LIT_INSERT_DATA(LitFileData, cleanup_file);
+    LitFileData* data = (LitFileData*)LIT_INSERT_DATA(vm, instance, sizeof(LitFileData), cleanup_file);
 
     data->path = (char*)path;
     data->file = file;
@@ -312,8 +325,8 @@ static LitValue file_getLastModified(LitVm* vm, LitValue instance, size_t argc, 
 
 
 /*
- * Directory
- */
+* Directory
+*/
 
 static LitValue directory_exists(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
 {
@@ -390,37 +403,39 @@ static LitValue directory_listDirectories(LitVm* vm, LitValue instance, size_t a
 
 void lit_open_file_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("File")
-    LIT_BIND_STATIC_METHOD("exists", file_exists)
-    LIT_BIND_STATIC_METHOD("getLastModified", file_getLastModified)
-
-    LIT_BIND_CONSTRUCTOR(file_constructor)
-    LIT_BIND_METHOD("close", file_close)
-    LIT_BIND_METHOD("write", file_write)
-
-    LIT_BIND_METHOD("writeByte", file_writeByte)
-    LIT_BIND_METHOD("writeShort", file_writeShort)
-    LIT_BIND_METHOD("writeNumber", file_writeNumber)
-    LIT_BIND_METHOD("writeBool", file_writeBool)
-    LIT_BIND_METHOD("writeString", file_writeString)
-
-    LIT_BIND_METHOD("readAll", file_readAll)
-    LIT_BIND_METHOD("readLine", file_readLine)
-
-    LIT_BIND_METHOD("readByte", file_readByte)
-    LIT_BIND_METHOD("readShort", file_readShort)
-    LIT_BIND_METHOD("readNumber", file_readNumber)
-    LIT_BIND_METHOD("readBool", file_readBool)
-    LIT_BIND_METHOD("readString", file_readString)
-
-    LIT_BIND_METHOD("getLastModified", file_getLastModified)
-
-    LIT_BIND_GETTER("exists", file_exists)
-    LIT_END_CLASS()
-
-    LIT_BEGIN_CLASS("Directory")
-    LIT_BIND_STATIC_METHOD("exists", directory_exists)
-    LIT_BIND_STATIC_METHOD("listFiles", directory_listFiles)
-    LIT_BIND_STATIC_METHOD("listDirectories", directory_listDirectories)
-    LIT_END_CLASS()
+    {
+        LIT_BEGIN_CLASS("File");
+        {
+            LIT_BIND_STATIC_METHOD("exists", file_exists);
+            LIT_BIND_STATIC_METHOD("getLastModified", file_getLastModified);
+            LIT_BIND_CONSTRUCTOR(file_constructor);
+            LIT_BIND_METHOD("close", file_close);
+            LIT_BIND_METHOD("write", file_write);
+            LIT_BIND_METHOD("writeByte", file_writeByte);
+            LIT_BIND_METHOD("writeShort", file_writeShort);
+            LIT_BIND_METHOD("writeNumber", file_writeNumber);
+            LIT_BIND_METHOD("writeBool", file_writeBool);
+            LIT_BIND_METHOD("writeString", file_writeString);
+            LIT_BIND_METHOD("readAll", file_readAll);
+            LIT_BIND_METHOD("readLine", file_readLine);
+            LIT_BIND_METHOD("readByte", file_readByte);
+            LIT_BIND_METHOD("readShort", file_readShort);
+            LIT_BIND_METHOD("readNumber", file_readNumber);
+            LIT_BIND_METHOD("readBool", file_readBool);
+            LIT_BIND_METHOD("readString", file_readString);
+            LIT_BIND_METHOD("getLastModified", file_getLastModified);
+            LIT_BIND_GETTER("exists", file_exists);
+        }
+        LIT_END_CLASS();
+    }
+    {
+        LIT_BEGIN_CLASS("Directory");
+        {
+            LIT_BIND_STATIC_METHOD("exists", directory_exists);
+            LIT_BIND_STATIC_METHOD("listFiles", directory_listFiles);
+            LIT_BIND_STATIC_METHOD("listDirectories", directory_listDirectories);
+        }
+        LIT_END_CLASS();
+    }
 }
+
