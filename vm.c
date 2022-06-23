@@ -562,7 +562,10 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     fiber = vm->fiber;
                     result = mthobj->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
                     vm->fiber->stack_top -= arg_count + 1;
-                    lit_push(vm, result);
+                    //if(!IS_NULL(result))
+                    {
+                        lit_push(vm, result);
+                    }
                     vm_popgc(vm->state);
                     return false;
                 }

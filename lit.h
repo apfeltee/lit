@@ -1782,11 +1782,11 @@ char* lit_read_file(const char* path);
 bool lit_file_exists(const char* path);
 bool lit_dir_exists(const char* path);
 
-void lit_write_uint8_t(FILE* file, uint8_t byte);
-void lit_write_uint16_t(FILE* file, uint16_t byte);
-void lit_write_uint32_t(FILE* file, uint32_t byte);
-void lit_write_double(FILE* file, double byte);
-void lit_write_string(FILE* file, LitString* string);
+size_t lit_write_uint8_t(FILE* file, uint8_t byte);
+size_t lit_write_uint16_t(FILE* file, uint16_t byte);
+size_t lit_write_uint32_t(FILE* file, uint32_t byte);
+size_t lit_write_double(FILE* file, double byte);
+size_t lit_write_string(FILE* file, LitString* string);
 
 uint8_t lit_read_uint8_t(FILE* file);
 uint16_t lit_read_uint16_t(FILE* file);

@@ -51,78 +51,88 @@ bool lit_dir_exists(const char* path)
     return stat(path, &buffer) == 0 && S_ISDIR(buffer.st_mode);
 }
 
-void lit_write_uint8_t(FILE* file, uint8_t byte)
+size_t lit_write_uint8_t(FILE* file, uint8_t byte)
 {
-    fwrite(&byte, sizeof(uint8_t), 1, file);
+    return fwrite(&byte, sizeof(uint8_t), 1, file);
 }
 
-void lit_write_uint16_t(FILE* file, uint16_t byte)
+size_t lit_write_uint16_t(FILE* file, uint16_t byte)
 {
-    fwrite(&byte, sizeof(uint16_t), 1, file);
+    return fwrite(&byte, sizeof(uint16_t), 1, file);
 }
 
-void lit_write_uint32_t(FILE* file, uint32_t byte)
+size_t lit_write_uint32_t(FILE* file, uint32_t byte)
 {
-    fwrite(&byte, sizeof(uint32_t), 1, file);
+    return fwrite(&byte, sizeof(uint32_t), 1, file);
 }
 
-void lit_write_double(FILE* file, double byte)
+size_t lit_write_double(FILE* file, double byte)
 {
-    fwrite(&byte, sizeof(double), 1, file);
+    return fwrite(&byte, sizeof(double), 1, file);
 }
 
-void lit_write_string(FILE* file, LitString* string)
+size_t lit_write_string(FILE* file, LitString* string)
 {
-    uint16_t c = string->length;
-    fwrite(&c, 2, 1, file);
-
-    for(uint16_t i = 0; i < c; i++)
+    uint16_t i;
+    uint16_t c;
+    size_t rt;
+    c = string->length;
+    rt = fwrite(&c, 2, 1, file);
+    for(i = 0; i < c; i++)
     {
         lit_write_uint8_t(file, (uint8_t)string->chars[i] ^ LIT_STRING_KEY);
     }
+    return (rt + i);
 }
 
 uint8_t lit_read_uint8_t(FILE* file)
 {
-    fread(&btmp, sizeof(uint8_t), 1, file);
+    size_t rt;
+    (void)rt;
+    rt = fread(&btmp, sizeof(uint8_t), 1, file);
     return btmp;
 }
 
 uint16_t lit_read_uint16_t(FILE* file)
 {
-    fread(&stmp, sizeof(uint16_t), 1, file);
+    size_t rt;
+    (void)rt;
+    rt = fread(&stmp, sizeof(uint16_t), 1, file);
     return stmp;
 }
 
 uint32_t lit_read_uint32_t(FILE* file)
 {
-    fread(&itmp, sizeof(uint32_t), 1, file);
+    size_t rt;
+    (void)rt;
+    rt = fread(&itmp, sizeof(uint32_t), 1, file);
     return itmp;
 }
 
 double lit_read_double(FILE* file)
 {
-    fread(&dtmp, sizeof(double), 1, file);
+    size_t rt;
+    (void)rt;
+    rt = fread(&dtmp, sizeof(double), 1, file);
     return dtmp;
 }
 
 LitString* lit_read_string(LitState* state, FILE* file)
 {
+    size_t rt;
+    uint16_t i;
     uint16_t length;
-    fread(&length, 2, 1, file);
-
+    (void)rt;
+    rt = fread(&length, 2, 1, file);
     if(length < 1)
     {
         return NULL;
     }
-
     char line[length];
-
-    for(uint16_t i = 0; i < length; i++)
+    for(i = 0; i < length; i++)
     {
         line[i] = (char)lit_read_uint8_t(file) ^ LIT_STRING_KEY;
     }
-
     return lit_copy_string(state, line, length);
 }
 
