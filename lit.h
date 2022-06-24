@@ -1481,6 +1481,20 @@ struct LitPreprocessor
     LitValues open_ifs;
 };
 
+void util_custom_quick_sort(LitVm *vm, LitValue *l, int length, LitValue callee);
+int util_table_iterator(LitTable *table, int number);
+LitValue util_table_iterator_key(LitTable *table, int index);
+bool util_is_fiber_done(LitFiber *fiber);
+void util_run_fiber(LitVm *vm, LitFiber *fiber, LitValue *argv, size_t argc, bool catcher);
+int util_indexOf(LitArray *array, LitValue value);
+LitValue util_removeAt(LitArray *array, size_t index);
+void util_basic_quick_sort(LitState *state, LitValue *clist, int length);
+bool util_interpret(LitVm *vm, LitModule *module);
+bool util_test_file_exists(const char *filename);
+bool util_attempt_to_require(LitVm *vm, LitValue *argv, size_t argc, const char *path, bool ignore_previous, bool folders);
+bool util_attempt_to_require_combined(LitVm *vm, LitValue *argv, size_t argc, const char *a, const char *b, bool ignore_previous);
+LitValue util_invalid_constructor(LitVm *vm, LitValue instance, size_t argc, LitValue *argv);
+
 
 static inline double lit_value_to_number(LitValue value)
 {
@@ -1496,6 +1510,7 @@ static inline bool lit_is_falsey(LitValue value)
 {
     return (IS_BOOL(value) && value == FALSE_VALUE) || IS_NULL(value) || (IS_NUMBER(value) && lit_value_to_number(value) == 0);
 }
+
 
 void lit_init_uints(LitUInts* array);
 void lit_free_uints(LitState* state, LitUInts* array);
@@ -1611,6 +1626,9 @@ LitUserdata* lit_create_userdata(LitState* state, size_t size);
 LitRange* lit_create_range(LitState* state, double from, double to);
 LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter);
 LitReference* lit_create_reference(LitState* state, LitValue* slot);
+
+void lit_array_push(LitState* state, LitArray* array, LitValue val);
+
 
 /*
  * Please, do not provide a const string source to the compiler, because it will

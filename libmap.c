@@ -1,0 +1,227 @@
+
+#include "lit.h"
+
+
+static LitValue objfn_map_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)instance;
+    (void)argc;
+    (void)argv;
+    return OBJECT_VALUE(lit_create_map(vm->state));
+}
+
+static LitValue objfn_map_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    LitValue val;
+    LitValue value;
+    LitMap* map;
+    LitString* index;
+    if(!IS_STRING(argv[0]))
+    {
+        lit_runtime_error_exiting(vm, "map index must be a string");
+    }
+    map = AS_MAP(instance);
+    index = AS_STRING(argv[0]);
+    if(argc == 2)
+    {
+        val = argv[1];
+        if(map->index_fn != NULL)
+        {
+            return map->index_fn(vm, map, index, &val);
+        }
+        lit_map_set(vm->state, map, index, val);
+        return val;
+    }
+    if(map->index_fn != NULL)
+    {
+        return map->index_fn(vm, map, index, NULL);
+    }
+    if(!lit_table_get(&map->values, index, &value))
+    {
+        return NULL_VALUE;
+    }
+    return value;
+}
+
+static LitValue objfn_map_addall(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    LIT_ENSURE_ARGS(1);
+    if(!IS_MAP(argv[0]))
+    {
+        lit_runtime_error_exiting(vm, "expected map as the argument");
+    }
+    lit_map_add_all(vm->state, AS_MAP(argv[0]), AS_MAP(instance));
+    return NULL_VALUE;
+}
+
+
+static LitValue objfn_map_clear(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)vm;
+    (void)argv;
+    (void)argc;
+    AS_MAP(instance)->values.count = 0;
+    return NULL_VALUE;
+}
+
+static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    LIT_ENSURE_ARGS(1);
+    (void)vm;
+    int index;
+    int value;
+    index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
+    value = util_table_iterator(&AS_MAP(instance)->values, index);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(value);
+}
+
+static LitValue objfn_map_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    size_t index;
+    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    return util_table_iterator_key(&AS_MAP(instance)->values, index);
+}
+
+static LitValue objfn_map_clone(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)argc;
+    (void)argv;
+    LitState* state;
+    LitMap* map;
+    state = vm->state;
+    map = lit_create_map(state);
+    lit_table_add_all(state, &AS_MAP(instance)->values, &map->values);
+    return OBJECT_VALUE(map);
+}
+
+static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)argc;
+    (void)argv;
+    bool has_wrapper;
+    bool has_more;
+    size_t i;
+    size_t index;
+    size_t value_amount;
+    size_t olength;
+    size_t buffer_index;
+    LitState* state;
+    LitMap* map;
+    LitTable* values;
+    LitTableEntry* entry;
+    LitValue field;
+    LitString* strobval;
+    LitString* key;
+    LitString* value;
+    state = vm->state;
+    map = AS_MAP(instance);
+    values = &map->values;
+    if(values->count == 0)
+    {
+        return OBJECT_CONST_STRING(state, "{}");
+    }
+    has_wrapper = map->index_fn != NULL;
+    has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
+    value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
+    LitString* values_converted[value_amount];
+    LitString* keys[value_amount];
+    olength = 3;
+    if(has_more)
+    {
+        olength += SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
+    }
+    i = 0;
+    index = 0;
+    do
+    {
+        entry = &values->entries[index++];
+        if(entry->key != NULL)
+        {
+            // Special hidden key
+            field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
+            // This check is required to prevent infinite loops when playing with Module.privates and such
+            strobval = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+            lit_push_root(state, (LitObject*)strobval);
+            values_converted[i] = strobval;
+            keys[i] = entry->key;
+            olength += (
+                entry->key->length + 3 + strobval->length +
+                #ifdef SINGLE_LINE_MAPS
+                    (i == value_amount - 1 ? 1 : 2)
+                #else
+                    (i == value_amount - 1 ? 2 : 3)
+                #endif
+            );
+            i++;
+        }
+    } while(i < value_amount);
+    char buffer[olength + 1];
+    #ifdef SINGLE_LINE_MAPS
+    memcpy(buffer, "{ ", 2);
+    #else
+    memcpy(buffer, "{\n", 2);
+    #endif
+    buffer_index = 2;
+    for(i = 0; i < value_amount; i++)
+    {
+        key = keys[i];
+        value = values_converted[i];
+        #ifndef SINGLE_LINE_MAPS
+        buffer[buffer_index++] = '\t';
+        #endif
+        memcpy(&buffer[buffer_index], key->chars, key->length);
+        buffer_index += key->length;
+        memcpy(&buffer[buffer_index], " = ", 3);
+        buffer_index += 3;
+        memcpy(&buffer[buffer_index], value->chars, value->length);
+        buffer_index += value->length;
+        if(has_more && i == value_amount - 1)
+        {
+            #ifdef SINGLE_LINE_MAPS
+            memcpy(&buffer[buffer_index], ", ... }", 7);
+            #else
+            memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+            #endif
+            buffer_index += 8;
+        }
+        else
+        {
+            #ifdef SINGLE_LINE_MAPS
+            memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
+            #else
+            memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+            #endif
+            buffer_index += 2;
+        }
+        lit_pop_root(state);
+    }
+    buffer[olength] = '\0';
+    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
+}
+
+static LitValue objfn_map_length(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)vm;
+    (void)argc;
+    (void)argv;
+    return lit_number_to_value(AS_MAP(instance)->values.count);
+}
+
+void lit_open_map_library(LitState* state)
+{
+    LIT_BEGIN_CLASS("Map");
+    {
+        LIT_INHERIT_CLASS(state->objectvalue_class);
+        LIT_BIND_CONSTRUCTOR(objfn_map_constructor);
+        LIT_BIND_METHOD("[]", objfn_map_subscript);
+        LIT_BIND_METHOD("addAll", objfn_map_addall);
+        LIT_BIND_METHOD("clear", objfn_map_clear);
+        LIT_BIND_METHOD("iterator", objfn_map_iterator);
+        LIT_BIND_METHOD("iteratorValue", objfn_map_iteratorvalue);
+        LIT_BIND_METHOD("clone", objfn_map_clone);
+        LIT_BIND_METHOD("toString", objfn_map_tostring);
+        LIT_BIND_GETTER("length", objfn_map_length);
+        state->mapvalue_class = klass;
+    }
+    LIT_END_CLASS();
+}

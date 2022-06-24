@@ -1,8 +1,6 @@
 
 a= [1, 2, 3]
-a.push("dicks")
-a.push(a)
-a.push(72)
+a.push("dicks", a, 72)
 print("a = ", a, "\n")
 
 m = { foo = "bar"}

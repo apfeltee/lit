@@ -53,6 +53,11 @@ void lit_values_write(LitState* state, LitValues* array, LitValue value)
     array->count++;
 }
 
+void lit_array_push(LitState* state, LitArray* array, LitValue val)
+{
+    lit_values_write(state, &array->values, val);
+}
+
 static void print_array(LitArray* array, size_t size)
 {
     size_t i;
