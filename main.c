@@ -5,10 +5,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-//#if defined(__unix__) || defined(__linux__)
+#if defined(__unix__) || defined(__linux__)
     #include <dirent.h>
-//#endif
-
+#endif
 
 #ifndef __TINYC__
     #if __has_include(<readline/readline.h>)
@@ -17,7 +16,6 @@
         #define LIT_HAVE_READLINE
     #endif
 #endif
-
 
 #include "lit.h"
 
@@ -41,7 +39,7 @@ static int run_repl(LitState* state)
     repl_state = state;
     signal(SIGINT, interupt_handler);
     //signal(SIGTSTP, interupt_handler);
-    lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
+    lit_set_optimization_level(LITOPTLEVEL_REPL);
     printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
     while(true)
     {
@@ -53,7 +51,7 @@ static int run_repl(LitState* state)
         }
         add_history(line);
         LitInterpretResult result = lit_interpret(state, "repl", line);
-        if(result.type == INTERPRET_OK && result.result != NULL_VALUE)
+        if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
         {
             printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
         }
@@ -172,13 +170,13 @@ static void show_optimization_help()
         "Using flag -Oall will disable all optimizations.\n"
     );
     printf("Here is a list of all supported optimizations:\n\n");
-    for(i = 0; i < OPTIMIZATION_TOTAL; i++)
+    for(i = 0; i < LITOPTSTATE_TOTAL; i++)
     {
         printf(" %s  %s\n", lit_get_optimization_name((LitOptimization)i),
                lit_get_optimization_description((LitOptimization)i));
     }
     printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.\n\n");
-    for(i = 0; i < OPTIMIZATION_LEVEL_TOTAL; i++)
+    for(i = 0; i < LITOPTLEVEL_TOTAL; i++)
     {
         printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptimizationLevel)i));
     }
@@ -211,7 +209,7 @@ int main(int argc, const char* argv[])
 
     num_files_to_run = 0;
 
-    result = INTERPRET_OK;
+    result = LITRESULT_OK;
     dump = false;
     for(i = 1; i < argc; i++)
     {
@@ -291,7 +289,7 @@ int main(int argc, const char* argv[])
             {
                 bool found = false;
                 // Yes I know, this is not the fastest way, and what now?
-                for(size_t j = 0; j < OPTIMIZATION_TOTAL; j++)
+                for(size_t j = 0; j < LITOPTSTATE_TOTAL; j++)
                 {
                     if(strcmp(lit_get_optimization_name((LitOptimization)j), optimization_name) == 0)
                     {
@@ -335,7 +333,7 @@ int main(int argc, const char* argv[])
             else
             {
                 result = lit_interpret(state, module_name, source).type;
-                if(result != INTERPRET_OK)
+                if(result != LITRESULT_OK)
                 {
                     break;
                 }
@@ -371,7 +369,7 @@ int main(int argc, const char* argv[])
             }
 
             bytecode_file = (char*)argv[++i];
-            lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+            lit_set_optimization_level(LITOPTLEVEL_EXTREME);
         }
         else if(match_arg(arg, "-n", "--native"))
         {
@@ -384,7 +382,7 @@ int main(int argc, const char* argv[])
             bytecode_file = (char*)argv[++i];
             create_native = true;
 
-            lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+            lit_set_optimization_level(LITOPTLEVEL_EXTREME);
         }
         else if(match_arg(arg, "-p", "--pass"))
         {
@@ -412,7 +410,7 @@ int main(int argc, const char* argv[])
         {
             if(!lit_compile_and_save_files(state, files_to_run, num_files_to_run, bytecode_file))
             {
-                result = INTERPRET_COMPILE_ERROR;
+                result = LITRESULT_COMPILE_ERROR;
             }
 
             if(create_native)
@@ -431,7 +429,7 @@ int main(int argc, const char* argv[])
             {
                 char* file = files_to_run[i];
                 result = (dump ? lit_dump_file(state, file) : lit_interpret_file(state, file)).type;
-                if(result != INTERPRET_OK)
+                if(result != LITRESULT_OK)
                 {
                     return 0;
                 }
@@ -454,15 +452,15 @@ int main(int argc, const char* argv[])
 
     int64_t amount = lit_free_state(state);
 
-    if(result != INTERPRET_COMPILE_ERROR && amount != 0)
+    if(result != LITRESULT_COMPILE_ERROR && amount != 0)
     {
         fprintf(stderr, "Error: memory leak of %i bytes!\n", (int)amount);
         return LIT_EXIT_CODE_MEM_LEAK;
     }
 
-    if(result != INTERPRET_OK)
+    if(result != LITRESULT_OK)
     {
-        return result == INTERPRET_RUNTIME_ERROR ? LIT_EXIT_CODE_RUNTIME_ERROR : LIT_EXIT_CODE_COMPILE_ERROR;
+        return result == LITRESULT_RUNTIME_ERROR ? LIT_EXIT_CODE_RUNTIME_ERROR : LIT_EXIT_CODE_COMPILE_ERROR;
     }
 
     return 0;

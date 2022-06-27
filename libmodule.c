@@ -1,7 +1,7 @@
 
 #include "lit.h"
 
-static LitValue access_private(LitVm* vm, LitMap* map, LitString* name, LitValue* val)
+static LitValue access_private(LitVM* vm, LitMap* map, LitString* name, LitValue* val)
 {
     LitValue value;
     LitString* id = CONST_STRING(vm->state, "_module");
@@ -38,7 +38,7 @@ static LitValue access_private(LitVm* vm, LitMap* map, LitString* name, LitValue
 }
 
 
-static LitValue objfn_module_privates(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_module_privates(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitModule* module;
     (void)argc;
@@ -55,7 +55,7 @@ static LitValue objfn_module_privates(LitVm* vm, LitValue instance, size_t argc,
     return OBJECT_VALUE(map);
 }
 
-static LitValue objfn_module_current(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_module_current(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     (void)argc;
@@ -63,7 +63,7 @@ static LitValue objfn_module_current(LitVm* vm, LitValue instance, size_t argc, 
     return OBJECT_VALUE(vm->fiber->module);
 }
 
-static LitValue objfn_module_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_module_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -71,7 +71,7 @@ static LitValue objfn_module_tostring(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_module_name(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_module_name(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;

@@ -1,7 +1,7 @@
 
 #include "lit.h"
 
-static LitValue objfn_function_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_function_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -9,7 +9,7 @@ static LitValue objfn_function_tostring(LitVm* vm, LitValue instance, size_t arg
 }
 
 
-static LitValue objfn_function_name(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_function_name(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;

@@ -67,7 +67,7 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
     lit_pop_roots(state, 2);
 }
 
-double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_NUMBER(args[id]))
     {
@@ -77,7 +77,7 @@ double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id
     return lit_value_to_number(args[id]);
 }
 
-double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
+double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
 {
     (void)vm;
     if(arg_count <= id || !IS_NUMBER(args[id]))
@@ -87,7 +87,7 @@ double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
     return lit_value_to_number(args[id]);
 }
 
-bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_BOOL(args[id]))
     {
@@ -98,7 +98,7 @@ bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
     return AS_BOOL(args[id]);
 }
 
-bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def)
+bool lit_get_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def)
 {
     (void)vm;
     if(arg_count <= id || !IS_BOOL(args[id]))
@@ -108,7 +108,7 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
     return AS_BOOL(args[id]);
 }
 
-const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_STRING(args[id]))
     {
@@ -119,7 +119,7 @@ const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8
     return AS_STRING(args[id])->chars;
 }
 
-const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def)
+const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def)
 {
     (void)vm;
     if(arg_count <= id || !IS_STRING(args[id]))
@@ -130,7 +130,7 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
     return AS_STRING(args[id])->chars;
 }
 
-LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_STRING(args[id]))
     {
@@ -141,7 +141,7 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
     return AS_STRING(args[id]);
 }
 
-LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_INSTANCE(args[id]))
     {
@@ -152,7 +152,7 @@ LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, ui
     return AS_INSTANCE(args[id]);
 }
 
-LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id)
+LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !IS_REFERENCE(args[id]))
     {
@@ -163,7 +163,7 @@ LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint
     return AS_REFERENCE(args[id])->slot;
 }
 
-void lit_ensure_bool(LitVm* vm, LitValue value, const char* error)
+void lit_ensure_bool(LitVM* vm, LitValue value, const char* error)
 {
     if(!IS_BOOL(value))
     {
@@ -171,7 +171,7 @@ void lit_ensure_bool(LitVm* vm, LitValue value, const char* error)
     }
 }
 
-void lit_ensure_string(LitVm* vm, LitValue value, const char* error)
+void lit_ensure_string(LitVM* vm, LitValue value, const char* error)
 {
     if(!IS_STRING(value))
     {
@@ -179,7 +179,7 @@ void lit_ensure_string(LitVm* vm, LitValue value, const char* error)
     }
 }
 
-void lit_ensure_number(LitVm* vm, LitValue value, const char* error)
+void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
 {
     if(!IS_NUMBER(value))
     {
@@ -187,7 +187,7 @@ void lit_ensure_number(LitVm* vm, LitValue value, const char* error)
     }
 }
 
-void lit_ensure_object_type(LitVm* vm, LitValue value, LitObjectType type, const char* error)
+void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error)
 {
     if(!IS_OBJECT(value) || OBJECT_TYPE(value) != type)
     {

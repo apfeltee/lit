@@ -5,6 +5,10 @@
 #include <setjmp.h>
 #include "lit.h"
 
+//#define LIT_TRACE_EXECUTION
+#define LIT_USE_COMPUTEDGOTO
+
+
 #ifdef LIT_TRACE_EXECUTION
     #define TRACE_FRAME() lit_trace_frame(fiber);
 #else
@@ -12,6 +16,18 @@
         do \
         { \
         } while(0);
+#endif
+
+
+
+#ifdef LIT_USE_COMPUTEDGOTO
+    #define vm_default()
+    #define op_case(name) \
+        OP_##name:
+#else
+    #define vm_default() default:
+    #define op_case(name) \
+        case OP_##name:
 #endif
 
 #define vm_pushgc(state, allow) \
@@ -38,9 +54,6 @@
 
 #define vm_readshort() \
     (ip += 2u, (uint16_t)((ip[-2] << 8u) | ip[-1]))
-
-#define op_case(name) \
-    OP_##name:
 
 #define vm_readconstant() \
     (current_chunk->constants.values[vm_readbyte()])
@@ -71,14 +84,14 @@
 
 #define vm_returnerror() \
     vm_popgc(state); \
-    return (LitInterpretResult){ INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+    return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
 
 #define vm_recoverstate() \
     vm_writeframe(); \
     fiber = vm->fiber; \
     if(fiber == NULL) \
     { \
-        return (LitInterpretResult){ INTERPRET_OK, vm_pop() }; \
+        return (LitInterpretResult){ LITRESULT_OK, vm_pop() }; \
     } \
     if(fiber->abort) \
     { \
@@ -157,7 +170,7 @@
     LitClass* klass = lit_get_class_for(state, instance); \
     if(klass == NULL) \
     { \
-        vm_rterror("Only instances and classes have methods"); \
+        vm_rterror("invokemethod: only instances and classes have methods"); \
     } \
     vm_writeframe(); \
     vm_invoke_from_class_advanced(klass, CONST_STRING(state, method_name), arg_count, true, methods, false, instance); \
@@ -226,14 +239,14 @@
         LitClass* type = lit_get_class_for(state, receiver); \
         if(type == NULL) \
         { \
-            vm_rterror("Only instances and classes have methods"); \
+            vm_rterror("invokeoperation: only instances and classes have methods"); \
         } \
         vm_invoke_from_class_advanced(type, method_name, arg_count, true, methods, ignoring, receiver); \
     }
 
 static jmp_buf jump_buffer;
 
-static void reset_stack(LitVm* vm)
+static void reset_stack(LitVM* vm)
 {
     if(vm->fiber != NULL)
     {
@@ -241,7 +254,7 @@ static void reset_stack(LitVm* vm)
     }
 }
 
-static void reset_vm(LitState* state, LitVm* vm)
+static void reset_vm(LitState* state, LitVM* vm)
 {
     vm->state = state;
     vm->objects = NULL;
@@ -254,21 +267,21 @@ static void reset_vm(LitState* state, LitVm* vm)
     vm->modules = NULL;
 }
 
-void lit_init_vm(LitState* state, LitVm* vm)
+void lit_init_vm(LitState* state, LitVM* vm)
 {
     reset_vm(state, vm);
     vm->globals = lit_create_map(state);
     vm->modules = lit_create_map(state);
 }
 
-void lit_free_vm(LitVm* vm)
+void lit_free_vm(LitVM* vm)
 {
     lit_free_table(vm->state, &vm->strings);
     lit_free_objects(vm->state, vm->objects);
     reset_vm(vm->state, vm);
 }
 
-void lit_trace_vm_stack(LitVm* vm)
+void lit_trace_vm_stack(LitVM* vm)
 {
     LitValue* top;
     LitValue* slot;
@@ -296,48 +309,52 @@ void lit_trace_vm_stack(LitVm* vm)
     printf("\n");
 }
 
-bool lit_handle_runtime_error(LitVm* vm, LitString* error_string)
+bool lit_handle_runtime_error(LitVM* vm, LitString* error_string)
 {
-    LitValue error = OBJECT_VALUE(error_string);
-    LitFiber* fiber = vm->fiber;
-
+    int i;
+    int count;
+    size_t length;
+    char* start;
+    char* buffer;
+    const char* name;
+    LitCallFrame* frame;
+    LitFunction* function;
+    LitChunk* chunk;
+    LitValue error;
+    LitFiber* fiber;
+    LitFiber* caller;
+    error = OBJECT_VALUE(error_string);
+    fiber = vm->fiber;
     while(fiber != NULL)
     {
         fiber->error = error;
-
         if(fiber->catcher)
         {
             vm->fiber = fiber->parent;
             vm->fiber->stack_top -= fiber->arg_count;
             vm->fiber->stack_top[-1] = error;
-
             return true;
         }
-
-        LitFiber* caller = fiber->parent;
+        caller = fiber->parent;
         fiber->parent = NULL;
         fiber = caller;
     }
-
     fiber = vm->fiber;
     fiber->abort = true;
     fiber->error = error;
-
     if(fiber->parent != NULL)
     {
         fiber->parent->abort = true;
     }
-
     // Maan, formatting c strings is hard...
-    int count = (int)fiber->frame_count - 1;
-    size_t length = snprintf(NULL, 0, "%s%s\n", COLOR_RED, error_string->chars);
-
-    for(int i = count; i >= 0; i--)
+    count = (int)fiber->frame_count - 1;
+    length = snprintf(NULL, 0, "%s%s\n", COLOR_RED, error_string->chars);
+    for(i = count; i >= 0; i--)
     {
-        LitCallFrame* frame = &fiber->frames[i];
-        LitFunction* function = frame->function;
-        LitChunk* chunk = &function->chunk;
-        const char* name = function->name == NULL ? "unknown" : function->name->chars;
+        frame = &fiber->frames[i];
+        function = frame->function;
+        chunk = &function->chunk;
+        name = function->name == NULL ? "unknown" : function->name->chars;
 
         if(chunk->has_line_info)
         {
@@ -348,20 +365,16 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string)
             length += snprintf(NULL, 0, "\tin %s()\n", name);
         }
     }
-
     length += snprintf(NULL, 0, "%s", COLOR_RESET);
-    char buffer[length + 1];
+    buffer = (char*)malloc(length + 1);
     buffer[length] = '\0';
-
-    char* start = buffer + sprintf(buffer, "%s%s\n", COLOR_RED, error_string->chars);
-
-    for(int i = count; i >= 0; i--)
+    start = buffer + sprintf(buffer, "%s%s\n", COLOR_RED, error_string->chars);
+    for(i = count; i >= 0; i--)
     {
-        LitCallFrame* frame = &fiber->frames[i];
-        LitFunction* function = frame->function;
-        LitChunk* chunk = &function->chunk;
-        const char* name = function->name == NULL ? "unknown" : function->name->chars;
-
+        frame = &fiber->frames[i];
+        function = frame->function;
+        chunk = &function->chunk;
+        name = function->name == NULL ? "unknown" : function->name->chars;
         if(chunk->has_line_info)
         {
             start += sprintf(start, "[line %d] in %s()\n", (int)lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
@@ -371,49 +384,48 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string)
             start += sprintf(start, "\tin %s()\n", name);
         }
     }
-
     start += sprintf(start, "%s", COLOR_RESET);
     lit_error(vm->state, RUNTIME_ERROR, buffer);
+    free(buffer);
     reset_stack(vm);
-
     return false;
 }
 
-bool lit_vruntime_error(LitVm* vm, const char* format, va_list args)
+bool lit_vruntime_error(LitVM* vm, const char* format, va_list args)
 {
+    size_t buffer_size;
+    char* buffer;
     va_list args_copy;
     va_copy(args_copy, args);
-    size_t buffer_size = vsnprintf(NULL, 0, format, args_copy) + 1;
+    buffer_size = vsnprintf(NULL, 0, format, args_copy) + 1;
     va_end(args_copy);
-
-    char buffer[buffer_size];
+    buffer = (char*)malloc(buffer_size+1);
     vsnprintf(buffer, buffer_size, format, args);
-
-    return lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
+    return lit_handle_runtime_error(vm, lit_take_string(vm->state, buffer, buffer_size));
 }
 
-bool lit_runtime_error(LitVm* vm, const char* format, ...)
+bool lit_runtime_error(LitVM* vm, const char* format, ...)
 {
+    bool result;
     va_list args;
     va_start(args, format);
-    bool result = lit_vruntime_error(vm, format, args);
+    result = lit_vruntime_error(vm, format, args);
     va_end(args);
-
     return result;
 }
 
-bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...)
+bool lit_runtime_error_exiting(LitVM* vm, const char* format, ...)
 {
+    bool result;
     va_list args;
     va_start(args, format);
-    bool result = lit_vruntime_error(vm, format, args);
+    result = lit_vruntime_error(vm, format, args);
     va_end(args);
-
     lit_native_exit_jump();
     return result;
 }
 
-static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count)
+static bool call(LitVM* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count)
 {
     bool vararg;
     size_t amount;
@@ -500,7 +512,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
     return true;
 }
 
-static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
+static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
 {
     size_t i;
     bool bres;
@@ -521,18 +533,18 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
         }
         switch(OBJECT_TYPE(callee))
         {
-            case OBJECT_FUNCTION:
+            case LITTYPE_FUNCTION:
                 {
                     return call(vm, AS_FUNCTION(callee), NULL, arg_count);
                 }
                 break;
-            case OBJECT_CLOSURE:
+            case LITTYPE_CLOSURE:
                 {
                     closure = AS_CLOSURE(callee);
                     return call(vm, closure->function, closure, arg_count);
                 }
                 break;
-            case OBJECT_NATIVE_FUNCTION:
+            case LITTYPE_NATIVE_FUNCTION:
                 {
                     vm_pushgc(vm->state, false)
                     result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
@@ -542,7 +554,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     return false;
                 }
                 break;
-            case OBJECT_NATIVE_PRIMITIVE:
+            case LITTYPE_NATIVE_PRIMITIVE:
                 {
                     vm_pushgc(vm->state, false)
                     fiber = vm->fiber;
@@ -555,7 +567,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     return bres;
                 }
                 break;
-            case OBJECT_NATIVE_METHOD:
+            case LITTYPE_NATIVE_METHOD:
                 {
                     vm_pushgc(vm->state, false);
                     mthobj = AS_NATIVE_METHOD(callee);
@@ -570,7 +582,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     return false;
                 }
                 break;
-            case OBJECT_PRIMITIVE_METHOD:
+            case LITTYPE_PRIMITIVE_METHOD:
                 {
                     vm_pushgc(vm->state, false);
                     fiber = vm->fiber;
@@ -583,7 +595,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     return bres;
                 }
                 break;
-            case OBJECT_CLASS:
+            case LITTYPE_CLASS:
                 {
                     klass = AS_CLASS(callee);
                     instance = lit_create_instance(vm->state, klass);
@@ -601,7 +613,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
                     return false;
                 }
                 break;
-            case OBJECT_BOUND_METHOD:
+            case LITTYPE_BOUND_METHOD:
                 {
                     bound_method = AS_BOUND_METHOD(callee);
                     mthval = bound_method->method;
@@ -640,7 +652,6 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
 
         }
     }
-
     if(IS_NULL(callee))
     {
         lit_runtime_error(vm, "Attempt to call a null value");
@@ -649,14 +660,16 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count)
     {
         lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
     }
-
     return true;
 }
 
 static LitUpvalue* capture_upvalue(LitState* state, LitValue* local)
 {
-    LitUpvalue* previous_upvalue = NULL;
-    LitUpvalue* upvalue = state->vm->fiber->open_upvalues;
+    LitUpvalue* upvalue;
+    LitUpvalue* created_upvalue;
+    LitUpvalue* previous_upvalue;
+    previous_upvalue = NULL;
+    upvalue = state->vm->fiber->open_upvalues;
     while(upvalue != NULL && upvalue->location > local)
     {
         previous_upvalue = upvalue;
@@ -666,7 +679,7 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local)
     {
         return upvalue;
     }
-    LitUpvalue* created_upvalue = lit_create_upvalue(state, local);
+    created_upvalue = lit_create_upvalue(state, local);
     created_upvalue->next = upvalue;
     if(previous_upvalue == NULL)
     {
@@ -679,31 +692,30 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local)
     return created_upvalue;
 }
 
-static void close_upvalues(LitVm* vm, const LitValue* last)
+static void close_upvalues(LitVM* vm, const LitValue* last)
 {
-    LitFiber* fiber = vm->fiber;
-
+    LitFiber* fiber;
+    LitUpvalue* upvalue;
+    fiber = vm->fiber;
     while(fiber->open_upvalues != NULL && fiber->open_upvalues->location >= last)
     {
-        LitUpvalue* upvalue = fiber->open_upvalues;
-
+        upvalue = fiber->open_upvalues;
         upvalue->closed = *upvalue->location;
         upvalue->location = &upvalue->closed;
-
         fiber->open_upvalues = upvalue->next;
     }
 }
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module)
 {
-    LitVm* vm = state->vm;
-
-    LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
+    LitVM* vm;
+    LitFiber* fiber;
+    LitInterpretResult result;
+    vm = state->vm;
+    fiber = lit_create_fiber(state, module, module->main_function);
     vm->fiber = fiber;
-
     lit_push(vm, OBJECT_VALUE(module->main_function));
-    LitInterpretResult result = lit_interpret_fiber(state, fiber);
-
+    result = lit_interpret_fiber(state, fiber);
     return result;
 }
 
@@ -716,6 +728,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
     uint16_t offset;
     uint8_t index;
     uint8_t is_local;
+    uint8_t instruction;
     uint8_t* ip;
     LitCallFrame* frame;
     LitChunk* current_chunk;
@@ -752,7 +765,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
     LitValue* pval;
     LitValue* slots;
     LitValues* values;
-    LitVm* vm;
+    LitVM* vm;
+    (void)instruction;
     vm = state->vm;
     vm_pushgc(state, true);
     vm->fiber = fiber;
@@ -766,16 +780,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
     upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
     // Has to be inside of the function in order for goto to work
-    static void* dispatch_table[] =
-    {
-        #define OPCODE(name, effect) &&OP_##name,
-        #include "opcodes.inc"
-        #undef OPCODE
-    };
-
+    #ifdef LIT_USE_COMPUTEDGOTO
+        static void* dispatch_table[] =
+        {
+            #define OPCODE(name, effect) &&OP_##name,
+            #include "opcodes.inc"
+            #undef OPCODE
+        };
+    #endif
 #ifdef LIT_TRACE_EXECUTION
     TRACE_FRAME();
-    uint8_t instruction;
 #endif
 
     while(true)
@@ -792,511 +806,547 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
         }
 #endif
 
-#ifdef LIT_TRACE_EXECUTION
-        instruction = *ip++;
-
-        lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
-        goto* dispatch_table[instruction];
-#else
-        goto* dispatch_table[*ip++];
-#endif
-        op_case(POP)
+        #ifdef LIT_USE_COMPUTEDGOTO
+            #ifdef LIT_TRACE_EXECUTION
+                instruction = *ip++;
+                lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+                goto* dispatch_table[instruction];
+            #else
+                goto* dispatch_table[*ip++];
+            #endif
+        #else
+            instruction = *ip++;
+            //lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+            switch(instruction)
+        #endif
         {
-            vm_drop();
-            continue;
-        }
-        op_case(RETURN)
-        {
-            result = vm_pop();
-            close_upvalues(vm, slots);
-            vm_writeframe();
-            fiber->frame_count--;
-            if(frame->return_to_c)
+            op_case(POP)
             {
-                frame->return_to_c = false;
-                fiber->module->return_value = result;
-                fiber->stack_top = frame->slots;
-                return (LitInterpretResult){ INTERPRET_OK, result };
-            }
-            if(fiber->frame_count == 0)
-            {
-                fiber->module->return_value = result;
-                if(fiber->parent == NULL)
-                {
-                    vm_drop();
-                    state->allow_gc = was_allowed;
-                    return (LitInterpretResult){ INTERPRET_OK, result };
-                }
-                arg_count = fiber->arg_count;
-                parent = fiber->parent;
-                fiber->parent = NULL;
-                vm->fiber = fiber = parent;
-                vm_readframe();
-                TRACE_FRAME();
-                fiber->stack_top -= arg_count;
-                fiber->stack_top[-1] = result;
+                vm_drop();
                 continue;
             }
-            fiber->stack_top = frame->slots;
-            if(frame->result_ignored)
+            op_case(RETURN)
             {
-                fiber->stack_top++;
-                frame->result_ignored = false;
-            }
-            else
-            {
-                vm_push(result);
-            }
-            vm_readframe();
-            TRACE_FRAME();
-            continue;
-        }
-        op_case(CONSTANT)
-        {
-            vm_push(vm_readconstant());
-            continue;
-        }
-        op_case(CONSTANT_LONG)
-        {
-            vm_push(vm_readconstantlong());
-            continue;
-        }
-        op_case(TRUE)
-        {
-            vm_push(TRUE_VALUE);
-            continue;
-        }
-        op_case(FALSE)
-        {
-            vm_push(FALSE_VALUE);
-            continue;
-        }
-        op_case(NULL)
-        {
-            vm_push(NULL_VALUE);
-            continue;
-        }
-        op_case(ARRAY)
-        {
-            vm_push(OBJECT_VALUE(lit_create_array(state)));
-            continue;
-        }
-        op_case(OBJECT)
-        {
-            vm_push(OBJECT_VALUE(lit_create_instance(state, state->objectvalue_class)));
-            continue;
-        }
-        op_case(RANGE)
-        {
-            a = vm_pop();
-            b = vm_pop();
-            if(!IS_NUMBER(a) || !IS_NUMBER(b))
-            {
-                vm_rterror("Range operands must be number");
-            }
-            vm_push(OBJECT_VALUE(lit_create_range(state, lit_value_to_number(a), lit_value_to_number(b))));
-            continue;
-        }
-        op_case(NEGATE)
-        {
-            if(!IS_NUMBER(vm_peek(0)))
-            {
-                arg = vm_peek(0);
-                // Don't even ask me why
-                // This doesn't kill our performance, since it's a error anyway
-                if(IS_STRING(arg) && strcmp(AS_CSTRING(arg), "muffin") == 0)
+                result = vm_pop();
+                close_upvalues(vm, slots);
+                vm_writeframe();
+                fiber->frame_count--;
+                if(frame->return_to_c)
                 {
-                    vm_rterror("Idk, can you negate a muffin?");
+                    frame->return_to_c = false;
+                    fiber->module->return_value = result;
+                    fiber->stack_top = frame->slots;
+                    return (LitInterpretResult){ LITRESULT_OK, result };
+                }
+                if(fiber->frame_count == 0)
+                {
+                    fiber->module->return_value = result;
+                    if(fiber->parent == NULL)
+                    {
+                        vm_drop();
+                        state->allow_gc = was_allowed;
+                        return (LitInterpretResult){ LITRESULT_OK, result };
+                    }
+                    arg_count = fiber->arg_count;
+                    parent = fiber->parent;
+                    fiber->parent = NULL;
+                    vm->fiber = fiber = parent;
+                    vm_readframe();
+                    TRACE_FRAME();
+                    fiber->stack_top -= arg_count;
+                    fiber->stack_top[-1] = result;
+                    continue;
+                }
+                fiber->stack_top = frame->slots;
+                if(frame->result_ignored)
+                {
+                    fiber->stack_top++;
+                    frame->result_ignored = false;
                 }
                 else
+                {
+                    vm_push(result);
+                }
+                vm_readframe();
+                TRACE_FRAME();
+                continue;
+            }
+            op_case(CONSTANT)
+            {
+                vm_push(vm_readconstant());
+                continue;
+            }
+            op_case(CONSTANT_LONG)
+            {
+                vm_push(vm_readconstantlong());
+                continue;
+            }
+            op_case(TRUE)
+            {
+                vm_push(TRUE_VALUE);
+                continue;
+            }
+            op_case(FALSE)
+            {
+                vm_push(FALSE_VALUE);
+                continue;
+            }
+            op_case(NULL)
+            {
+                vm_push(NULL_VALUE);
+                continue;
+            }
+            op_case(ARRAY)
+            {
+                vm_push(OBJECT_VALUE(lit_create_array(state)));
+                continue;
+            }
+            op_case(OBJECT)
+            {
+                vm_push(OBJECT_VALUE(lit_create_instance(state, state->objectvalue_class)));
+                continue;
+            }
+            op_case(RANGE)
+            {
+                a = vm_pop();
+                b = vm_pop();
+                if(!IS_NUMBER(a) || !IS_NUMBER(b))
+                {
+                    vm_rterror("Range operands must be number");
+                }
+                vm_push(OBJECT_VALUE(lit_create_range(state, lit_value_to_number(a), lit_value_to_number(b))));
+                continue;
+            }
+            op_case(NEGATE)
+            {
+                if(!IS_NUMBER(vm_peek(0)))
+                {
+                    arg = vm_peek(0);
+                    // Don't even ask me why
+                    // This doesn't kill our performance, since it's a error anyway
+                    if(IS_STRING(arg) && strcmp(AS_CSTRING(arg), "muffin") == 0)
+                    {
+                        vm_rterror("Idk, can you negate a muffin?");
+                    }
+                    else
+                    {
+                        vm_rterror("Operand must be a number");
+                    }
+                }
+                tmpval = lit_number_to_value(-lit_value_to_number(vm_pop()));
+                vm_push(tmpval);
+                continue;
+            }
+            op_case(NOT)
+            {
+                if(IS_INSTANCE(vm_peek(0)))
+                {
+                    vm_writeframe();
+                    vm_invoke_from_class(AS_INSTANCE(vm_peek(0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
+                    continue;
+                }
+                tmpval = BOOL_VALUE(lit_is_falsey(vm_pop()));
+                vm_push(tmpval);
+                continue;
+            }
+            op_case(BNOT)
+            {
+                if(!IS_NUMBER(vm_peek(0)))
                 {
                     vm_rterror("Operand must be a number");
                 }
-            }
-            tmpval = lit_number_to_value(-lit_value_to_number(vm_pop()));
-            vm_push(tmpval);
-            continue;
-        }
-        op_case(NOT)
-        {
-            if(IS_INSTANCE(vm_peek(0)))
-            {
-                vm_writeframe();
-                vm_invoke_from_class(AS_INSTANCE(vm_peek(0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
+                tmpval = lit_number_to_value(~((int)lit_value_to_number(vm_pop())));
+                vm_push(tmpval);
                 continue;
             }
-            tmpval = BOOL_VALUE(lit_is_falsey(vm_pop()));
-            vm_push(tmpval);
-            continue;
-        }
-        op_case(BNOT)
-        {
-            if(!IS_NUMBER(vm_peek(0)))
+            op_case(ADD)
             {
-                vm_rterror("Operand must be a number");
-            }
-            tmpval = lit_number_to_value(~((int)lit_value_to_number(vm_pop())));
-            vm_push(tmpval);
-            continue;
-        }
-        op_case(ADD)
-        {
-            vm_binaryop(lit_number_to_value, +, "+");
-            continue;
-        }
-        op_case(SUBTRACT)
-        {
-            vm_binaryop(lit_number_to_value, -, "-");
-            continue;
-        }
-        op_case(MULTIPLY)
-        {
-            vm_binaryop(lit_number_to_value, *, "*");
-            continue;
-        }
-        op_case(POWER)
-        {
-            a = vm_peek(1);
-            b = vm_peek(0);
-            if(IS_NUMBER(a) && IS_NUMBER(b))
-            {
-                vm_drop();
-                *(fiber->stack_top - 1) = (lit_number_to_value(pow(lit_value_to_number(a), lit_value_to_number(b))));
+                vm_binaryop(lit_number_to_value, +, "+");
                 continue;
             }
-            vm_invokemethod(a, "**", 1);
-            continue;
-        }
-        op_case(DIVIDE)
-        {
-            vm_binaryop(lit_number_to_value, /, "/");
-            continue;
-        }
-        op_case(FLOOR_DIVIDE)
-        {
-            a = vm_peek(1);
-            b = vm_peek(0);
-            if(IS_NUMBER(a) && IS_NUMBER(b))
+            op_case(SUBTRACT)
             {
-                vm_drop();
-                *(fiber->stack_top - 1) = (lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b))));
-
+                vm_binaryop(lit_number_to_value, -, "-");
                 continue;
             }
-
-            vm_invokemethod(a, "#", 1);
-            continue;
-        }
-        op_case(MOD)
-        {
-            a = vm_peek(1);
-            b = vm_peek(0);
-            if(IS_NUMBER(a) && IS_NUMBER(b))
+            op_case(MULTIPLY)
             {
-                vm_drop();
-                *(fiber->stack_top - 1) = lit_number_to_value(fmod(lit_value_to_number(a), lit_value_to_number(b)));
+                vm_binaryop(lit_number_to_value, *, "*");
                 continue;
             }
-            vm_invokemethod(a, "%", 1);
-            continue;
-        }
-        op_case(BAND)
-        {
-            vm_bitwiseop(&, "&");
-            continue;
-        }
-        op_case(BOR)
-        {
-            vm_bitwiseop(|, "|");
-            continue;
-        }
-        op_case(BXOR)
-        {
-            vm_bitwiseop(^, "^");
-            continue;
-        }
-        op_case(LSHIFT)
-        {
-            vm_bitwiseop(<<, "<<");
-            continue;
-        }
-        op_case(RSHIFT)
-        {
-            vm_bitwiseop(>>, ">>");
-            continue;
-        }
-        op_case(EQUAL)
-        {
-            if(IS_INSTANCE(vm_peek(1)))
+            op_case(POWER)
             {
-                vm_writeframe();
-                vm_invoke_from_class(AS_INSTANCE(vm_peek(1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
-                continue;
-            }
-            a = vm_pop();
-            b = vm_pop();
-            vm_push(BOOL_VALUE(a == b));
-            continue;
-        }
-
-        op_case(GREATER)
-        {
-            vm_binaryop(BOOL_VALUE, >, ">");
-            continue;
-        }
-        op_case(GREATER_EQUAL)
-        {
-            vm_binaryop(BOOL_VALUE, >=, ">=");
-            continue;
-        }
-        op_case(LESS)
-        {
-            vm_binaryop(BOOL_VALUE, <, "<");
-            continue;
-        }
-        op_case(LESS_EQUAL)
-        {
-            vm_binaryop(BOOL_VALUE, <=, "<=");
-            continue;
-        }
-
-        op_case(SET_GLOBAL)
-        {
-            name = vm_readstringlong();
-            lit_table_set(state, &vm->globals->values, name, vm_peek(0));
-            continue;
-        }
-
-        op_case(GET_GLOBAL)
-        {
-            name = vm_readstringlong();
-            if(!lit_table_get(&vm->globals->values, name, &setval))
-            {
-                vm_push(NULL_VALUE);
-            }
-            else
-            {
-                vm_push(setval);
-            }
-            continue;
-        }
-        op_case(SET_LOCAL)
-        {
-            index = vm_readbyte();
-            slots[index] = vm_peek(0);
-            continue;
-        }
-        op_case(GET_LOCAL)
-        {
-            vm_push(slots[vm_readbyte()]);
-            continue;
-        }
-        op_case(SET_LOCAL_LONG)
-        {
-            index = vm_readshort();
-            slots[index] = vm_peek(0);
-            continue;
-        }
-        op_case(GET_LOCAL_LONG)
-        {
-            vm_push(slots[vm_readshort()]);
-            continue;
-        }
-        op_case(SET_PRIVATE)
-        {
-            index = vm_readbyte();
-            privates[index] = vm_peek(0);
-            continue;
-        }
-        op_case(GET_PRIVATE)
-        {
-            vm_push(privates[vm_readbyte()]);
-            continue;
-        }
-        op_case(SET_PRIVATE_LONG)
-        {
-            index = vm_readshort();
-            privates[index] = vm_peek(0);
-            continue;
-        }
-        op_case(GET_PRIVATE_LONG)
-        {
-            vm_push(privates[vm_readshort()]);
-            continue;
-        }
-        op_case(SET_UPVALUE)
-        {
-            index = vm_readbyte();
-            *upvalues[index]->location = vm_peek(0);
-            continue;
-        }
-        op_case(GET_UPVALUE)
-        {
-            vm_push(*upvalues[vm_readbyte()]->location);
-            continue;
-        }
-
-        op_case(JUMP_IF_FALSE)
-        {
-            offset = vm_readshort();
-            if(lit_is_falsey(vm_pop()))
-            {
-                ip += offset;
-            }
-            continue;
-        }
-        op_case(JUMP_IF_NULL)
-        {
-            offset = vm_readshort();
-            if(IS_NULL(vm_peek(0)))
-            {
-                ip += offset;
-            }
-            continue;
-        }
-        op_case(JUMP_IF_NULL_POPPING)
-        {
-            offset = vm_readshort();
-            if(IS_NULL(vm_pop()))
-            {
-                ip += offset;
-            }
-
-            continue;
-        }
-        op_case(JUMP)
-        {
-            offset = vm_readshort();
-            ip += offset;
-            continue;
-        }
-        op_case(JUMP_BACK)
-        {
-            offset = vm_readshort();
-            ip -= offset;
-            continue;
-        }
-        op_case(AND)
-        {
-            offset = vm_readshort();
-            if(lit_is_falsey(vm_peek(0)))
-            {
-                ip += offset;
-            }
-            else
-            {
-                vm_drop();
-            }
-            continue;
-        }
-        op_case(OR)
-        {
-            offset = vm_readshort();
-            if(lit_is_falsey(vm_peek(0)))
-            {
-                vm_drop();
-            }
-            else
-            {
-                ip += offset;
-            }
-            continue;
-        }
-        op_case(NULL_OR)
-        {
-            offset = vm_readshort();
-            if(IS_NULL(vm_peek(0)))
-            {
-                vm_drop();
-            }
-            else
-            {
-                ip += offset;
-            }
-            continue;
-        }
-        op_case(CALL)
-        {
-            arg_count = vm_readbyte();
-            vm_writeframe();
-            vm_callvalue(vm_peek(arg_count), arg_count);
-            continue;
-        }
-        op_case(CLOSURE)
-        {
-            function = AS_FUNCTION(vm_readconstantlong());
-            closure = lit_create_closure(state, function);
-            vm_push(OBJECT_VALUE(closure));
-            for(i = 0; i < closure->upvalue_count; i++)
-            {
-                is_local = vm_readbyte();
-                index = vm_readbyte();
-                if(is_local)
+                a = vm_peek(1);
+                b = vm_peek(0);
+                if(IS_NUMBER(a) && IS_NUMBER(b))
                 {
-                    closure->upvalues[i] = capture_upvalue(state, frame->slots + index);
+                    vm_drop();
+                    *(fiber->stack_top - 1) = (lit_number_to_value(pow(lit_value_to_number(a), lit_value_to_number(b))));
+                    continue;
+                }
+                vm_invokemethod(a, "**", 1);
+                continue;
+            }
+            op_case(DIVIDE)
+            {
+                vm_binaryop(lit_number_to_value, /, "/");
+                continue;
+            }
+            op_case(FLOOR_DIVIDE)
+            {
+                a = vm_peek(1);
+                b = vm_peek(0);
+                if(IS_NUMBER(a) && IS_NUMBER(b))
+                {
+                    vm_drop();
+                    *(fiber->stack_top - 1) = (lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b))));
+
+                    continue;
+                }
+
+                vm_invokemethod(a, "#", 1);
+                continue;
+            }
+            op_case(MOD)
+            {
+                a = vm_peek(1);
+                b = vm_peek(0);
+                if(IS_NUMBER(a) && IS_NUMBER(b))
+                {
+                    vm_drop();
+                    *(fiber->stack_top - 1) = lit_number_to_value(fmod(lit_value_to_number(a), lit_value_to_number(b)));
+                    continue;
+                }
+                vm_invokemethod(a, "%", 1);
+                continue;
+            }
+            op_case(BAND)
+            {
+                vm_bitwiseop(&, "&");
+                continue;
+            }
+            op_case(BOR)
+            {
+                vm_bitwiseop(|, "|");
+                continue;
+            }
+            op_case(BXOR)
+            {
+                vm_bitwiseop(^, "^");
+                continue;
+            }
+            op_case(LSHIFT)
+            {
+                vm_bitwiseop(<<, "<<");
+                continue;
+            }
+            op_case(RSHIFT)
+            {
+                vm_bitwiseop(>>, ">>");
+                continue;
+            }
+            op_case(EQUAL)
+            {
+                if(IS_INSTANCE(vm_peek(1)))
+                {
+                    vm_writeframe();
+                    vm_invoke_from_class(AS_INSTANCE(vm_peek(1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
+                    continue;
+                }
+                a = vm_pop();
+                b = vm_pop();
+                vm_push(BOOL_VALUE(a == b));
+                continue;
+            }
+
+            op_case(GREATER)
+            {
+                vm_binaryop(BOOL_VALUE, >, ">");
+                continue;
+            }
+            op_case(GREATER_EQUAL)
+            {
+                vm_binaryop(BOOL_VALUE, >=, ">=");
+                continue;
+            }
+            op_case(LESS)
+            {
+                vm_binaryop(BOOL_VALUE, <, "<");
+                continue;
+            }
+            op_case(LESS_EQUAL)
+            {
+                vm_binaryop(BOOL_VALUE, <=, "<=");
+                continue;
+            }
+
+            op_case(SET_GLOBAL)
+            {
+                name = vm_readstringlong();
+                lit_table_set(state, &vm->globals->values, name, vm_peek(0));
+                continue;
+            }
+
+            op_case(GET_GLOBAL)
+            {
+                name = vm_readstringlong();
+                if(!lit_table_get(&vm->globals->values, name, &setval))
+                {
+                    vm_push(NULL_VALUE);
                 }
                 else
                 {
-                    closure->upvalues[i] = upvalues[index];
+                    vm_push(setval);
                 }
+                continue;
             }
-            continue;
-        }
-        op_case(CLOSE_UPVALUE)
-        {
-            close_upvalues(vm, fiber->stack_top - 1);
-            vm_drop();
-            continue;
-        }
-        op_case(CLASS)
-        {
-            name = vm_readstringlong();
-            klassobj = lit_create_class(state, name);
-
-            vm_push(OBJECT_VALUE(klassobj));
-
-            klassobj->super = state->objectvalue_class;
-
-            lit_table_add_all(state, &klassobj->super->methods, &klassobj->methods);
-            lit_table_add_all(state, &klassobj->super->static_fields, &klassobj->static_fields);
-
-            lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klassobj));
-
-            continue;
-        }
-        op_case(GET_FIELD)
-        {
-            object = vm_peek(1);
-            if(IS_NULL(object))
+            op_case(SET_LOCAL)
             {
-                vm_rterror("Attempt to index a null value");
+                index = vm_readbyte();
+                slots[index] = vm_peek(0);
+                continue;
             }
-            name = AS_STRING(vm_peek(0));
-            if(IS_INSTANCE(object))
+            op_case(GET_LOCAL)
             {
-                instobj = AS_INSTANCE(object);
+                vm_push(slots[vm_readbyte()]);
+                continue;
+            }
+            op_case(SET_LOCAL_LONG)
+            {
+                index = vm_readshort();
+                slots[index] = vm_peek(0);
+                continue;
+            }
+            op_case(GET_LOCAL_LONG)
+            {
+                vm_push(slots[vm_readshort()]);
+                continue;
+            }
+            op_case(SET_PRIVATE)
+            {
+                index = vm_readbyte();
+                privates[index] = vm_peek(0);
+                continue;
+            }
+            op_case(GET_PRIVATE)
+            {
+                vm_push(privates[vm_readbyte()]);
+                continue;
+            }
+            op_case(SET_PRIVATE_LONG)
+            {
+                index = vm_readshort();
+                privates[index] = vm_peek(0);
+                continue;
+            }
+            op_case(GET_PRIVATE_LONG)
+            {
+                vm_push(privates[vm_readshort()]);
+                continue;
+            }
+            op_case(SET_UPVALUE)
+            {
+                index = vm_readbyte();
+                *upvalues[index]->location = vm_peek(0);
+                continue;
+            }
+            op_case(GET_UPVALUE)
+            {
+                vm_push(*upvalues[vm_readbyte()]->location);
+                continue;
+            }
 
-                if(!lit_table_get(&instobj->fields, name, &getval))
+            op_case(JUMP_IF_FALSE)
+            {
+                offset = vm_readshort();
+                if(lit_is_falsey(vm_pop()))
                 {
-                    if(lit_table_get(&instobj->klass->methods, name, &getval))
+                    ip += offset;
+                }
+                continue;
+            }
+            op_case(JUMP_IF_NULL)
+            {
+                offset = vm_readshort();
+                if(IS_NULL(vm_peek(0)))
+                {
+                    ip += offset;
+                }
+                continue;
+            }
+            op_case(JUMP_IF_NULL_POPPING)
+            {
+                offset = vm_readshort();
+                if(IS_NULL(vm_pop()))
+                {
+                    ip += offset;
+                }
+
+                continue;
+            }
+            op_case(JUMP)
+            {
+                offset = vm_readshort();
+                ip += offset;
+                continue;
+            }
+            op_case(JUMP_BACK)
+            {
+                offset = vm_readshort();
+                ip -= offset;
+                continue;
+            }
+            op_case(AND)
+            {
+                offset = vm_readshort();
+                if(lit_is_falsey(vm_peek(0)))
+                {
+                    ip += offset;
+                }
+                else
+                {
+                    vm_drop();
+                }
+                continue;
+            }
+            op_case(OR)
+            {
+                offset = vm_readshort();
+                if(lit_is_falsey(vm_peek(0)))
+                {
+                    vm_drop();
+                }
+                else
+                {
+                    ip += offset;
+                }
+                continue;
+            }
+            op_case(NULL_OR)
+            {
+                offset = vm_readshort();
+                if(IS_NULL(vm_peek(0)))
+                {
+                    vm_drop();
+                }
+                else
+                {
+                    ip += offset;
+                }
+                continue;
+            }
+            op_case(CALL)
+            {
+                arg_count = vm_readbyte();
+                vm_writeframe();
+                vm_callvalue(vm_peek(arg_count), arg_count);
+                continue;
+            }
+            op_case(CLOSURE)
+            {
+                function = AS_FUNCTION(vm_readconstantlong());
+                closure = lit_create_closure(state, function);
+                vm_push(OBJECT_VALUE(closure));
+                for(i = 0; i < closure->upvalue_count; i++)
+                {
+                    is_local = vm_readbyte();
+                    index = vm_readbyte();
+                    if(is_local)
                     {
-                        if(IS_FIELD(getval))
+                        closure->upvalues[i] = capture_upvalue(state, frame->slots + index);
+                    }
+                    else
+                    {
+                        closure->upvalues[i] = upvalues[index];
+                    }
+                }
+                continue;
+            }
+            op_case(CLOSE_UPVALUE)
+            {
+                close_upvalues(vm, fiber->stack_top - 1);
+                vm_drop();
+                continue;
+            }
+            op_case(CLASS)
+            {
+                name = vm_readstringlong();
+                klassobj = lit_create_class(state, name);
+
+                vm_push(OBJECT_VALUE(klassobj));
+
+                klassobj->super = state->objectvalue_class;
+
+                lit_table_add_all(state, &klassobj->super->methods, &klassobj->methods);
+                lit_table_add_all(state, &klassobj->super->static_fields, &klassobj->static_fields);
+
+                lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klassobj));
+
+                continue;
+            }
+            op_case(GET_FIELD)
+            {
+                object = vm_peek(1);
+                if(IS_NULL(object))
+                {
+                    vm_rterror("Attempt to index a null value");
+                }
+                name = AS_STRING(vm_peek(0));
+                if(IS_INSTANCE(object))
+                {
+                    instobj = AS_INSTANCE(object);
+
+                    if(!lit_table_get(&instobj->fields, name, &getval))
+                    {
+                        if(lit_table_get(&instobj->klass->methods, name, &getval))
+                        {
+                            if(IS_FIELD(getval))
+                            {
+                                field = AS_FIELD(getval);
+                                if(field->getter == NULL)
+                                {
+                                    vm_rterrorvarg("Class %s does not have a getter for the field %s",
+                                                       instobj->klass->name->chars, name->chars);
+                                }
+                                vm_drop();
+                                vm_writeframe();
+                                vm_callvalue(OBJECT_VALUE(AS_FIELD(getval)->getter), 0);
+                                vm_readframe();
+                                continue;
+                            }
+                            else
+                            {
+                                getval = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instobj), getval));
+                            }
+                        }
+                        else
+                        {
+                            getval = NULL_VALUE;
+                        }
+                    }
+                }
+                else if(IS_CLASS(object))
+                {
+                    klassobj = AS_CLASS(object);
+                    if(lit_table_get(&klassobj->static_fields, name, &getval))
+                    {
+                        if(IS_NATIVE_METHOD(getval) || IS_PRIMITIVE_METHOD(getval))
+                        {
+                            getval = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klassobj), getval));
+                        }
+                        else if(IS_FIELD(getval))
                         {
                             field = AS_FIELD(getval);
                             if(field->getter == NULL)
                             {
-                                vm_rterrorvarg("Class %s does not have a getter for the field %s",
-                                                   instobj->klass->name->chars, name->chars);
+                                vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
+                                                   name->chars);
                             }
                             vm_drop();
                             vm_writeframe();
-                            vm_callvalue(OBJECT_VALUE(AS_FIELD(getval)->getter), 0);
+                            vm_callvalue(OBJECT_VALUE(field->getter), 0);
                             vm_readframe();
                             continue;
-                        }
-                        else
-                        {
-                            getval = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instobj), getval));
                         }
                     }
                     else
@@ -1304,410 +1354,384 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         getval = NULL_VALUE;
                     }
                 }
-            }
-            else if(IS_CLASS(object))
-            {
-                klassobj = AS_CLASS(object);
-                if(lit_table_get(&klassobj->static_fields, name, &getval))
-                {
-                    if(IS_NATIVE_METHOD(getval) || IS_PRIMITIVE_METHOD(getval))
-                    {
-                        getval = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klassobj), getval));
-                    }
-                    else if(IS_FIELD(getval))
-                    {
-                        field = AS_FIELD(getval);
-                        if(field->getter == NULL)
-                        {
-                            vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
-                                               name->chars);
-                        }
-                        vm_drop();
-                        vm_writeframe();
-                        vm_callvalue(OBJECT_VALUE(field->getter), 0);
-                        vm_readframe();
-                        continue;
-                    }
-                }
                 else
                 {
-                    getval = NULL_VALUE;
-                }
-            }
-            else
-            {
-                klassobj = lit_get_class_for(state, object);
-                if(klassobj == NULL)
-                {
-                    vm_rterror("Only instances and classes have fields");
-                }
-                if(lit_table_get(&klassobj->methods, name, &getval))
-                {
-                    if(IS_FIELD(getval))
+                    klassobj = lit_get_class_for(state, object);
+                    if(klassobj == NULL)
                     {
-                        field = AS_FIELD(getval);
-                        if(field->getter == NULL)
+                        vm_rterror("GET_FIELD: only instances and classes have fields");
+                    }
+                    if(lit_table_get(&klassobj->methods, name, &getval))
+                    {
+                        if(IS_FIELD(getval))
                         {
-                            vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
-                                               name->chars);
+                            field = AS_FIELD(getval);
+                            if(field->getter == NULL)
+                            {
+                                vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
+                                                   name->chars);
+                            }
+                            vm_drop();
+                            vm_writeframe();
+                            vm_callvalue(OBJECT_VALUE(AS_FIELD(getval)->getter), 0);
+                            vm_readframe();
+                            continue;
                         }
-                        vm_drop();
-                        vm_writeframe();
-                        vm_callvalue(OBJECT_VALUE(AS_FIELD(getval)->getter), 0);
-                        vm_readframe();
-                        continue;
+                        else if(IS_NATIVE_METHOD(getval) || IS_PRIMITIVE_METHOD(getval))
+                        {
+                            getval = OBJECT_VALUE(lit_create_bound_method(state, object, getval));
+                        }
                     }
-                    else if(IS_NATIVE_METHOD(getval) || IS_PRIMITIVE_METHOD(getval))
+                    else
                     {
-                        getval = OBJECT_VALUE(lit_create_bound_method(state, object, getval));
+                        getval = NULL_VALUE;
                     }
                 }
-                else
+                vm_drop();// Pop field name
+                fiber->stack_top[-1] = getval;
+                continue;
+            }
+            op_case(SET_FIELD)
+            {
+                instval = vm_peek(2);
+                if(IS_NULL(instval))
                 {
-                    getval = NULL_VALUE;
+                    vm_rterror("Attempt to index a null value")
                 }
-            }
-            vm_drop();// Pop field name
-            fiber->stack_top[-1] = getval;
-            continue;
-        }
-        op_case(SET_FIELD)
-        {
-            instval = vm_peek(2);
-            if(IS_NULL(instval))
-            {
-                vm_rterror("Attempt to index a null value")
-            }
-            value = vm_peek(1);
-            field_name = AS_STRING(vm_peek(0));
-            if(IS_CLASS(instval))
-            {
-                klassobj = AS_CLASS(instval);
-                if(lit_table_get(&klassobj->static_fields, field_name, &setter) && IS_FIELD(setter))
+                value = vm_peek(1);
+                field_name = AS_STRING(vm_peek(0));
+                if(IS_CLASS(instval))
                 {
-                    field = AS_FIELD(setter);
-                    if(field->setter == NULL)
+                    klassobj = AS_CLASS(instval);
+                    if(lit_table_get(&klassobj->static_fields, field_name, &setter) && IS_FIELD(setter))
                     {
-                        vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
-                                           field_name->chars);
-                    }
+                        field = AS_FIELD(setter);
+                        if(field->setter == NULL)
+                        {
+                            vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
+                                               field_name->chars);
+                        }
 
-                    vm_dropn(2);
-                    vm_push(value);
-                    vm_writeframe();
-                    vm_callvalue(OBJECT_VALUE(field->setter), 1);
-                    vm_readframe();
-                    continue;
-                }
-                if(IS_NULL(value))
-                {
-                    lit_table_delete(&klassobj->static_fields, field_name);
-                }
-                else
-                {
-                    lit_table_set(state, &klassobj->static_fields, field_name, value);
-                }
-                vm_dropn(2);// Pop field name and the value
-                fiber->stack_top[-1] = value;
-            }
-            else if(IS_INSTANCE(instval))
-            {
-                instobj = AS_INSTANCE(instval);
-                if(lit_table_get(&instobj->klass->methods, field_name, &setter) && IS_FIELD(setter))
-                {
-                    field = AS_FIELD(setter);
-                    if(field->setter == NULL)
-                    {
-                        vm_rterrorvarg("Class %s does not have a setter for the field %s", instobj->klass->name->chars,
-                                           field_name->chars);
+                        vm_dropn(2);
+                        vm_push(value);
+                        vm_writeframe();
+                        vm_callvalue(OBJECT_VALUE(field->setter), 1);
+                        vm_readframe();
+                        continue;
                     }
-                    vm_dropn(2);
-                    vm_push(value);
-                    vm_writeframe();
-                    vm_callvalue(OBJECT_VALUE(field->setter), 1);
-                    vm_readframe();
-                    continue;
-                }
-                if(IS_NULL(value))
-                {
-                    lit_table_delete(&instobj->fields, field_name);
-                }
-                else
-                {
-                    lit_table_set(state, &instobj->fields, field_name, value);
-                }
-                vm_dropn(2);// Pop field name and the value
-                fiber->stack_top[-1] = value;
-            }
-            else
-            {
-                klassobj = lit_get_class_for(state, instval);
-                if(klassobj == NULL)
-                {
-                    vm_rterror("Only instances and classes have fields");
-                }
-                if(lit_table_get(&klassobj->methods, field_name, &setter) && IS_FIELD(setter))
-                {
-                    field = AS_FIELD(setter);
-                    if(field->setter == NULL)
+                    if(IS_NULL(value))
                     {
-                        vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
-                                           field_name->chars);
+                        lit_table_delete(&klassobj->static_fields, field_name);
                     }
-                    vm_dropn(2);
-                    vm_push(value);
-                    vm_writeframe();
-                    vm_callvalue(OBJECT_VALUE(field->setter), 1);
-                    vm_readframe();
-                    continue;
+                    else
+                    {
+                        lit_table_set(state, &klassobj->static_fields, field_name, value);
+                    }
+                    vm_dropn(2);// Pop field name and the value
+                    fiber->stack_top[-1] = value;
+                }
+                else if(IS_INSTANCE(instval))
+                {
+                    instobj = AS_INSTANCE(instval);
+                    if(lit_table_get(&instobj->klass->methods, field_name, &setter) && IS_FIELD(setter))
+                    {
+                        field = AS_FIELD(setter);
+                        if(field->setter == NULL)
+                        {
+                            vm_rterrorvarg("Class %s does not have a setter for the field %s", instobj->klass->name->chars,
+                                               field_name->chars);
+                        }
+                        vm_dropn(2);
+                        vm_push(value);
+                        vm_writeframe();
+                        vm_callvalue(OBJECT_VALUE(field->setter), 1);
+                        vm_readframe();
+                        continue;
+                    }
+                    if(IS_NULL(value))
+                    {
+                        lit_table_delete(&instobj->fields, field_name);
+                    }
+                    else
+                    {
+                        lit_table_set(state, &instobj->fields, field_name, value);
+                    }
+                    vm_dropn(2);// Pop field name and the value
+                    fiber->stack_top[-1] = value;
                 }
                 else
                 {
-                    vm_rterrorvarg("Class %s does not contain field %s", klassobj->name->chars, field_name->chars);
+                    klassobj = lit_get_class_for(state, instval);
+                    if(klassobj == NULL)
+                    {
+                        vm_rterror("SET_FIELD: only instances and classes have fields");
+                    }
+                    if(lit_table_get(&klassobj->methods, field_name, &setter) && IS_FIELD(setter))
+                    {
+                        field = AS_FIELD(setter);
+                        if(field->setter == NULL)
+                        {
+                            vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
+                                               field_name->chars);
+                        }
+                        vm_dropn(2);
+                        vm_push(value);
+                        vm_writeframe();
+                        vm_callvalue(OBJECT_VALUE(field->setter), 1);
+                        vm_readframe();
+                        continue;
+                    }
+                    else
+                    {
+                        vm_rterrorvarg("Class %s does not contain field %s", klassobj->name->chars, field_name->chars);
+                    }
                 }
+                continue;
             }
-            continue;
-        }
-        op_case(SUBSCRIPT_GET)
-        {
-            vm_invokemethod(vm_peek(1), "[]", 1);
-            continue;
-        }
-        op_case(SUBSCRIPT_SET)
-        {
-            vm_invokemethod(vm_peek(2), "[]", 2);
-            continue;
-        }
-        op_case(PUSH_ARRAY_ELEMENT)
-        {
-            values = &AS_ARRAY(vm_peek(1))->values;
-            arindex = values->count;
-            lit_values_ensure_size(state, values, arindex + 1);
-            values->values[arindex] = vm_peek(0);
-            vm_drop();
-            continue;
-        }
-        op_case(PUSH_OBJECT_FIELD)
-        {
-            operand = vm_peek(2);
-            if(IS_MAP(operand))
+            op_case(SUBSCRIPT_GET)
             {
-                lit_table_set(state, &AS_MAP(operand)->values, AS_STRING(vm_peek(1)), vm_peek(0));
+                vm_invokemethod(vm_peek(1), "[]", 1);
+                continue;
             }
-            else if(IS_INSTANCE(operand))
+            op_case(SUBSCRIPT_SET)
             {
-                lit_table_set(state, &AS_INSTANCE(operand)->fields, AS_STRING(vm_peek(1)), vm_peek(0));
+                vm_invokemethod(vm_peek(2), "[]", 2);
+                continue;
             }
-            else
+            op_case(PUSH_ARRAY_ELEMENT)
             {
-                vm_rterrorvarg("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
+                values = &AS_ARRAY(vm_peek(1))->values;
+                arindex = values->count;
+                lit_values_ensure_size(state, values, arindex + 1);
+                values->values[arindex] = vm_peek(0);
+                vm_drop();
+                continue;
             }
-            vm_dropn(2);
-            continue;
-        }
-        op_case(STATIC_FIELD)
-        {
-            lit_table_set(state, &AS_CLASS(vm_peek(1))->static_fields, vm_readstringlong(), vm_peek(0));
-            vm_drop();
-            continue;
-        }
-        op_case(METHOD)
-        {
-            klassobj = AS_CLASS(vm_peek(1));
-            name = vm_readstringlong();
-            if((klassobj->init_method == NULL || (klassobj->super != NULL && klassobj->init_method == ((LitClass*)klassobj->super)->init_method))
-               && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0)
+            op_case(PUSH_OBJECT_FIELD)
             {
-                klassobj->init_method = AS_OBJECT(vm_peek(0));
-            }
-            lit_table_set(state, &klassobj->methods, name, vm_peek(0));
-            vm_drop();
-            continue;
-        }
-        op_case(DEFINE_FIELD)
-        {
-            lit_table_set(state, &AS_CLASS(vm_peek(1))->methods, vm_readstringlong(), vm_peek(0));
-            vm_drop();
-            continue;
-        }
-        op_case(INVOKE)
-        {
-            vm_invokeoperation(false);
-            continue;
-        }
-        op_case(INVOKE_IGNORING)
-        {
-            vm_invokeoperation(true);
-            continue;
-        }
-        op_case(INVOKE_SUPER)
-        {
-            arg_count = vm_readbyte();
-            method_name = vm_readstringlong();
-            klassobj = AS_CLASS(vm_pop());
-            vm_writeframe();
-            vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, false);
-            continue;
-        }
-        op_case(INVOKE_SUPER_IGNORING)
-        {
-            arg_count = vm_readbyte();
-            method_name = vm_readstringlong();
-            klassobj = AS_CLASS(vm_pop());
-            vm_writeframe();
-            vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, true);
-            continue;
-        }
-        op_case(GET_SUPER_METHOD)
-        {
-            method_name = vm_readstringlong();
-            klassobj = AS_CLASS(vm_pop());
-            instval = vm_pop();
-            if(lit_table_get(&klassobj->methods, method_name, &value))
-            {
-                value = OBJECT_VALUE(lit_create_bound_method(state, instval, value));
-            }
-            else
-            {
-                value = NULL_VALUE;
-            }
-            vm_push(value);
-            continue;
-        }
-        op_case(INHERIT)
-        {
-            super = vm_peek(1);
-            if(!IS_CLASS(super))
-            {
-                vm_rterror("Superclass must be a class");
-            }
-            klassobj = AS_CLASS(vm_peek(0));
-            super_klass = AS_CLASS(super);
-            klassobj->super = super_klass;
-            klassobj->init_method = super_klass->init_method;
-            lit_table_add_all(state, &super_klass->methods, &klassobj->methods);
-            lit_table_add_all(state, &klassobj->super->static_fields, &klassobj->static_fields);
-            continue;
-        }
-        op_case(IS)
-        {
-            instval = vm_peek(1);
-            if(IS_NULL(instval))
-            {
+                operand = vm_peek(2);
+                if(IS_MAP(operand))
+                {
+                    lit_table_set(state, &AS_MAP(operand)->values, AS_STRING(vm_peek(1)), vm_peek(0));
+                }
+                else if(IS_INSTANCE(operand))
+                {
+                    lit_table_set(state, &AS_INSTANCE(operand)->fields, AS_STRING(vm_peek(1)), vm_peek(0));
+                }
+                else
+                {
+                    vm_rterrorvarg("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
+                }
                 vm_dropn(2);
-                vm_push(FALSE_VALUE);
-
                 continue;
             }
-            instance_klass = lit_get_class_for(state, instval);
-            klassval = vm_peek(0);
-            if(instance_klass == NULL || !IS_CLASS(klassval))
+            op_case(STATIC_FIELD)
             {
-                vm_rterror("operands must be an instance and a class");
-            }            
-            type = AS_CLASS(klassval);
-            found = false;
-            while(instance_klass != NULL)
+                lit_table_set(state, &AS_CLASS(vm_peek(1))->static_fields, vm_readstringlong(), vm_peek(0));
+                vm_drop();
+                continue;
+            }
+            op_case(METHOD)
             {
-                if(instance_klass == type)
+                klassobj = AS_CLASS(vm_peek(1));
+                name = vm_readstringlong();
+                if((klassobj->init_method == NULL || (klassobj->super != NULL && klassobj->init_method == ((LitClass*)klassobj->super)->init_method))
+                   && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0)
                 {
-                    found = true;
-                    break;
+                    klassobj->init_method = AS_OBJECT(vm_peek(0));
                 }
-                instance_klass = (LitClass*)instance_klass->super;
-            }
-            vm_dropn(2);// Drop the instance and class
-            vm_push(BOOL_VALUE(found));
-            continue;
-        }
-        op_case(POP_LOCALS)
-        {
-            vm_dropn(vm_readshort());
-            continue;
-        }
-        op_case(VARARG)
-        {
-            slot = slots[vm_readbyte()];
-            if(!IS_ARRAY(slot))
-            {
+                lit_table_set(state, &klassobj->methods, name, vm_peek(0));
+                vm_drop();
                 continue;
             }
-            values = &AS_ARRAY(slot)->values;
-            lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int)(fiber->stack_top - fiber->stack));
-            for(i = 0; i < values->count; i++)
+            op_case(DEFINE_FIELD)
             {
-                vm_push(values->values[i]);
+                lit_table_set(state, &AS_CLASS(vm_peek(1))->methods, vm_readstringlong(), vm_peek(0));
+                vm_drop();
+                continue;
             }
-            // Hot-bytecode patching, increment the amount of arguments to OP_CALL
-            ip[1] = ip[1] + values->count - 1;
-            continue;
-        }
+            op_case(INVOKE)
+            {
+                vm_invokeoperation(false);
+                continue;
+            }
+            op_case(INVOKE_IGNORING)
+            {
+                vm_invokeoperation(true);
+                continue;
+            }
+            op_case(INVOKE_SUPER)
+            {
+                arg_count = vm_readbyte();
+                method_name = vm_readstringlong();
+                klassobj = AS_CLASS(vm_pop());
+                vm_writeframe();
+                vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, false);
+                continue;
+            }
+            op_case(INVOKE_SUPER_IGNORING)
+            {
+                arg_count = vm_readbyte();
+                method_name = vm_readstringlong();
+                klassobj = AS_CLASS(vm_pop());
+                vm_writeframe();
+                vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, true);
+                continue;
+            }
+            op_case(GET_SUPER_METHOD)
+            {
+                method_name = vm_readstringlong();
+                klassobj = AS_CLASS(vm_pop());
+                instval = vm_pop();
+                if(lit_table_get(&klassobj->methods, method_name, &value))
+                {
+                    value = OBJECT_VALUE(lit_create_bound_method(state, instval, value));
+                }
+                else
+                {
+                    value = NULL_VALUE;
+                }
+                vm_push(value);
+                continue;
+            }
+            op_case(INHERIT)
+            {
+                super = vm_peek(1);
+                if(!IS_CLASS(super))
+                {
+                    vm_rterror("Superclass must be a class");
+                }
+                klassobj = AS_CLASS(vm_peek(0));
+                super_klass = AS_CLASS(super);
+                klassobj->super = super_klass;
+                klassobj->init_method = super_klass->init_method;
+                lit_table_add_all(state, &super_klass->methods, &klassobj->methods);
+                lit_table_add_all(state, &klassobj->super->static_fields, &klassobj->static_fields);
+                continue;
+            }
+            op_case(IS)
+            {
+                instval = vm_peek(1);
+                if(IS_NULL(instval))
+                {
+                    vm_dropn(2);
+                    vm_push(FALSE_VALUE);
 
-        op_case(REFERENCE_GLOBAL)
-        {
-            name = vm_readstringlong();
-            if(lit_table_get_slot(&vm->globals->values, name, &pval))
-            {
-                vm_push(OBJECT_VALUE(lit_create_reference(state, pval)));
+                    continue;
+                }
+                instance_klass = lit_get_class_for(state, instval);
+                klassval = vm_peek(0);
+                if(instance_klass == NULL || !IS_CLASS(klassval))
+                {
+                    vm_rterror("operands must be an instance and a class");
+                }            
+                type = AS_CLASS(klassval);
+                found = false;
+                while(instance_klass != NULL)
+                {
+                    if(instance_klass == type)
+                    {
+                        found = true;
+                        break;
+                    }
+                    instance_klass = (LitClass*)instance_klass->super;
+                }
+                vm_dropn(2);// Drop the instance and class
+                vm_push(BOOL_VALUE(found));
+                continue;
             }
-            else
+            op_case(POP_LOCALS)
             {
-                vm_rterror("Attempt to reference a null value");
+                vm_dropn(vm_readshort());
+                continue;
             }
-            continue;
-        }
-        op_case(REFERENCE_PRIVATE)
-        {
-            vm_push(OBJECT_VALUE(lit_create_reference(state, &privates[vm_readshort()])));
-            continue;
-        }
-        op_case(REFERENCE_LOCAL)
-        {
-            vm_push(OBJECT_VALUE(lit_create_reference(state, &slots[vm_readshort()])));
-            continue;
-        }
-        op_case(REFERENCE_UPVALUE)
-        {
-            vm_push(OBJECT_VALUE(lit_create_reference(state, upvalues[vm_readbyte()]->location)));
-            continue;
-        }
-        op_case(REFERENCE_FIELD)
-        {
-            object = vm_peek(1);
-            if(IS_NULL(object))
+            op_case(VARARG)
             {
-                vm_rterror("Attempt to index a null value");
+                slot = slots[vm_readbyte()];
+                if(!IS_ARRAY(slot))
+                {
+                    continue;
+                }
+                values = &AS_ARRAY(slot)->values;
+                lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int)(fiber->stack_top - fiber->stack));
+                for(i = 0; i < values->count; i++)
+                {
+                    vm_push(values->values[i]);
+                }
+                // Hot-bytecode patching, increment the amount of arguments to OP_CALL
+                ip[1] = ip[1] + values->count - 1;
+                continue;
             }
-            name = AS_STRING(vm_peek(0));
-            if(IS_INSTANCE(object))
+
+            op_case(REFERENCE_GLOBAL)
             {
-                if(!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &pval))
+                name = vm_readstringlong();
+                if(lit_table_get_slot(&vm->globals->values, name, &pval))
+                {
+                    vm_push(OBJECT_VALUE(lit_create_reference(state, pval)));
+                }
+                else
                 {
                     vm_rterror("Attempt to reference a null value");
                 }
+                continue;
             }
-            else
+            op_case(REFERENCE_PRIVATE)
             {
-                lit_print_value(object);
-                printf("\n");
-                vm_rterror("You can only reference fields of real instances");
+                vm_push(OBJECT_VALUE(lit_create_reference(state, &privates[vm_readshort()])));
+                continue;
             }
-            vm_drop();// Pop field name
-            fiber->stack_top[-1] = OBJECT_VALUE(lit_create_reference(state, pval));
-            continue;
-        }
-        op_case(SET_REFERENCE)
-        {
-            reference = vm_pop();
-            if(!IS_REFERENCE(reference))
+            op_case(REFERENCE_LOCAL)
             {
-                vm_rterror("Provided value is not a reference");
+                vm_push(OBJECT_VALUE(lit_create_reference(state, &slots[vm_readshort()])));
+                continue;
             }
-            *AS_REFERENCE(reference)->slot = vm_peek(0);
-            continue;
+            op_case(REFERENCE_UPVALUE)
+            {
+                vm_push(OBJECT_VALUE(lit_create_reference(state, upvalues[vm_readbyte()]->location)));
+                continue;
+            }
+            op_case(REFERENCE_FIELD)
+            {
+                object = vm_peek(1);
+                if(IS_NULL(object))
+                {
+                    vm_rterror("Attempt to index a null value");
+                }
+                name = AS_STRING(vm_peek(0));
+                if(IS_INSTANCE(object))
+                {
+                    if(!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &pval))
+                    {
+                        vm_rterror("Attempt to reference a null value");
+                    }
+                }
+                else
+                {
+                    lit_print_value(object);
+                    printf("\n");
+                    vm_rterror("You can only reference fields of real instances");
+                }
+                vm_drop();// Pop field name
+                fiber->stack_top[-1] = OBJECT_VALUE(lit_create_reference(state, pval));
+                continue;
+            }
+            op_case(SET_REFERENCE)
+            {
+                reference = vm_pop();
+                if(!IS_REFERENCE(reference))
+                {
+                    vm_rterror("Provided value is not a reference");
+                }
+                *AS_REFERENCE(reference)->slot = vm_peek(0);
+                continue;
+            }
+            vm_default()
+            {
+                vm_rterrorvarg("Unknown op code '%d'", *ip);
+                break;
+            }
         }
-        vm_rterrorvarg("Unknown op code '%d'", *ip);
-        break;
     }
 
     vm_returnerror();

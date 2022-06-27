@@ -1,5 +1,5 @@
 // Using a plus with two strings is just fine.
-print("Hello, " + "World!") // Expected: Hello, World!
+print("Hello, " + "World!\n") // Expected: Hello, World!
 
 /*
  * But when there is more stuff to it, it gets a bit memory-allocation-heavy.
@@ -10,10 +10,10 @@ var name = "Tim"
 var target = "icecream"
 var amount = 3
 
-print($"{name} went out for {target} and spent {amount} dollars") // Expected: Tim went out for icecream and spent 3 dollars
+print($"{name} went out for {target} and spent {amount} dollars\n") // Expected: Tim went out for icecream and spent 3 dollars
 
 // If you wonder, how it works under the hood, it's basically converted to something like this:
-print([ name, " went out for ", target, " and spent ", amount, " dollars"].join()) // Expected: Tim went out for icecream and spent 3 dollars
+print([ name, " went out for ", target, " and spent ", amount, " dollars"].join(), "\n") // Expected: Tim went out for icecream and spent 3 dollars
 
 /*
  * As you can see, to use interpolation in a string, you need to put a $ before the string start.
@@ -21,4 +21,4 @@ print([ name, " went out for ", target, " and spent ", amount, " dollars"].join(
  * If you want your { be just printed out, use \{
  */
 
-print($"\{} \{ {name}") // Expected: {} { Tim
+print($"\{} \{ {name}\n") // Expected: {} { Tim

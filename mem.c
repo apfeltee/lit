@@ -49,7 +49,7 @@ void lit_free_object(LitState* state, LitObject* object)
 
     switch(object->type)
     {
-        case OBJECT_STRING:
+        case LITTYPE_STRING:
             {
                 LitString* string = (LitString*)object;
                 LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
@@ -57,34 +57,34 @@ void lit_free_object(LitState* state, LitObject* object)
             }
             break;
 
-        case OBJECT_FUNCTION:
+        case LITTYPE_FUNCTION:
             {
                 LitFunction* function = (LitFunction*)object;
                 lit_free_chunk(state, &function->chunk);
                 LIT_FREE(state, LitFunction, object);
             }
             break;
-        case OBJECT_NATIVE_FUNCTION:
+        case LITTYPE_NATIVE_FUNCTION:
             {
                 LIT_FREE(state, LitNativeFunction, object);
             }
             break;
-        case OBJECT_NATIVE_PRIMITIVE:
+        case LITTYPE_NATIVE_PRIMITIVE:
             {
                 LIT_FREE(state, LitNativePrimitive, object);
             }
             break;
-        case OBJECT_NATIVE_METHOD:
+        case LITTYPE_NATIVE_METHOD:
             {
                 LIT_FREE(state, LitNativeMethod, object);
             }
             break;
-        case OBJECT_PRIMITIVE_METHOD:
+        case LITTYPE_PRIMITIVE_METHOD:
             {
                 LIT_FREE(state, LitPrimitiveMethod, object);
             }
             break;
-        case OBJECT_FIBER:
+        case LITTYPE_FIBER:
             {
                 LitFiber* fiber = (LitFiber*)object;
                 LIT_FREE_ARRAY(state, LitCallFrame, fiber->frames, fiber->frame_capacity);
@@ -92,26 +92,26 @@ void lit_free_object(LitState* state, LitObject* object)
                 LIT_FREE(state, LitFiber, object);
             }
             break;
-        case OBJECT_MODULE:
+        case LITTYPE_MODULE:
             {
                 LitModule* module = (LitModule*)object;
                 LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_count);
                 LIT_FREE(state, LitModule, object);
             }
             break;
-        case OBJECT_CLOSURE:
+        case LITTYPE_CLOSURE:
             {
                 LitClosure* closure = (LitClosure*)object;
                 LIT_FREE_ARRAY(state, LitUpvalue*, closure->upvalues, closure->upvalue_count);
                 LIT_FREE(state, LitClosure, object);
             }
             break;
-        case OBJECT_UPVALUE:
+        case LITTYPE_UPVALUE:
             {
                 LIT_FREE(state, LitUpvalue, object);
             }
             break;
-        case OBJECT_CLASS:
+        case LITTYPE_CLASS:
             {
                 LitClass* klass = (LitClass*)object;
                 lit_free_table(state, &klass->methods);
@@ -120,30 +120,30 @@ void lit_free_object(LitState* state, LitObject* object)
             }
             break;
 
-        case OBJECT_INSTANCE:
+        case LITTYPE_INSTANCE:
             {
                 lit_free_table(state, &((LitInstance*)object)->fields);
                 LIT_FREE(state, LitInstance, object);
             }
             break;
-        case OBJECT_BOUND_METHOD:
+        case LITTYPE_BOUND_METHOD:
             {
                 LIT_FREE(state, LitBoundMethod, object);
             }
             break;
-        case OBJECT_ARRAY:
+        case LITTYPE_ARRAY:
             {
                 lit_free_values(state, &((LitArray*)object)->values);
                 LIT_FREE(state, LitArray, object);
             }
             break;
-        case OBJECT_MAP:
+        case LITTYPE_MAP:
             {
                 lit_free_table(state, &((LitMap*)object)->values);
                 LIT_FREE(state, LitMap, object);
             }
             break;
-        case OBJECT_USERDATA:
+        case LITTYPE_USERDATA:
             {
                 LitUserdata* data = (LitUserdata*)object;
                 if(data->cleanup_fn != NULL)
@@ -157,17 +157,17 @@ void lit_free_object(LitState* state, LitObject* object)
                 LIT_FREE(state, LitUserdata, object);
             }
             break;
-        case OBJECT_RANGE:
+        case LITTYPE_RANGE:
             {
                 LIT_FREE(state, LitRange, object);
             }
             break;
-        case OBJECT_FIELD:
+        case LITTYPE_FIELD:
             {
                 LIT_FREE(state, LitField, object);
             }
             break;
-        case OBJECT_REFERENCE:
+        case LITTYPE_REFERENCE:
             {
                 LIT_FREE(state, LitReference, object);
             }
@@ -195,7 +195,7 @@ void lit_free_objects(LitState* state, LitObject* objects)
     state->vm->gray_capacity = 0;
 }
 
-void lit_mark_object(LitVm* vm, LitObject* object)
+void lit_mark_object(LitVM* vm, LitObject* object)
 {
     if(object == NULL || object->marked)
     {
@@ -219,7 +219,7 @@ void lit_mark_object(LitVm* vm, LitObject* object)
     vm->gray_stack[vm->gray_count++] = object;
 }
 
-void lit_mark_value(LitVm* vm, LitValue value)
+void lit_mark_value(LitVM* vm, LitValue value)
 {
     if(IS_OBJECT(value))
     {
@@ -227,7 +227,7 @@ void lit_mark_value(LitVm* vm, LitValue value)
     }
 }
 
-static void mark_roots(LitVm* vm)
+static void mark_roots(LitVM* vm)
 {
     size_t i;
     LitState* state;
@@ -256,7 +256,7 @@ static void mark_roots(LitVm* vm)
     lit_mark_table(vm, &vm->globals->values);
 }
 
-static void mark_array(LitVm* vm, LitValues* array)
+static void mark_array(LitVM* vm, LitValues* array)
 {
     size_t i;
     for(i = 0; i < array->count; i++)
@@ -265,7 +265,7 @@ static void mark_array(LitVm* vm, LitValues* array)
     }
 }
 
-static void blacken_object(LitVm* vm, LitObject* object)
+static void blacken_object(LitVM* vm, LitObject* object)
 {
 #ifdef LIT_LOG_BLACKING
     printf("%p blacken ", (void*)object);
@@ -274,16 +274,16 @@ static void blacken_object(LitVm* vm, LitObject* object)
 #endif
     switch(object->type)
     {
-        case OBJECT_NATIVE_FUNCTION:
-        case OBJECT_NATIVE_PRIMITIVE:
-        case OBJECT_NATIVE_METHOD:
-        case OBJECT_PRIMITIVE_METHOD:
-        case OBJECT_RANGE:
-        case OBJECT_STRING:
+        case LITTYPE_NATIVE_FUNCTION:
+        case LITTYPE_NATIVE_PRIMITIVE:
+        case LITTYPE_NATIVE_METHOD:
+        case LITTYPE_PRIMITIVE_METHOD:
+        case LITTYPE_RANGE:
+        case LITTYPE_STRING:
             {
             }
             break;
-        case OBJECT_USERDATA:
+        case LITTYPE_USERDATA:
             {
                 LitUserdata* data = (LitUserdata*)object;
                 if(data->cleanup_fn != NULL)
@@ -292,14 +292,14 @@ static void blacken_object(LitVm* vm, LitObject* object)
                 }
             }
             break;
-        case OBJECT_FUNCTION:
+        case LITTYPE_FUNCTION:
             {
                 LitFunction* function = (LitFunction*)object;
                 lit_mark_object(vm, (LitObject*)function->name);
                 mark_array(vm, &function->chunk.constants);
             }
             break;
-        case OBJECT_FIBER:
+        case LITTYPE_FIBER:
             {
                 LitFiber* fiber = (LitFiber*)object;
                 for(LitValue* slot = fiber->stack; slot < fiber->stack_top; slot++)
@@ -327,7 +327,7 @@ static void blacken_object(LitVm* vm, LitObject* object)
                 lit_mark_object(vm, (LitObject*)fiber->parent);
             }
             break;
-        case OBJECT_MODULE:
+        case LITTYPE_MODULE:
             {
                 LitModule* module = (LitModule*)object;
                 lit_mark_value(vm, module->return_value);
@@ -341,7 +341,7 @@ static void blacken_object(LitVm* vm, LitObject* object)
                 }
             }
             break;
-        case OBJECT_CLOSURE:
+        case LITTYPE_CLOSURE:
             {
                 LitClosure* closure = (LitClosure*)object;
                 lit_mark_object(vm, (LitObject*)closure->function);
@@ -355,12 +355,12 @@ static void blacken_object(LitVm* vm, LitObject* object)
                 }
             }
             break;
-        case OBJECT_UPVALUE:
+        case LITTYPE_UPVALUE:
             {
                 lit_mark_value(vm, ((LitUpvalue*)object)->closed);
             }
             break;
-        case OBJECT_CLASS:
+        case LITTYPE_CLASS:
             {
                 LitClass* klass = (LitClass*)object;
                 lit_mark_object(vm, (LitObject*)klass->name);
@@ -369,38 +369,38 @@ static void blacken_object(LitVm* vm, LitObject* object)
                 lit_mark_table(vm, &klass->static_fields);
             }
             break;
-        case OBJECT_INSTANCE:
+        case LITTYPE_INSTANCE:
             {
                 LitInstance* instance = (LitInstance*)object;
                 lit_mark_object(vm, (LitObject*)instance->klass);
                 lit_mark_table(vm, &instance->fields);
             }
             break;
-        case OBJECT_BOUND_METHOD:
+        case LITTYPE_BOUND_METHOD:
             {
                 LitBoundMethod* bound_method = (LitBoundMethod*)object;
                 lit_mark_value(vm, bound_method->receiver);
                 lit_mark_value(vm, bound_method->method);
             }
             break;
-        case OBJECT_ARRAY:
+        case LITTYPE_ARRAY:
             {
                 mark_array(vm, &((LitArray*)object)->values);
             }
             break;
-        case OBJECT_MAP:
+        case LITTYPE_MAP:
             {
                 lit_mark_table(vm, &((LitMap*)object)->values);
             }
             break;
-        case OBJECT_FIELD:
+        case LITTYPE_FIELD:
             {
                 LitField* field = (LitField*)object;
                 lit_mark_object(vm, (LitObject*)field->getter);
                 lit_mark_object(vm, (LitObject*)field->setter);
             }
             break;
-        case OBJECT_REFERENCE:
+        case LITTYPE_REFERENCE:
             {
                 lit_mark_value(vm, *((LitReference*)object)->slot);
             }
@@ -413,7 +413,7 @@ static void blacken_object(LitVm* vm, LitObject* object)
     }
 }
 
-static void trace_references(LitVm* vm)
+static void trace_references(LitVM* vm)
 {
     LitObject* object;
     while(vm->gray_count > 0)
@@ -423,7 +423,7 @@ static void trace_references(LitVm* vm)
     }
 }
 
-static void sweep(LitVm* vm)
+static void sweep(LitVM* vm)
 {
     LitObject* unreached;
     LitObject* previous;
@@ -455,7 +455,7 @@ static void sweep(LitVm* vm)
     }
 }
 
-uint64_t lit_collect_garbage(LitVm* vm)
+uint64_t lit_collect_garbage(LitVM* vm)
 {
     clock_t t;
     uint64_t before;

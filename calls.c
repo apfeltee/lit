@@ -4,7 +4,7 @@
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
-static bool ensure_fiber(LitVm* vm, LitFiber* fiber)
+static bool ensure_fiber(LitVM* vm, LitFiber* fiber)
 {
     size_t newcapacity;
     size_t osize;
@@ -39,7 +39,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
     size_t i;
     size_t vararg_count;
     size_t function_arg_count;
-    LitVm* vm;
+    LitVM* vm;
     LitFiber* fiber;
     LitCallFrame* frame;
     LitArray* array;
@@ -154,7 +154,7 @@ LitInterpretResult lit_call_closure(LitState* state, LitClosure* callee, LitValu
 
 LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count)
 {
-    LitVm* vm = state->vm;
+    LitVM* vm = state->vm;
 
     if(IS_OBJECT(callee))
     {
@@ -165,11 +165,11 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 
         LitObjectType type = OBJECT_TYPE(callee);
 
-        if(type == OBJECT_FUNCTION)
+        if(type == LITTYPE_FUNCTION)
         {
             return lit_call_function(state, AS_FUNCTION(callee), arguments, argument_count);
         }
-        else if(type == OBJECT_CLOSURE)
+        else if(type == LITTYPE_CLOSURE)
         {
             return lit_call_closure(state, AS_CLOSURE(callee), arguments, argument_count);
         }
@@ -186,7 +186,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 
         PUSH(instance);
 
-        if(type != OBJECT_CLASS)
+        if(type != LITTYPE_CLASS)
         {
             for(uint8_t i = 0; i < argument_count; i++)
             {
@@ -196,7 +196,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 
         switch(type)
         {
-            case OBJECT_NATIVE_FUNCTION:
+            case LITTYPE_NATIVE_FUNCTION:
             {
                 LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, argument_count, fiber->stack_top - argument_count);
                 fiber->stack_top = slot;
@@ -204,7 +204,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 RETURN_OK(result)
             }
 
-            case OBJECT_NATIVE_PRIMITIVE:
+            case LITTYPE_NATIVE_PRIMITIVE:
             {
                 AS_NATIVE_PRIMITIVE(callee)->function(vm, argument_count, fiber->stack_top - argument_count);
                 fiber->stack_top = slot;
@@ -212,7 +212,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 RETURN_OK(NULL_VALUE)
             }
 
-            case OBJECT_NATIVE_METHOD:
+            case LITTYPE_NATIVE_METHOD:
             {
                 LitNativeMethod* method = AS_NATIVE_METHOD(callee);
                 LitValue result = method->method(vm, *(fiber->stack_top - argument_count - 1), argument_count,
@@ -222,7 +222,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 RETURN_OK(result)
             }
 
-            case OBJECT_CLASS:
+            case LITTYPE_CLASS:
             {
                 LitClass* klass = AS_CLASS(callee);
                 *slot = OBJECT_VALUE(lit_create_instance(vm->state, klass));
@@ -236,7 +236,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 RETURN_OK(*slot);
             }
 
-            case OBJECT_BOUND_METHOD:
+            case LITTYPE_BOUND_METHOD:
             {
                 LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
                 LitValue method = bound_method->method;
@@ -265,7 +265,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 }
             }
 
-            case OBJECT_PRIMITIVE_METHOD:
+            case LITTYPE_PRIMITIVE_METHOD:
             {
                 AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - argument_count - 1), argument_count,
                                                     fiber->stack_top - argument_count);
@@ -300,7 +300,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count)
 {
-    LitVm* vm = state->vm;
+    LitVM* vm = state->vm;
     LitFiber* fiber = vm->fiber;
 
     if(fiber == NULL)
@@ -318,7 +318,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
         return lit_call_method(state, callee, method, arguments, argument_count);
     }
 
-    return (LitInterpretResult){ INTERPRET_INVALID, NULL_VALUE };
+    return (LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE };
 }
 
 LitString* lit_to_string(LitState* state, LitValue object)
@@ -354,7 +354,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
         return lit_to_string(state, *slot);
     }
 
-    LitVm* vm = state->vm;
+    LitVM* vm = state->vm;
     LitFiber* fiber = vm->fiber;
 
     if(ensure_fiber(vm, fiber))
@@ -396,7 +396,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
 
     LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
-    if(result.type != INTERPRET_OK)
+    if(result.type != LITRESULT_OK)
     {
         return CONST_STRING(state, "null");
     }
@@ -404,7 +404,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
     return AS_STRING(result.result);
 }
 
-LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, size_t argument_count)
+LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t argument_count)
 {
     LitValue value;
 

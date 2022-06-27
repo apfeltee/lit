@@ -41,7 +41,7 @@ static LitToken make_error_token(LitScanner* scanner, LitError error, ...)
 
     LitToken token;
 
-    token.type = TOKEN_ERROR;
+    token.type = LITTOK_ERROR;
     token.start = result->chars;
     token.length = result->length;
     token.line = scanner->line;
@@ -177,7 +177,7 @@ static bool skip_whitespace(LitScanner* scanner)
 static LitToken scan_string(LitScanner* scanner, bool interpolation)
 {
     LitState* state = scanner->state;
-    LitTokenType string_type = TOKEN_STRING;
+    LitTokenType string_type = LITTOK_STRING;
 
     LitBytes bytes;
     lit_init_bytes(&bytes);
@@ -194,10 +194,10 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
         {
             if(scanner->num_braces >= LIT_MAX_INTERPOLATION_NESTING)
             {
-                return make_error_token(scanner, ERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
+                return make_error_token(scanner, LITERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
             }
 
-            string_type = TOKEN_INTERPOLATION;
+            string_type = LITTOK_INTERPOLATION;
             scanner->braces[scanner->num_braces++] = 1;
 
             break;
@@ -206,7 +206,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
         switch(c)
         {
             case '\0':
-                return make_error_token(scanner, ERROR_UNTERMINATED_STRING);
+                return make_error_token(scanner, LITERROR_UNTERMINATED_STRING);
 
             case '\n':
             {
@@ -256,7 +256,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
 
                     default:
                     {
-                        return make_error_token(scanner, ERROR_INVALID_ESCAPE_CHAR, scanner->current[-1]);
+                        return make_error_token(scanner, LITERROR_INVALID_ESCAPE_CHAR, scanner->current[-1]);
                     }
                 }
 
@@ -335,10 +335,10 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_bina
     if(errno == ERANGE)
     {
         errno = 0;
-        return make_error_token(scanner, ERROR_NUMBER_IS_TOO_BIG);
+        return make_error_token(scanner, LITERROR_NUMBER_IS_TOO_BIG);
     }
 
-    LitToken token = make_token(scanner, TOKEN_NUMBER);
+    LitToken token = make_token(scanner, LITTOK_NUMBER);
     token.value = value;
     return token;
 }
@@ -392,7 +392,7 @@ static LitTokenType check_keyword(LitScanner* scanner, int start, int length, co
         return type;
     }
 
-    return TOKEN_IDENTIFIER;
+    return LITTOK_IDENTIFIER;
 }
 
 static LitTokenType scan_identtype(LitScanner* scanner)
@@ -400,7 +400,7 @@ static LitTokenType scan_identtype(LitScanner* scanner)
     switch(scanner->start[0])
     {
         case 'b':
-            return check_keyword(scanner, 1, 4, "reak", TOKEN_BREAK);
+            return check_keyword(scanner, 1, 4, "reak", LITTOK_BREAK);
 
         case 'c':
         {
@@ -409,7 +409,7 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'l':
-                        return check_keyword(scanner, 2, 3, "ass", TOKEN_CLASS);
+                        return check_keyword(scanner, 2, 3, "ass", LITTOK_CLASS);
 
                     case 'o':
                     {
@@ -418,9 +418,9 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                             switch(scanner->start[3])
                             {
                                 case 's':
-                                    return check_keyword(scanner, 2, 3, "nst", TOKEN_CONST);
+                                    return check_keyword(scanner, 2, 3, "nst", LITTOK_CONST);
                                 case 't':
-                                    return check_keyword(scanner, 2, 6, "ntinue", TOKEN_CONTINUE);
+                                    return check_keyword(scanner, 2, 6, "ntinue", LITTOK_CONTINUE);
                             }
                         }
                     }
@@ -437,9 +437,9 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'l':
-                        return check_keyword(scanner, 2, 2, "se", TOKEN_ELSE);
+                        return check_keyword(scanner, 2, 2, "se", LITTOK_ELSE);
                     case 'x':
-                        return check_keyword(scanner, 2, 4, "port", TOKEN_EXPORT);
+                        return check_keyword(scanner, 2, 4, "port", LITTOK_EXPORT);
                 }
             }
 
@@ -454,11 +454,11 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'a':
-                        return check_keyword(scanner, 2, 3, "lse", TOKEN_FALSE);
+                        return check_keyword(scanner, 2, 3, "lse", LITTOK_FALSE);
                     case 'o':
-                        return check_keyword(scanner, 2, 1, "r", TOKEN_FOR);
+                        return check_keyword(scanner, 2, 1, "r", LITTOK_FOR);
                     case 'u':
-                        return check_keyword(scanner, 2, 6, "nction", TOKEN_FUNCTION);
+                        return check_keyword(scanner, 2, 6, "nction", LITTOK_FUNCTION);
                 }
             }
 
@@ -472,11 +472,11 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 's':
-                        return check_keyword(scanner, 2, 0, "", TOKEN_IS);
+                        return check_keyword(scanner, 2, 0, "", LITTOK_IS);
                     case 'f':
-                        return check_keyword(scanner, 2, 0, "", TOKEN_IF);
+                        return check_keyword(scanner, 2, 0, "", LITTOK_IF);
                     case 'n':
-                        return check_keyword(scanner, 2, 0, "", TOKEN_IN);
+                        return check_keyword(scanner, 2, 0, "", LITTOK_IN);
                 }
             }
 
@@ -490,9 +490,9 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'u':
-                        return check_keyword(scanner, 2, 2, "ll", TOKEN_NULL);
+                        return check_keyword(scanner, 2, 2, "ll", LITTOK_NULL);
                     case 'e':
-                        return check_keyword(scanner, 2, 1, "w", TOKEN_NEW);
+                        return check_keyword(scanner, 2, 1, "w", LITTOK_NEW);
                 }
             }
 
@@ -506,9 +506,9 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[2])
                 {
                     case 'f':
-                        return check_keyword(scanner, 3, 0, "", TOKEN_REF);
+                        return check_keyword(scanner, 3, 0, "", LITTOK_REF);
                     case 't':
-                        return check_keyword(scanner, 3, 3, "urn", TOKEN_RETURN);
+                        return check_keyword(scanner, 3, 3, "urn", LITTOK_RETURN);
                 }
             }
 
@@ -516,7 +516,7 @@ static LitTokenType scan_identtype(LitScanner* scanner)
         }
 
         case 'o':
-            return check_keyword(scanner, 1, 7, "perator", TOKEN_OPERATOR);
+            return check_keyword(scanner, 1, 7, "perator", LITTOK_OPERATOR);
 
         case 's':
         {
@@ -525,11 +525,11 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'u':
-                        return check_keyword(scanner, 2, 3, "per", TOKEN_SUPER);
+                        return check_keyword(scanner, 2, 3, "per", LITTOK_SUPER);
                     case 't':
-                        return check_keyword(scanner, 2, 4, "atic", TOKEN_STATIC);
+                        return check_keyword(scanner, 2, 4, "atic", LITTOK_STATIC);
                     case 'e':
-                        return check_keyword(scanner, 2, 1, "t", TOKEN_SET);
+                        return check_keyword(scanner, 2, 1, "t", LITTOK_SET);
                 }
             }
 
@@ -543,9 +543,9 @@ static LitTokenType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'h':
-                        return check_keyword(scanner, 2, 2, "is", TOKEN_THIS);
+                        return check_keyword(scanner, 2, 2, "is", LITTOK_THIS);
                     case 'r':
-                        return check_keyword(scanner, 2, 2, "ue", TOKEN_TRUE);
+                        return check_keyword(scanner, 2, 2, "ue", LITTOK_TRUE);
                 }
             }
 
@@ -553,14 +553,14 @@ static LitTokenType scan_identtype(LitScanner* scanner)
         }
 
         case 'v':
-            return check_keyword(scanner, 1, 2, "ar", TOKEN_VAR);
+            return check_keyword(scanner, 1, 2, "ar", LITTOK_VAR);
         case 'w':
-            return check_keyword(scanner, 1, 4, "hile", TOKEN_WHILE);
+            return check_keyword(scanner, 1, 4, "hile", LITTOK_WHILE);
         case 'g':
-            return check_keyword(scanner, 1, 2, "et", TOKEN_GET);
+            return check_keyword(scanner, 1, 2, "et", LITTOK_GET);
     }
 
-    return TOKEN_IDENTIFIER;
+    return LITTOK_IDENTIFIER;
 }
 
 static LitToken scan_identifier(LitScanner* scanner)
@@ -577,7 +577,7 @@ LitToken lit_scan_token(LitScanner* scanner)
 {
     if(skip_whitespace(scanner))
     {
-        LitToken token = make_token(scanner, TOKEN_NEW_LINE);
+        LitToken token = make_token(scanner, LITTOK_NEW_LINE);
         scanner->line++;
 
         return token;
@@ -587,7 +587,7 @@ LitToken lit_scan_token(LitScanner* scanner)
 
     if(is_at_end(scanner))
     {
-        return make_token(scanner, TOKEN_EOF);
+        return make_token(scanner, LITTOK_EOF);
     }
 
     char c = advance(scanner);
@@ -605,9 +605,9 @@ LitToken lit_scan_token(LitScanner* scanner)
     switch(c)
     {
         case '(':
-            return make_token(scanner, TOKEN_LEFT_PAREN);
+            return make_token(scanner, LITTOK_LEFT_PAREN);
         case ')':
-            return make_token(scanner, TOKEN_RIGHT_PAREN);
+            return make_token(scanner, LITTOK_RIGHT_PAREN);
 
         case '{':
         {
@@ -616,7 +616,7 @@ LitToken lit_scan_token(LitScanner* scanner)
                 scanner->braces[scanner->num_braces - 1]++;
             }
 
-            return make_token(scanner, TOKEN_LEFT_BRACE);
+            return make_token(scanner, LITTOK_LEFT_BRACE);
         }
 
         case '}':
@@ -627,69 +627,69 @@ LitToken lit_scan_token(LitScanner* scanner)
                 return scan_string(scanner, true);
             }
 
-            return make_token(scanner, TOKEN_RIGHT_BRACE);
+            return make_token(scanner, LITTOK_RIGHT_BRACE);
         }
 
         case '[':
-            return make_token(scanner, TOKEN_LEFT_BRACKET);
+            return make_token(scanner, LITTOK_LEFT_BRACKET);
         case ']':
-            return make_token(scanner, TOKEN_RIGHT_BRACKET);
+            return make_token(scanner, LITTOK_RIGHT_BRACKET);
         case ';':
-            return make_token(scanner, TOKEN_SEMICOLON);
+            return make_token(scanner, LITTOK_SEMICOLON);
         case ',':
-            return make_token(scanner, TOKEN_COMMA);
+            return make_token(scanner, LITTOK_COMMA);
         case ':':
-            return make_token(scanner, TOKEN_COLON);
+            return make_token(scanner, LITTOK_COLON);
         case '~':
-            return make_token(scanner, TOKEN_TILDE);
+            return make_token(scanner, LITTOK_TILDE);
 
         case '+':
-            return match_tokens(scanner, '=', '+', TOKEN_PLUS_EQUAL, TOKEN_PLUS_PLUS, TOKEN_PLUS);
+            return match_tokens(scanner, '=', '+', LITTOK_PLUS_EQUAL, LITTOK_PLUS_PLUS, LITTOK_PLUS);
         case '-':
-            return match(scanner, '>') ? make_token(scanner, TOKEN_SMALL_ARROW) :
-                                         match_tokens(scanner, '=', '-', TOKEN_MINUS_EQUAL, TOKEN_MINUS_MINUS, TOKEN_MINUS);
+            return match(scanner, '>') ? make_token(scanner, LITTOK_SMALL_ARROW) :
+                                         match_tokens(scanner, '=', '-', LITTOK_MINUS_EQUAL, LITTOK_MINUS_MINUS, LITTOK_MINUS);
         case '/':
-            return match_token(scanner, '=', TOKEN_SLASH_EQUAL, TOKEN_SLASH);
+            return match_token(scanner, '=', LITTOK_SLASH_EQUAL, LITTOK_SLASH);
         case '#':
-            return match_token(scanner, '=', TOKEN_SHARP_EQUAL, TOKEN_SHARP);
+            return match_token(scanner, '=', LITTOK_SHARP_EQUAL, LITTOK_SHARP);
         case '!':
-            return match_token(scanner, '=', TOKEN_BANG_EQUAL, TOKEN_BANG);
+            return match_token(scanner, '=', LITTOK_BANG_EQUAL, LITTOK_BANG);
         case '?':
-            return match_token(scanner, '?', TOKEN_QUESTION_QUESTION, TOKEN_QUESTION);
+            return match_token(scanner, '?', LITTOK_QUESTION_QUESTION, LITTOK_QUESTION);
         case '%':
-            return match_token(scanner, '=', TOKEN_PERCENT_EQUAL, TOKEN_PERCENT);
+            return match_token(scanner, '=', LITTOK_PERCENT_EQUAL, LITTOK_PERCENT);
         case '^':
-            return match_token(scanner, '=', TOKEN_CARET_EQUAL, TOKEN_CARET);
+            return match_token(scanner, '=', LITTOK_CARET_EQUAL, LITTOK_CARET);
 
         case '>':
-            return match_tokens(scanner, '=', '>', TOKEN_GREATER_EQUAL, TOKEN_GREATER_GREATER, TOKEN_GREATER);
+            return match_tokens(scanner, '=', '>', LITTOK_GREATER_EQUAL, LITTOK_GREATER_GREATER, LITTOK_GREATER);
         case '<':
-            return match_tokens(scanner, '=', '<', TOKEN_LESS_EQUAL, TOKEN_LESS_LESS, TOKEN_LESS);
+            return match_tokens(scanner, '=', '<', LITTOK_LESS_EQUAL, LITTOK_LESS_LESS, LITTOK_LESS);
         case '*':
-            return match_tokens(scanner, '=', '*', TOKEN_STAR_EQUAL, TOKEN_STAR_STAR, TOKEN_STAR);
+            return match_tokens(scanner, '=', '*', LITTOK_STAR_EQUAL, LITTOK_STAR_STAR, LITTOK_STAR);
         case '=':
-            return match_tokens(scanner, '=', '>', TOKEN_EQUAL_EQUAL, TOKEN_ARROW, TOKEN_EQUAL);
+            return match_tokens(scanner, '=', '>', LITTOK_EQUAL_EQUAL, LITTOK_ARROW, LITTOK_EQUAL);
         case '|':
-            return match_tokens(scanner, '=', '|', TOKEN_BAR_EQUAL, TOKEN_BAR_BAR, TOKEN_BAR);
+            return match_tokens(scanner, '=', '|', LITTOK_BAR_EQUAL, LITTOK_BAR_BAR, LITTOK_BAR);
         case '&':
-            return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
+            return match_tokens(scanner, '=', '&', LITTOK_AMPERSAND_EQUAL, LITTOK_AMPERSAND_AMPERSAND, LITTOK_AMPERSAND);
 
 
         case '.':
         {
             if(!match(scanner, '.'))
             {
-                return make_token(scanner, TOKEN_DOT);
+                return make_token(scanner, LITTOK_DOT);
             }
 
-            return match_token(scanner, '.', TOKEN_DOT_DOT_DOT, TOKEN_DOT_DOT);
+            return match_token(scanner, '.', LITTOK_DOT_DOT_DOT, LITTOK_DOT_DOT);
         }
 
         case '$':
         {
             if(!match(scanner, '\"'))
             {
-                return make_error_token(scanner, ERROR_CHAR_EXPECTATION_UNMET, '\"', '$', peek(scanner));
+                return make_error_token(scanner, LITERROR_CHAR_EXPECTATION_UNMET, '\"', '$', peek(scanner));
             }
 
             return scan_string(scanner, true);
@@ -699,5 +699,5 @@ LitToken lit_scan_token(LitScanner* scanner)
             return scan_string(scanner, false);
     }
 
-    return make_error_token(scanner, ERROR_UNEXPECTED_CHAR, c);
+    return make_error_token(scanner, LITERROR_UNEXPECTED_CHAR, c);
 }

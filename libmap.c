@@ -1,8 +1,38 @@
 
 #include "lit.h"
 
+int util_table_iterator(LitTable* table, int number)
+{
+    if(table->count == 0)
+    {
+        return -1;
+    }
+    if(number >= (int)table->capacity)
+    {
+        return -1;
+    }
+    number++;
+    for(; number < table->capacity; number++)
+    {
+        if(table->entries[number].key != NULL)
+        {
+            return number;
+        }
+    }
 
-static LitValue objfn_map_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+    return -1;
+}
+
+LitValue util_table_iterator_key(LitTable* table, int index)
+{
+    if(table->capacity <= index)
+    {
+        return NULL_VALUE;
+    }
+    return OBJECT_VALUE(table->entries[index].key);
+}
+
+static LitValue objfn_map_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     (void)argc;
@@ -10,7 +40,7 @@ static LitValue objfn_map_constructor(LitVm* vm, LitValue instance, size_t argc,
     return OBJECT_VALUE(lit_create_map(vm->state));
 }
 
-static LitValue objfn_map_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitValue val;
     LitValue value;
@@ -43,7 +73,7 @@ static LitValue objfn_map_subscript(LitVm* vm, LitValue instance, size_t argc, L
     return value;
 }
 
-static LitValue objfn_map_addall(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_addall(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1);
     if(!IS_MAP(argv[0]))
@@ -55,7 +85,7 @@ static LitValue objfn_map_addall(LitVm* vm, LitValue instance, size_t argc, LitV
 }
 
 
-static LitValue objfn_map_clear(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_clear(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argv;
@@ -64,7 +94,7 @@ static LitValue objfn_map_clear(LitVm* vm, LitValue instance, size_t argc, LitVa
     return NULL_VALUE;
 }
 
-static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1);
     (void)vm;
@@ -75,14 +105,14 @@ static LitValue objfn_map_iterator(LitVm* vm, LitValue instance, size_t argc, Li
     return value == -1 ? NULL_VALUE : lit_number_to_value(value);
 }
 
-static LitValue objfn_map_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
     index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     return util_table_iterator_key(&AS_MAP(instance)->values, index);
 }
 
-static LitValue objfn_map_clone(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_clone(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -94,7 +124,7 @@ static LitValue objfn_map_clone(LitVm* vm, LitValue instance, size_t argc, LitVa
     return OBJECT_VALUE(map);
 }
 
-static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -199,7 +229,7 @@ static LitValue objfn_map_tostring(LitVm* vm, LitValue instance, size_t argc, Li
     return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
 }
 
-static LitValue objfn_map_length(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;

@@ -195,7 +195,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                     else
                     {
                         lit_error(preprocessor->state, (LitErrorType)0,
-                                  lit_format_error(preprocessor->state, 0, ERROR_UNKNOWN_MACRO, (int)(current - macro_start) - 1, macro_start)
+                                  lit_format_error(preprocessor->state, 0, LITERROR_UNKNOWN_MACRO, (int)(current - macro_start) - 1, macro_start)
                                   ->chars);
                         return false;
                     }
@@ -223,7 +223,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
 
     if(in_macro || preprocessor->open_ifs.count > 0 || depth > 0)
     {
-        lit_error(preprocessor->state, (LitErrorType)0, lit_format_error(preprocessor->state, 0, ERROR_UNCLOSED_MACRO)->chars);
+        lit_error(preprocessor->state, (LitErrorType)0, lit_format_error(preprocessor->state, 0, LITERROR_UNCLOSED_MACRO)->chars);
         return false;
     }
 

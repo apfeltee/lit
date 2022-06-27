@@ -53,10 +53,6 @@ void lit_values_write(LitState* state, LitValues* array, LitValue value)
     array->count++;
 }
 
-void lit_array_push(LitState* state, LitArray* array, LitValue val)
-{
-    lit_values_write(state, &array->values, val);
-}
 
 static void print_array(LitArray* array, size_t size)
 {
@@ -135,139 +131,148 @@ static void print_map(LitMap* map, size_t size)
 
 static void print_object(LitValue value)
 {
-    switch(OBJECT_TYPE(value))
+    LitObject* obj;
+    obj = AS_OBJECT(value);
+    if(obj != NULL)
     {
-        case OBJECT_STRING:
-            {
-                printf("%s", AS_CSTRING(value));
-            }
-            break;
-        case OBJECT_FUNCTION:
-            {
-                printf("function %s", AS_FUNCTION(value)->name->chars);
-            }
-            break;
-        case OBJECT_CLOSURE:
-            {
-                printf("closure %s", AS_CLOSURE(value)->function->name->chars);
-            }
-            break;
-        case OBJECT_NATIVE_PRIMITIVE:
-            {
-                printf("function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
-            }
-            break;
-        case OBJECT_NATIVE_FUNCTION:
-            {
-                printf("function %s", AS_NATIVE_FUNCTION(value)->name->chars);
-            }
-            break;
-        case OBJECT_PRIMITIVE_METHOD:
-            {
-                printf("function %s", AS_PRIMITIVE_METHOD(value)->name->chars);
-            }
-            break;
-        case OBJECT_NATIVE_METHOD:
-            {
-                printf("function %s", AS_NATIVE_METHOD(value)->name->chars);
-            }
-            break;
-        case OBJECT_FIBER:
-            {
-                printf("fiber");
-            }
-            break;
-        case OBJECT_MODULE:
-            {
-                printf("module %s", AS_MODULE(value)->name->chars);
-            }
-            break;
+        switch(obj->type)
+        {
+            case LITTYPE_STRING:
+                {
+                    printf("%s", AS_CSTRING(value));
+                }
+                break;
+            case LITTYPE_FUNCTION:
+                {
+                    printf("function %s", AS_FUNCTION(value)->name->chars);
+                }
+                break;
+            case LITTYPE_CLOSURE:
+                {
+                    printf("closure %s", AS_CLOSURE(value)->function->name->chars);
+                }
+                break;
+            case LITTYPE_NATIVE_PRIMITIVE:
+                {
+                    printf("function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
+                }
+                break;
+            case LITTYPE_NATIVE_FUNCTION:
+                {
+                    printf("function %s", AS_NATIVE_FUNCTION(value)->name->chars);
+                }
+                break;
+            case LITTYPE_PRIMITIVE_METHOD:
+                {
+                    printf("function %s", AS_PRIMITIVE_METHOD(value)->name->chars);
+                }
+                break;
+            case LITTYPE_NATIVE_METHOD:
+                {
+                    printf("function %s", AS_NATIVE_METHOD(value)->name->chars);
+                }
+                break;
+            case LITTYPE_FIBER:
+                {
+                    printf("fiber");
+                }
+                break;
+            case LITTYPE_MODULE:
+                {
+                    printf("module %s", AS_MODULE(value)->name->chars);
+                }
+                break;
 
-        case OBJECT_UPVALUE:
-            {
-                LitUpvalue* upvalue = AS_UPVALUE(value);
-                if(upvalue->location == NULL)
+            case LITTYPE_UPVALUE:
                 {
-                    lit_print_value(upvalue->closed);
+                    LitUpvalue* upvalue = AS_UPVALUE(value);
+                    if(upvalue->location == NULL)
+                    {
+                        lit_print_value(upvalue->closed);
+                    }
+                    else
+                    {
+                        print_object(*upvalue->location);
+                    }
                 }
-                else
+                break;
+            case LITTYPE_CLASS:
                 {
-                    print_object(*upvalue->location);
+                    printf("class %s", AS_CLASS(value)->name->chars);
                 }
-            }
-            break;
-        case OBJECT_CLASS:
-            {
-                printf("class %s", AS_CLASS(value)->name->chars);
-            }
-            break;
-        case OBJECT_INSTANCE:
-            {
-                printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
-            }
-            break;
-        case OBJECT_BOUND_METHOD:
-            {
-                lit_print_value(AS_BOUND_METHOD(value)->method);
-                return;
-            }
-            break;
-        case OBJECT_ARRAY:
-            {
-                #ifdef LIT_MINIMIZE_CONTAINERS
-                    printf("array");
-                #else
-                    LitArray* array = AS_ARRAY(value);
-                    size_t size = array->values.count;
-                    print_array(array, size);
-                #endif
-            }
-            break;
-        case OBJECT_MAP:
-            {
-                #ifdef LIT_MINIMIZE_CONTAINERS
-                    printf("map");
-                #else
-                    LitMap* map = AS_MAP(value);
-                    size_t size = map->values.count;
-                    print_map(map, size);
-                #endif
-            }
-            break;
-        case OBJECT_USERDATA:
-            {
-                printf("userdata");
-            }
-            break;
-        case OBJECT_RANGE:
-            {
-                LitRange* range = AS_RANGE(value);
-                printf("%g .. %g", range->from, range->to);
-            }
-            break;
-        case OBJECT_FIELD:
-            {
-                printf("field");
-            }
-            break;
-        case OBJECT_REFERENCE:
-            {
-                printf("reference => ");
-                LitValue* slot = AS_REFERENCE(value)->slot;
-                if(slot == NULL)
+                break;
+            case LITTYPE_INSTANCE:
                 {
-                    printf("null");
+                    printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
                 }
-                else
+                break;
+            case LITTYPE_BOUND_METHOD:
                 {
-                    lit_print_value(*slot);
+                    lit_print_value(AS_BOUND_METHOD(value)->method);
+                    return;
                 }
-            }
-            break;
-        default:
-            {
-            }
-            break;
+                break;
+            case LITTYPE_ARRAY:
+                {
+                    #ifdef LIT_MINIMIZE_CONTAINERS
+                        printf("array");
+                    #else
+                        LitArray* array = AS_ARRAY(value);
+                        size_t size = array->values.count;
+                        print_array(array, size);
+                    #endif
+                }
+                break;
+            case LITTYPE_MAP:
+                {
+                    #ifdef LIT_MINIMIZE_CONTAINERS
+                        printf("map");
+                    #else
+                        LitMap* map = AS_MAP(value);
+                        size_t size = map->values.count;
+                        print_map(map, size);
+                    #endif
+                }
+                break;
+            case LITTYPE_USERDATA:
+                {
+                    printf("userdata");
+                }
+                break;
+            case LITTYPE_RANGE:
+                {
+                    LitRange* range = AS_RANGE(value);
+                    printf("%g .. %g", range->from, range->to);
+                }
+                break;
+            case LITTYPE_FIELD:
+                {
+                    printf("field");
+                }
+                break;
+            case LITTYPE_REFERENCE:
+                {
+                    printf("reference => ");
+                    LitValue* slot = AS_REFERENCE(value)->slot;
+                    if(slot == NULL)
+                    {
+                        printf("null");
+                    }
+                    else
+                    {
+                        lit_print_value(*slot);
+                    }
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+    }
+    else
+    {
+        printf("!nullpointer!");
     }
 }
 

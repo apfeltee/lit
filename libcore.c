@@ -26,14 +26,14 @@ void lit_open_libraries(LitState* state)
         argv[0] = a; \
         argv[1] = b; \
         LitInterpretResult r = lit_call(state, callee, argv, 2); \
-        if(r.type != INTERPRET_OK) \
+        if(r.type != LITRESULT_OK) \
         { \
             return; \
         } \
         !lit_is_falsey(r.result); \
     })
 #else
-inline LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue a, LitValue b)
+static LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue a, LitValue b)
 {
     LitValue argv[2];
     argv[0] = a;
@@ -48,7 +48,7 @@ inline LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue
 
 static bool should_update_locals;
 
-void util_custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
+void util_custom_quick_sort(LitVM* vm, LitValue* l, int length, LitValue callee)
 {
     LitInterpretResult rt;
     LitState* state;
@@ -66,7 +66,7 @@ void util_custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
         //while(i < pivot_index && COMPARE(state, callee, l[i], pivot))
         while(i < pivot_index)
         {
-            if((rt = COMPARE(state, callee, l[i], pivot)).type != INTERPRET_OK)
+            if((rt = COMPARE(state, callee, l[i], pivot)).type != LITRESULT_OK)
             {
                 return;
             }
@@ -79,7 +79,7 @@ void util_custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
         //while(j > pivot_index && COMPARE(state, callee, pivot, l[j]))
         while(j > pivot_index)
         {
-            if((rt = COMPARE(state, callee, pivot, l[j])).type != INTERPRET_OK)
+            if((rt = COMPARE(state, callee, pivot, l[j])).type != LITRESULT_OK)
             {
                 return;
             }
@@ -101,44 +101,12 @@ void util_custom_quick_sort(LitVm* vm, LitValue* l, int length, LitValue callee)
     util_custom_quick_sort(vm, l + i, length - i, callee);
 }
 
-int util_table_iterator(LitTable* table, int number)
-{
-    if(table->count == 0)
-    {
-        return -1;
-    }
-    if(number >= (int)table->capacity)
-    {
-        return -1;
-    }
-    number++;
-    for(; number < table->capacity; number++)
-    {
-        if(table->entries[number].key != NULL)
-        {
-            return number;
-        }
-    }
-
-    return -1;
-}
-
-LitValue util_table_iterator_key(LitTable* table, int index)
-{
-    if(table->capacity <= index)
-    {
-        return NULL_VALUE;
-    }
-    return OBJECT_VALUE(table->entries[index].key);
-}
-
-
 bool util_is_fiber_done(LitFiber* fiber)
 {
     return fiber->frame_count == 0 || fiber->abort;
 }
 
-void util_run_fiber(LitVm* vm, LitFiber* fiber, LitValue* argv, size_t argc, bool catcher)
+void util_run_fiber(LitVM* vm, LitFiber* fiber, LitValue* argv, size_t argc, bool catcher)
 {
     bool vararg;
     int i;
@@ -187,48 +155,6 @@ void util_run_fiber(LitVm* vm, LitFiber* fiber, LitValue* argv, size_t argc, boo
 }
 
 
-int util_indexOf(LitArray* array, LitValue value)
-{
-    size_t i;
-    for(i = 0; i < array->values.count; i++)
-    {
-        if(array->values.values[i] == value)
-        {
-            return (int)i;
-        }
-    }
-    return -1;
-}
-
-
-LitValue util_removeAt(LitArray* array, size_t index)
-{
-    size_t i;
-    size_t count;
-    LitValue value;
-    LitValues* values;
-    values = &array->values;
-    count = values->count;
-    if(index >= count)
-    {
-        return NULL_VALUE;
-    }
-    value = values->values[index];
-    if(index == count - 1)
-    {
-        values->values[index] = NULL_VALUE;
-    }
-    else
-    {
-        for(i = index; i < values->count - 1; i++)
-        {
-            values->values[i] = values->values[i + 1];
-        }
-        values->values[count - 1] = NULL_VALUE;
-    }
-    values->count--;
-    return value;
-}
 
 static inline bool compare(LitState* state, LitValue a, LitValue b)
 {
@@ -278,7 +204,7 @@ void util_basic_quick_sort(LitState* state, LitValue* clist, int length)
     util_basic_quick_sort(state, clist + i, length - i);
 }
 
-bool util_interpret(LitVm* vm, LitModule* module)
+bool util_interpret(LitVM* vm, LitModule* module)
 {
     LitFunction* function;
     LitFiber* fiber;
@@ -296,7 +222,7 @@ bool util_interpret(LitVm* vm, LitModule* module)
     return true;
 }
 
-static bool compile_and_interpret(LitVm* vm, LitString* modname, char* source)
+static bool compile_and_interpret(LitVM* vm, LitString* modname, char* source)
 {
     LitModule* module;
     module = lit_compile_module(vm->state, modname, source);
@@ -314,7 +240,7 @@ bool util_test_file_exists(const char* filename)
     return stat(filename, &buffer) == 0;
 }
 
-bool util_attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const char* path, bool ignore_previous, bool folders)
+bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char* path, bool ignore_previous, bool folders)
 {
     bool found;
     size_t length;
@@ -457,7 +383,7 @@ bool util_attempt_to_require(LitVm* vm, LitValue* argv, size_t argc, const char*
     return true;
 }
 
-bool util_attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous)
+bool util_attempt_to_require_combined(LitVM* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous)
 {
     size_t a_length = strlen(a);
     size_t b_length = strlen(b);
@@ -470,7 +396,7 @@ bool util_attempt_to_require_combined(LitVm* vm, LitValue* argv, size_t argc, co
     return util_attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
 }
 
-LitValue util_invalid_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -478,14 +404,14 @@ LitValue util_invalid_constructor(LitVm* vm, LitValue instance, size_t argc, Lit
     return NULL_VALUE;
 }
 
-static LitValue objfn_number_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_number_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
     return OBJECT_VALUE(lit_number_to_string(vm->state, lit_value_to_number(instance)));
 }
 
-static LitValue objfn_number_tochar(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     char ch;
     (void)argc;
@@ -494,14 +420,14 @@ static LitValue objfn_number_tochar(LitVm* vm, LitValue instance, size_t argc, L
     return OBJECT_VALUE(lit_copy_string(vm->state, &ch, 1));
 }
 
-static LitValue objfn_bool_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_bool_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
     return OBJECT_CONST_STRING(vm->state, AS_BOOL(instance) ? "true" : "false");
 }
 
-static LitValue cfn_time(LitVm* vm, size_t argc, LitValue* argv)
+static LitValue cfn_time(LitVM* vm, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -509,7 +435,7 @@ static LitValue cfn_time(LitVm* vm, size_t argc, LitValue* argv)
     return lit_number_to_value((double)clock() / CLOCKS_PER_SEC);
 }
 
-static LitValue cfn_systemTime(LitVm* vm, size_t argc, LitValue* argv)
+static LitValue cfn_systemTime(LitVM* vm, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -517,7 +443,7 @@ static LitValue cfn_systemTime(LitVm* vm, size_t argc, LitValue* argv)
     return lit_number_to_value(time(NULL));
 }
 
-static LitValue cfn_print(LitVm* vm, size_t argc, LitValue* argv)
+static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
 {
     size_t i;
     if(argc == 0)
@@ -531,7 +457,7 @@ static LitValue cfn_print(LitVm* vm, size_t argc, LitValue* argv)
     return NULL_VALUE;
 }
 
-static bool cfn_eval(LitVm* vm, size_t argc, LitValue* argv)
+static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
 {
     char* code;
     (void)argc;
@@ -540,7 +466,7 @@ static bool cfn_eval(LitVm* vm, size_t argc, LitValue* argv)
     return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
-static bool cfn_require(LitVm* vm, size_t argc, LitValue* argv)
+static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;

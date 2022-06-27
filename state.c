@@ -59,7 +59,7 @@ LitState* lit_new_state()
     lit_init_emitter(state, state->emitter);
     state->optimizer = (LitOptimizer*)malloc(sizeof(LitOptimizer));
     lit_init_optimizer(state, state->optimizer);
-    state->vm = (LitVm*)malloc(sizeof(LitVm));
+    state->vm = (LitVM*)malloc(sizeof(LitVM));
     lit_init_vm(state, state->vm);
     lit_init_api(state);
     lit_open_core_library(state);
@@ -126,39 +126,40 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
     {
         switch(OBJECT_TYPE(value))
         {
-            case OBJECT_STRING:
+            case LITTYPE_STRING:
                 {
                     return state->stringvalue_class;
                 }
                 break;
-            case OBJECT_USERDATA:
+            case LITTYPE_USERDATA:
                 {
                     return state->objectvalue_class;
                 }
                 break;
-            case OBJECT_FIELD:
-            case OBJECT_FUNCTION:
-            case OBJECT_CLOSURE:
-            case OBJECT_NATIVE_FUNCTION:
-            case OBJECT_NATIVE_PRIMITIVE:
-            case OBJECT_BOUND_METHOD:
-            case OBJECT_PRIMITIVE_METHOD:
-            case OBJECT_NATIVE_METHOD:
+            case LITTYPE_FIELD:
+            case LITTYPE_FUNCTION:
+            case LITTYPE_CLOSURE:
+            case LITTYPE_NATIVE_FUNCTION:
+            case LITTYPE_NATIVE_PRIMITIVE:
+            case LITTYPE_BOUND_METHOD:
+            case LITTYPE_PRIMITIVE_METHOD:
+            case LITTYPE_NATIVE_METHOD:
                 {
                     return state->functionvalue_class;
                 }
                 break;
-            case OBJECT_FIBER:
+            case LITTYPE_FIBER:
                 {
+                    //fprintf(stderr, "should return fiber class ....\n");
                     return state->fibervalue_class;
                 }
                 break;
-            case OBJECT_MODULE:
+            case LITTYPE_MODULE:
                 {
                     return state->modulevalue_class;
                 }
                 break;
-            case OBJECT_UPVALUE:
+            case LITTYPE_UPVALUE:
                 {
                     LitUpvalue* upvalue = AS_UPVALUE(value);
                     if(upvalue->location == NULL)
@@ -168,32 +169,32 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
                     return lit_get_class_for(state, *upvalue->location);
                 }
                 break;
-            case OBJECT_INSTANCE:
+            case LITTYPE_INSTANCE:
                 {
                     return AS_INSTANCE(value)->klass;
                 }
                 break;
-            case OBJECT_CLASS:
+            case LITTYPE_CLASS:
                 {
                     return state->classvalue_class;
                 }
                 break;
-            case OBJECT_ARRAY:
+            case LITTYPE_ARRAY:
                 {
                     return state->arrayvalue_class;
                 }
                 break;
-            case OBJECT_MAP:
+            case LITTYPE_MAP:
                 {
                     return state->mapvalue_class;
                 }
                 break;
-            case OBJECT_RANGE:
+            case LITTYPE_RANGE:
                 {
                     return state->rangevalue_class;
                 }
                 break;
-            case OBJECT_REFERENCE:
+            case LITTYPE_REFERENCE:
                 {
                     LitValue* slot = AS_REFERENCE(value)->slot;
 
@@ -215,6 +216,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
     {
         return state->boolvalue_class;
     }
+    //fprintf(stderr, "failed to find class object!\n");
     return NULL;
 }
 
@@ -314,7 +316,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
     module = lit_compile_module(state, module_name, code);
     if(module == NULL)
     {
-        return (LitInterpretResult){ INTERPRET_COMPILE_ERROR, NULL_VALUE };
+        return (LitInterpretResult){ LITRESULT_COMPILE_ERROR, NULL_VALUE };
     }
     result = lit_interpret_module(state, module);
     fiber = module->main_fiber;
@@ -373,8 +375,9 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     FILE* file;
     LitString* module_name;
     LitModule* module;
-    LitModule* compiled_modules[num_files];
-    lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+    LitModule** compiled_modules;
+    compiled_modules = LIT_ALLOCATE(state, LitModule*, num_files+1);
+    lit_set_optimization_level(LITOPTLEVEL_EXTREME);
     for(i = 0; i < num_files; i++)
     {
         file_name = copy_string(files[i]);
@@ -409,6 +412,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
         lit_save_module(compiled_modules[i], file);
     }
     lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
+    LIT_FREE(state, LitModule, compiled_modules);
     fclose(file);
     return true;
 }
@@ -440,16 +444,15 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
 
 LitInterpretResult lit_interpret_file(LitState* state, const char* file)
 {
+    char* source;
     char* patched_file_name;
-    char* source = read_source(state, file, &patched_file_name);
-
+    LitInterpretResult result;
+    source = read_source(state, file, &patched_file_name);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
-
-    LitInterpretResult result = lit_interpret(state, patched_file_name, source);
-
+    result = lit_interpret(state, patched_file_name, source);
     free((void*)source);
     free(patched_file_name);
     return result;
@@ -476,7 +479,7 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
     else
     {
         lit_disassemble_module(module, source);
-        result = (LitInterpretResult){ INTERPRET_OK, NULL_VALUE };
+        result = (LitInterpretResult){ LITRESULT_OK, NULL_VALUE };
     }
     free((void*)source);
     free((void*)patched_file_name);
@@ -504,14 +507,16 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...)
 void lit_printf(LitState* state, const char* message, ...)
 {
     size_t buffer_size;
+    char* buffer;
     va_list args;
     va_start(args, message);
     va_list args_copy;
     va_copy(args_copy, args);
     buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
     va_end(args_copy);
-    char buffer[buffer_size];
+    buffer = (char*)malloc(buffer_size+1);
     vsnprintf(buffer, buffer_size, message, args);
     va_end(args);
     state->print_fn(state, buffer);
+    free(buffer);
 }

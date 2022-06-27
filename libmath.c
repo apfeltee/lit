@@ -13,67 +13,67 @@
     #define rand_r(v) (*v)
 #endif
 
-static LitValue math_abs(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_abs(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(fabs(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_cos(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_cos(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(cos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_sin(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_sin(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(sin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_tan(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_tan(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(tan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_acos(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_acos(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(acos(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_asin(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_asin(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(asin(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_atan(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_atan(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(atan(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_atan2(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_atan2(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(atan2(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
-static LitValue math_floor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_floor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(floor(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_ceil(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_ceil(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(ceil(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_round(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_round(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int places;
     double value;
@@ -87,19 +87,19 @@ static LitValue math_round(LitVm* vm, LitValue instance, size_t argc, LitValue* 
     return lit_number_to_value(round(value));
 }
 
-static LitValue math_min(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_min(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(fmin(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
-static LitValue math_max(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_max(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(fmax(LIT_CHECK_NUMBER(vm, argv, argc, 0), LIT_CHECK_NUMBER(vm, argv, argc, 1)));
 }
 
-static LitValue math_mid(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_mid(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     double x;
     double y;
@@ -115,31 +115,31 @@ static LitValue math_mid(LitVm* vm, LitValue instance, size_t argc, LitValue* ar
     return lit_number_to_value(fmax(y, fmin(x, z)));
 }
 
-static LitValue math_toRadians(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_toRadians(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(LIT_CHECK_NUMBER(vm, argv, argc, 0) * M_PI / 180.0);
 }
 
-static LitValue math_toDegrees(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_toDegrees(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(LIT_CHECK_NUMBER(vm, argv, argc, 0) * 180.0 / M_PI);
 }
 
-static LitValue math_sqrt(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_sqrt(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(sqrt(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_log(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_log(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
 }
 
-static LitValue math_exp(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue math_exp(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     return lit_number_to_value(exp(LIT_CHECK_NUMBER(vm, argv, argc, 0)));
@@ -168,7 +168,7 @@ static size_t* extract_random_data(LitState* state, LitValue instance)
     return (size_t*)AS_USERDATA(data)->data;
 }
 
-static LitValue random_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(size_t));
     lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
@@ -188,7 +188,7 @@ static LitValue random_constructor(LitVm* vm, LitValue instance, size_t argc, Li
     return OBJECT_VALUE(instance);
 }
 
-static LitValue random_setSeed(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_setSeed(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t* data = extract_random_data(vm->state, instance);
 
@@ -205,7 +205,7 @@ static LitValue random_setSeed(LitVm* vm, LitValue instance, size_t argc, LitVal
     return NULL_VALUE;
 }
 
-static LitValue random_int(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_int(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t* data = extract_random_data(vm->state, instance);
 
@@ -230,7 +230,7 @@ static LitValue random_int(LitVm* vm, LitValue instance, size_t argc, LitValue* 
     return lit_number_to_value(rand_r((unsigned int*)data));
 }
 
-static LitValue random_float(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_float(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t* data = extract_random_data(vm->state, instance);
     double value = (double)rand_r((unsigned int*)data) / RAND_MAX;
@@ -256,7 +256,7 @@ static LitValue random_float(LitVm* vm, LitValue instance, size_t argc, LitValue
     return lit_number_to_value(value);
 }
 
-static LitValue random_bool(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_bool(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     (void)argc;
@@ -264,7 +264,7 @@ static LitValue random_bool(LitVm* vm, LitValue instance, size_t argc, LitValue*
     return BOOL_VALUE(rand_r((unsigned int*)extract_random_data(vm->state, instance)) % 2);
 }
 
-static LitValue random_chance(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_chance(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     float c;
     c = LIT_GET_NUMBER(0, 50);
@@ -275,7 +275,7 @@ static LitValue random_chance(LitVm* vm, LitValue instance, size_t argc, LitValu
     return FALSE_VALUE;
 }
 
-static LitValue random_pick(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int value = rand_r((unsigned int*)extract_random_data(vm->state, instance));
 

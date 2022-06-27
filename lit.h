@@ -133,13 +133,6 @@
 #define TAG_FALSE 2u
 #define TAG_TRUE 3u
 
-#define IS_BOOL(v) (((v)&FALSE_VALUE) == FALSE_VALUE)
-#define IS_NULL(v) ((v) == NULL_VALUE)
-#define IS_NUMBER(v) (((v)&QNAN) != QNAN)
-#define IS_OBJECT(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
-
-#define AS_BOOL(v) ((v) == TRUE_VALUE)
-#define AS_OBJECT(v) ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
 
 #define BOOL_VALUE(boolean) \
     ((boolean) ? TRUE_VALUE : FALSE_VALUE)
@@ -147,7 +140,6 @@
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
 #define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
-
 
 #define OBJECT_VALUE(obj) \
     (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
@@ -167,55 +159,83 @@
 #define LIT_FREE(state, type, pointer) \
     lit_reallocate(state, pointer, sizeof(type), 0)
 
-#define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
+#define OBJECT_TYPE(value) \
+    (AS_OBJECT(value)->type)
+
+#define IS_BOOL(v) \
+    (((v)&FALSE_VALUE) == FALSE_VALUE)
+
+#define IS_NULL(v) \
+    ((v) == NULL_VALUE)
+
+#define IS_NUMBER(v) \
+    (((v)&QNAN) != QNAN)
+
+#define IS_OBJECT(v) \
+    (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
 #define IS_OBJECTS_TYPE(value, t) \
-    (IS_OBJECT(value) && AS_OBJECT(value)->type == t)
+    (IS_OBJECT(value) && (AS_OBJECT(value) != NULL) && (AS_OBJECT(value)->type == t))
 
 #define IS_STRING(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_STRING)
+    IS_OBJECTS_TYPE(value, LITTYPE_STRING)
 
 #define IS_FUNCTION(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
+    IS_OBJECTS_TYPE(value, LITTYPE_FUNCTION)
 
 #define IS_NATIVE_FUNCTION(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_NATIVE_FUNCTION)
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_FUNCTION)
 
 #define IS_NATIVE_PRIMITIVE(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_NATIVE_PRIMITIVE)
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_PRIMITIVE)
 
 #define IS_NATIVE_METHOD(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_NATIVE_METHOD)
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_METHOD)
 
 #define IS_PRIMITIVE_METHOD(value) \
-    IS_OBJECTS_TYPE(value, OBJECT_PRIMITIVE_METHOD)
+    IS_OBJECTS_TYPE(value, LITTYPE_PRIMITIVE_METHOD)
 
-#define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
+#define IS_MODULE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_MODULE)
 
-#define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
+#define IS_CLOSURE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_CLOSURE)
 
-#define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
+#define IS_UPVALUE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_UPVALUE)
 
-#define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
+#define IS_CLASS(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_CLASS)
 
-#define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
+#define IS_INSTANCE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_INSTANCE)
 
-#define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
+#define IS_ARRAY(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_ARRAY)
 
-#define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
+#define IS_MAP(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_MAP)
 
-#define IS_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_BOUND_METHOD)
+#define IS_BOUND_METHOD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_BOUND_METHOD)
 
-#define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
+#define IS_USERDATA(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_USERDATA)
 
-#define IS_RANGE(value) IS_OBJECTS_TYPE(value, OBJECT_RANGE)
+#define IS_RANGE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_RANGE)
 
-#define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
+#define IS_FIELD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_FIELD)
 
-#define IS_REFERENCE(value) IS_OBJECTS_TYPE(value, OBJECT_REFERENCE)
+#define IS_REFERENCE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_REFERENCE)
 
-#define IS_CALLABLE_FUNCTION(value) lit_is_callable_function(value)
+#define IS_CALLABLE_FUNCTION(value) \
+    lit_is_callable_function(value)
 
+#define AS_BOOL(v) ((v) == TRUE_VALUE)
+#define AS_OBJECT(v) ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)))
 #define AS_STRING(value) ((LitString*)AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*)AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*)AS_OBJECT(value))
@@ -241,10 +261,10 @@
 #define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), strlen(text)))
 #define CONST_STRING(state, text) lit_copy_string((state), (text), strlen(text))
 
-#define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ INTERPRET_INVALID, NULL_VALUE })
+#define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
 
-#define RETURN_RUNTIME_ERROR() return (LitInterpretResult){ INTERPRET_RUNTIME_ERROR, NULL_VALUE };
-#define RETURN_OK(r) return (LitInterpretResult){ INTERPRET_OK, r };
+#define RETURN_RUNTIME_ERROR() return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
+#define RETURN_OK(r) return (LitInterpretResult){ LITRESULT_OK, r };
 
 #define LIT_BEGIN_CLASS(name)                                               \
     {                                                                       \
@@ -412,241 +432,241 @@ enum LitOpCode
 
 enum LitExpressionType
 {
-    LITERAL_EXPRESSION,
-    BINARY_EXPRESSION,
-    UNARY_EXPRESSION,
-    VAR_EXPRESSION,
-    ASSIGN_EXPRESSION,
-    CALL_EXPRESSION,
-    SET_EXPRESSION,
-    GET_EXPRESSION,
-    LAMBDA_EXPRESSION,
-    ARRAY_EXPRESSION,
-    OBJECT_EXPRESSION,
-    SUBSCRIPT_EXPRESSION,
-    THIS_EXPRESSION,
-    SUPER_EXPRESSION,
-    RANGE_EXPRESSION,
-    IF_EXPRESSION,
-    INTERPOLATION_EXPRESSION,
-    REFERENCE_EXPRESSION
+    LITEXPR_LITERAL,
+    LITEXPR_BINARY,
+    LITEXPR_UNARY,
+    LITEXPR_VAR,
+    LITEXPR_ASSIGN,
+    LITEXPR_CALL,
+    LITEXPR_SET,
+    LITEXPR_GET,
+    LITEXPR_LAMBDA,
+    LITEXPR_ARRAY,
+    LITEXPR_OBJECT,
+    LITEXPR_SUBSCRIPT,
+    LITEXPR_THIS,
+    LITEXPR_SUPER,
+    LITEXPR_RANGE,
+    LITEXPR_IF,
+    LITEXPR_INTERPOLATION,
+    LITEXPR_REFERENCE
 };
 
 enum LitOptimizationLevel
 {
-    OPTIMIZATION_LEVEL_NONE,
-    OPTIMIZATION_LEVEL_REPL,
-    OPTIMIZATION_LEVEL_DEBUG,
-    OPTIMIZATION_LEVEL_RELEASE,
-    OPTIMIZATION_LEVEL_EXTREME,
+    LITOPTLEVEL_NONE,
+    LITOPTLEVEL_REPL,
+    LITOPTLEVEL_DEBUG,
+    LITOPTLEVEL_RELEASE,
+    LITOPTLEVEL_EXTREME,
 
-    OPTIMIZATION_LEVEL_TOTAL
+    LITOPTLEVEL_TOTAL
 };
 
 enum LitOptimization
 {
-    OPTIMIZATION_CONSTANT_FOLDING,
-    OPTIMIZATION_LITERAL_FOLDING,
-    OPTIMIZATION_UNUSED_VAR,
-    OPTIMIZATION_UNREACHABLE_CODE,
-    OPTIMIZATION_EMPTY_BODY,
-    OPTIMIZATION_LINE_INFO,
-    OPTIMIZATION_PRIVATE_NAMES,
-    OPTIMIZATION_C_FOR,
+    LITOPTSTATE_CONSTANT_FOLDING,
+    LITOPTSTATE_LITERAL_FOLDING,
+    LITOPTSTATE_UNUSED_VAR,
+    LITOPTSTATE_UNREACHABLE_CODE,
+    LITOPTSTATE_EMPTY_BODY,
+    LITOPTSTATE_LINE_INFO,
+    LITOPTSTATE_PRIVATE_NAMES,
+    LITOPTSTATE_C_FOR,
 
-    OPTIMIZATION_TOTAL
+    LITOPTSTATE_TOTAL
 };
 
 enum LitError
 {
     // Preprocessor errors
-    ERROR_UNCLOSED_MACRO,
-    ERROR_UNKNOWN_MACRO,
+    LITERROR_UNCLOSED_MACRO,
+    LITERROR_UNKNOWN_MACRO,
 
     // Scanner errors
-    ERROR_UNEXPECTED_CHAR,
-    ERROR_UNTERMINATED_STRING,
-    ERROR_INVALID_ESCAPE_CHAR,
-    ERROR_INTERPOLATION_NESTING_TOO_DEEP,
-    ERROR_NUMBER_IS_TOO_BIG,
-    ERROR_CHAR_EXPECTATION_UNMET,
+    LITERROR_UNEXPECTED_CHAR,
+    LITERROR_UNTERMINATED_STRING,
+    LITERROR_INVALID_ESCAPE_CHAR,
+    LITERROR_INTERPOLATION_NESTING_TOO_DEEP,
+    LITERROR_NUMBER_IS_TOO_BIG,
+    LITERROR_CHAR_EXPECTATION_UNMET,
 
     // Parser errors
-    ERROR_EXPECTATION_UNMET,
-    ERROR_INVALID_ASSIGMENT_TARGET,
-    ERROR_TOO_MANY_FUNCTION_ARGS,
-    ERROR_MULTIPLE_ELSE_BRANCHES,
-    ERROR_VAR_MISSING_IN_FORIN,
-    ERROR_NO_GETTER_AND_SETTER,
-    ERROR_STATIC_OPERATOR,
-    ERROR_SELF_INHERITED_CLASS,
-    ERROR_STATIC_FIELDS_AFTER_METHODS,
-    ERROR_MISSING_STATEMENT,
-    ERROR_EXPECTED_EXPRESSION,
-    ERROR_DEFAULT_ARG_CENTRED,
+    LITERROR_EXPECTATION_UNMET,
+    LITERROR_INVALID_ASSIGMENT_TARGET,
+    LITERROR_TOO_MANY_FUNCTION_ARGS,
+    LITERROR_MULTIPLE_ELSE_BRANCHES,
+    LITERROR_VAR_MISSING_IN_FORIN,
+    LITERROR_NO_GETTER_AND_SETTER,
+    LITERROR_STATIC_OPERATOR,
+    LITERROR_SELF_INHERITED_CLASS,
+    LITERROR_STATIC_FIELDS_AFTER_METHODS,
+    LITERROR_MISSING_STATEMENT,
+    LITERROR_EXPECTED_EXPRESSION,
+    LITERROR_DEFAULT_ARG_CENTRED,
 
     // Emitter errors
-    ERROR_TOO_MANY_CONSTANTS,
-    ERROR_TOO_MANY_PRIVATES,
-    ERROR_VAR_REDEFINED,
-    ERROR_TOO_MANY_LOCALS,
-    ERROR_TOO_MANY_UPVALUES,
-    ERROR_VARIABLE_USED_IN_INIT,
-    ERROR_JUMP_TOO_BIG,
-    ERROR_NO_SUPER,
-    ERROR_THIS_MISSUSE,
-    ERROR_SUPER_MISSUSE,
-    ERROR_UNKNOWN_EXPRESSION,
-    ERROR_UNKNOWN_STATEMENT,
-    ERROR_LOOP_JUMP_MISSUSE,
-    ERROR_RETURN_FROM_CONSTRUCTOR,
-    ERROR_STATIC_CONSTRUCTOR,
-    ERROR_CONSTANT_MODIFIED,
-    ERROR_INVALID_REFERENCE_TARGET,
+    LITERROR_TOO_MANY_CONSTANTS,
+    LITERROR_TOO_MANY_PRIVATES,
+    LITERROR_VAR_REDEFINED,
+    LITERROR_TOO_MANY_LOCALS,
+    LITERROR_TOO_MANY_UPVALUES,
+    LITERROR_VARIABLE_USED_IN_INIT,
+    LITERROR_JUMP_TOO_BIG,
+    LITERROR_NO_SUPER,
+    LITERROR_THIS_MISSUSE,
+    LITERROR_SUPER_MISSUSE,
+    LITERROR_UNKNOWN_EXPRESSION,
+    LITERROR_UNKNOWN_STATEMENT,
+    LITERROR_LOOP_JUMP_MISSUSE,
+    LITERROR_RETURN_FROM_CONSTRUCTOR,
+    LITERROR_STATIC_CONSTRUCTOR,
+    LITERROR_CONSTANT_MODIFIED,
+    LITERROR_INVALID_REFERENCE_TARGET,
 
-    ERROR_TOTAL
+    LITERROR_TOTAL
 };
 
 enum LitPrecedence
 {
-    PREC_NONE,
-    PREC_ASSIGNMENT,// =
-    PREC_OR,// ||
-    PREC_AND,// &&
-    PREC_BOR,// | ^
-    PREC_BAND,// &
-    PREC_SHIFT,// << >>
-    PREC_EQUALITY,// == !=
-    PREC_COMPARISON,// < > <= >=
-    PREC_COMPOUND,// += -= *= /= ++ --
-    PREC_TERM,// + -
-    PREC_FACTOR,// * /
-    PREC_IS,// is
-    PREC_RANGE,// ..
-    PREC_UNARY,// ! - ~
-    PREC_NULL,// ??
-    PREC_CALL,// . ()
-    PREC_PRIMARY
+    LITPREC_NONE,
+    LITPREC_ASSIGNMENT,// =
+    LITPREC_OR,// ||
+    LITPREC_AND,// &&
+    LITPREC_BOR,// | ^
+    LITPREC_BAND,// &
+    LITPREC_SHIFT,// << >>
+    LITPREC_EQUALITY,// == !=
+    LITPREC_COMPARISON,// < > <= >=
+    LITPREC_COMPOUND,// += -= *= /= ++ --
+    LITPREC_TERM,// + -
+    LITPREC_FACTOR,// * /
+    LITPREC_IS,// is
+    LITPREC_RANGE,// ..
+    LITPREC_UNARY,// ! - ~
+    LITPREC_NULL,// ??
+    LITPREC_CALL,// . ()
+    LITPREC_PRIMARY
 };
 
 enum LitStatementType
 {
-    EXPRESSION_STATEMENT,
-    BLOCK_STATEMENT,
-    IF_STATEMENT,
-    WHILE_STATEMENT,
-    FOR_STATEMENT,
-    VAR_STATEMENT,
-    CONTINUE_STATEMENT,
-    BREAK_STATEMENT,
-    FUNCTION_STATEMENT,
-    RETURN_STATEMENT,
-    METHOD_STATEMENT,
-    CLASS_STATEMENT,
-    FIELD_STATEMENT
+    LITSTMT_EXPRESSION,
+    LITSTMT_BLOCK,
+    LITSTMT_IF,
+    LITSTMT_WHILE,
+    LITSTMT_FOR,
+    LITSTMT_VAR,
+    LITSTMT_CONTINUE,
+    LITSTMT_BREAK,
+    LITSTMT_FUNCTION,
+    LITSTMT_RETURN,
+    LITSTMT_METHOD,
+    LITSTMT_CLASS,
+    LITSTMT_FIELD
 };
 
 enum LitTokenType
 {
-    TOKEN_NEW_LINE,
+    LITTOK_NEW_LINE,
 
     // Single-character tokens.
-    TOKEN_LEFT_PAREN,
-    TOKEN_RIGHT_PAREN,
-    TOKEN_LEFT_BRACE,
-    TOKEN_RIGHT_BRACE,
-    TOKEN_LEFT_BRACKET,
-    TOKEN_RIGHT_BRACKET,
-    TOKEN_COMMA,
-    TOKEN_SEMICOLON,
-    TOKEN_COLON,
+    LITTOK_LEFT_PAREN,
+    LITTOK_RIGHT_PAREN,
+    LITTOK_LEFT_BRACE,
+    LITTOK_RIGHT_BRACE,
+    LITTOK_LEFT_BRACKET,
+    LITTOK_RIGHT_BRACKET,
+    LITTOK_COMMA,
+    LITTOK_SEMICOLON,
+    LITTOK_COLON,
 
     // One or two character tokens.
-    TOKEN_BAR_EQUAL,
-    TOKEN_BAR,
-    TOKEN_BAR_BAR,
-    TOKEN_AMPERSAND_EQUAL,
-    TOKEN_AMPERSAND,
-    TOKEN_AMPERSAND_AMPERSAND,
-    TOKEN_BANG,
-    TOKEN_BANG_EQUAL,
-    TOKEN_EQUAL,
-    TOKEN_EQUAL_EQUAL,
-    TOKEN_GREATER,
-    TOKEN_GREATER_EQUAL,
-    TOKEN_GREATER_GREATER,
-    TOKEN_LESS,
-    TOKEN_LESS_EQUAL,
-    TOKEN_LESS_LESS,
-    TOKEN_PLUS,
-    TOKEN_PLUS_EQUAL,
-    TOKEN_PLUS_PLUS,
-    TOKEN_MINUS,
-    TOKEN_MINUS_EQUAL,
-    TOKEN_MINUS_MINUS,
-    TOKEN_STAR,
-    TOKEN_STAR_EQUAL,
-    TOKEN_STAR_STAR,
-    TOKEN_SLASH,
-    TOKEN_SLASH_EQUAL,
-    TOKEN_QUESTION,
-    TOKEN_QUESTION_QUESTION,
-    TOKEN_PERCENT,
-    TOKEN_PERCENT_EQUAL,
-    TOKEN_ARROW,
-    TOKEN_SMALL_ARROW,
-    TOKEN_TILDE,
-    TOKEN_CARET,
-    TOKEN_CARET_EQUAL,
-    TOKEN_DOT,
-    TOKEN_DOT_DOT,
-    TOKEN_DOT_DOT_DOT,
-    TOKEN_SHARP,
-    TOKEN_SHARP_EQUAL,
+    LITTOK_BAR_EQUAL,
+    LITTOK_BAR,
+    LITTOK_BAR_BAR,
+    LITTOK_AMPERSAND_EQUAL,
+    LITTOK_AMPERSAND,
+    LITTOK_AMPERSAND_AMPERSAND,
+    LITTOK_BANG,
+    LITTOK_BANG_EQUAL,
+    LITTOK_EQUAL,
+    LITTOK_EQUAL_EQUAL,
+    LITTOK_GREATER,
+    LITTOK_GREATER_EQUAL,
+    LITTOK_GREATER_GREATER,
+    LITTOK_LESS,
+    LITTOK_LESS_EQUAL,
+    LITTOK_LESS_LESS,
+    LITTOK_PLUS,
+    LITTOK_PLUS_EQUAL,
+    LITTOK_PLUS_PLUS,
+    LITTOK_MINUS,
+    LITTOK_MINUS_EQUAL,
+    LITTOK_MINUS_MINUS,
+    LITTOK_STAR,
+    LITTOK_STAR_EQUAL,
+    LITTOK_STAR_STAR,
+    LITTOK_SLASH,
+    LITTOK_SLASH_EQUAL,
+    LITTOK_QUESTION,
+    LITTOK_QUESTION_QUESTION,
+    LITTOK_PERCENT,
+    LITTOK_PERCENT_EQUAL,
+    LITTOK_ARROW,
+    LITTOK_SMALL_ARROW,
+    LITTOK_TILDE,
+    LITTOK_CARET,
+    LITTOK_CARET_EQUAL,
+    LITTOK_DOT,
+    LITTOK_DOT_DOT,
+    LITTOK_DOT_DOT_DOT,
+    LITTOK_SHARP,
+    LITTOK_SHARP_EQUAL,
 
     // Literals.
-    TOKEN_IDENTIFIER,
-    TOKEN_STRING,
-    TOKEN_INTERPOLATION,
-    TOKEN_NUMBER,
+    LITTOK_IDENTIFIER,
+    LITTOK_STRING,
+    LITTOK_INTERPOLATION,
+    LITTOK_NUMBER,
 
     // Keywords.
-    TOKEN_CLASS,
-    TOKEN_ELSE,
-    TOKEN_FALSE,
-    TOKEN_FOR,
-    TOKEN_FUNCTION,
-    TOKEN_IF,
-    TOKEN_NULL,
-    TOKEN_RETURN,
-    TOKEN_SUPER,
-    TOKEN_THIS,
-    TOKEN_TRUE,
-    TOKEN_VAR,
-    TOKEN_WHILE,
-    TOKEN_CONTINUE,
-    TOKEN_BREAK,
-    TOKEN_NEW,
-    TOKEN_EXPORT,
-    TOKEN_IS,
-    TOKEN_STATIC,
-    TOKEN_OPERATOR,
-    TOKEN_GET,
-    TOKEN_SET,
-    TOKEN_IN,
-    TOKEN_CONST,
-    TOKEN_REF,
+    LITTOK_CLASS,
+    LITTOK_ELSE,
+    LITTOK_FALSE,
+    LITTOK_FOR,
+    LITTOK_FUNCTION,
+    LITTOK_IF,
+    LITTOK_NULL,
+    LITTOK_RETURN,
+    LITTOK_SUPER,
+    LITTOK_THIS,
+    LITTOK_TRUE,
+    LITTOK_VAR,
+    LITTOK_WHILE,
+    LITTOK_CONTINUE,
+    LITTOK_BREAK,
+    LITTOK_NEW,
+    LITTOK_EXPORT,
+    LITTOK_IS,
+    LITTOK_STATIC,
+    LITTOK_OPERATOR,
+    LITTOK_GET,
+    LITTOK_SET,
+    LITTOK_IN,
+    LITTOK_CONST,
+    LITTOK_REF,
 
-    TOKEN_ERROR,
-    TOKEN_EOF
+    LITTOK_ERROR,
+    LITTOK_EOF
 };
 
 enum LitInterpretResultType
 {
-    INTERPRET_OK,
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR,
-    INTERPRET_INVALID
+    LITRESULT_OK,
+    LITRESULT_COMPILE_ERROR,
+    LITRESULT_RUNTIME_ERROR,
+    LITRESULT_INVALID
 };
 
 enum LitErrorType
@@ -657,34 +677,34 @@ enum LitErrorType
 
 enum LitFunctionType
 {
-    FUNCTION_REGULAR,
-    FUNCTION_SCRIPT,
-    FUNCTION_METHOD,
-    FUNCTION_STATIC_METHOD,
-    FUNCTION_CONSTRUCTOR
+    LITFUNC_REGULAR,
+    LITFUNC_SCRIPT,
+    LITFUNC_METHOD,
+    LITFUNC_STATIC_METHOD,
+    LITFUNC_CONSTRUCTOR
 };
 
 enum LitObjectType
 {
-    OBJECT_STRING,
-    OBJECT_FUNCTION,
-    OBJECT_NATIVE_FUNCTION,
-    OBJECT_NATIVE_PRIMITIVE,
-    OBJECT_NATIVE_METHOD,
-    OBJECT_PRIMITIVE_METHOD,
-    OBJECT_FIBER,
-    OBJECT_MODULE,
-    OBJECT_CLOSURE,
-    OBJECT_UPVALUE,
-    OBJECT_CLASS,
-    OBJECT_INSTANCE,
-    OBJECT_BOUND_METHOD,
-    OBJECT_ARRAY,
-    OBJECT_MAP,
-    OBJECT_USERDATA,
-    OBJECT_RANGE,
-    OBJECT_FIELD,
-    OBJECT_REFERENCE
+    LITTYPE_STRING,
+    LITTYPE_FUNCTION,
+    LITTYPE_NATIVE_FUNCTION,
+    LITTYPE_NATIVE_PRIMITIVE,
+    LITTYPE_NATIVE_METHOD,
+    LITTYPE_PRIMITIVE_METHOD,
+    LITTYPE_FIBER,
+    LITTYPE_MODULE,
+    LITTYPE_CLOSURE,
+    LITTYPE_UPVALUE,
+    LITTYPE_CLASS,
+    LITTYPE_INSTANCE,
+    LITTYPE_BOUND_METHOD,
+    LITTYPE_ARRAY,
+    LITTYPE_MAP,
+    LITTYPE_USERDATA,
+    LITTYPE_RANGE,
+    LITTYPE_FIELD,
+    LITTYPE_REFERENCE
 };
 
 typedef enum LitOpCode LitOpCode;
@@ -701,7 +721,7 @@ typedef enum LitFunctionType LitFunctionType;
 typedef enum LitObjectType LitObjectType;
 typedef struct LitScanner LitScanner;
 typedef struct LitPreprocessor LitPreprocessor;
-typedef struct LitVm LitVm;
+typedef struct LitVM LitVM;
 typedef struct LitParser LitParser;
 typedef struct LitEmitter LitEmitter;
 typedef struct LitOptimizer LitOptimizer;
@@ -785,11 +805,11 @@ typedef struct LitStmtList LitStmtList;
 typedef struct LitPrivates LitPrivates;
 typedef struct LitLocals LitLocals;
 
-typedef LitValue (*LitNativeFunctionFn)(LitVm* vm, size_t arg_count, LitValue* args);
-typedef bool (*LitNativePrimitiveFn)(LitVm* vm, size_t arg_count, LitValue* args);
-typedef LitValue (*LitNativeMethodFn)(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args);
-typedef bool (*LitPrimitiveMethodFn)(LitVm* vm, LitValue instance, size_t arg_count, LitValue* args);
-typedef LitValue (*LitMapIndexFn)(LitVm* vm, LitMap* map, LitString* index, LitValue* value);
+typedef LitValue (*LitNativeFunctionFn)(LitVM* vm, size_t arg_count, LitValue* args);
+typedef bool (*LitNativePrimitiveFn)(LitVM* vm, size_t arg_count, LitValue* args);
+typedef LitValue (*LitNativeMethodFn)(LitVM* vm, LitValue instance, size_t arg_count, LitValue* args);
+typedef bool (*LitPrimitiveMethodFn)(LitVM* vm, LitValue instance, size_t arg_count, LitValue* args);
+typedef LitValue (*LitMapIndexFn)(LitVM* vm, LitMap* map, LitString* index, LitValue* value);
 typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata, bool mark);
 typedef void (*LitErrorFn)(LitState* state, const char* message);
 typedef void (*LitPrintFn)(LitState* state, const char* message);
@@ -1034,7 +1054,7 @@ struct LitState
     LitParser* parser;
     LitEmitter* emitter;
     LitOptimizer* optimizer;
-    LitVm* vm;
+    LitVM* vm;
     bool had_error;
     LitFunction* api_function;
     LitFiber* api_fiber;
@@ -1056,7 +1076,7 @@ struct LitState
     LitModule* last_module;
 };
 
-struct LitVm
+struct LitVM
 {
     LitState* state;
     LitObject* objects;
@@ -1205,16 +1225,19 @@ struct LitObjectExpression
     LitValues keys;
     LitExprList values;
 };
+
 struct LitSubscriptExpression
 {
     LitExpression expression;
     LitExpression* array;
     LitExpression* index;
 };
+
 struct LitThisExpression
 {
     LitExpression expression;
 };
+
 struct LitSuperExpression
 {
     LitExpression expression;
@@ -1222,12 +1245,14 @@ struct LitSuperExpression
     bool ignore_emit;
     bool ignore_result;
 };
+
 struct LitRangeExpression
 {
     LitExpression expression;
     LitExpression* from;
     LitExpression* to;
 };
+
 struct LitIfExpression
 {
     LitStatement statement;
@@ -1235,16 +1260,19 @@ struct LitIfExpression
     LitExpression* if_branch;
     LitExpression* else_branch;
 };
+
 struct LitInterpolationExpression
 {
     LitExpression expression;
     LitExprList expressions;
 };
+
 struct LitReferenceExpression
 {
     LitExpression expression;
     LitExpression* to;
 };
+
 /*
  * Statements
  */
@@ -1255,18 +1283,19 @@ struct LitStmtList
     LitStatement** values;
 };
 
-
 struct LitExpressionStatement
 {
     LitStatement statement;
     LitExpression* expression;
     bool pop;
 };
+
 struct LitBlockStatement
 {
     LitStatement statement;
     LitStmtList statements;
 };
+
 struct LitVarStatement
 {
     LitStatement statement;
@@ -1275,6 +1304,7 @@ struct LitVarStatement
     bool constant;
     LitExpression* init;
 };
+
 struct LitIfStatement
 {
     LitStatement statement;
@@ -1284,12 +1314,14 @@ struct LitIfStatement
     LitExprList* elseif_conditions;
     LitStmtList* elseif_branches;
 };
+
 struct LitWhileStatement
 {
     LitStatement statement;
     LitExpression* condition;
     LitStatement* body;
 };
+
 struct LitForStatement
 {
     LitStatement statement;
@@ -1300,14 +1332,17 @@ struct LitForStatement
     LitStatement* body;
     bool c_style;
 };
+
 struct LitContinueStatement
 {
     LitStatement statement;
 };
+
 struct LitBreakStatement
 {
     LitStatement statement;
 };
+
 struct LitFunctionStatement
 {
     LitStatement statement;
@@ -1317,11 +1352,13 @@ struct LitFunctionStatement
     LitStatement* body;
     bool exported;
 };
+
 struct LitReturnStatement
 {
     LitStatement statement;
     LitExpression* expression;
 };
+
 struct LitMethodStatement
 {
     LitStatement statement;
@@ -1330,6 +1367,7 @@ struct LitMethodStatement
     LitStatement* body;
     bool is_static;
 };
+
 struct LitClassStatement
 {
     LitStatement statement;
@@ -1337,6 +1375,7 @@ struct LitClassStatement
     LitString* parent;
     LitStmtList fields;
 };
+
 struct LitFieldStatement
 {
     LitStatement statement;
@@ -1345,18 +1384,19 @@ struct LitFieldStatement
     LitStatement* setter;
     bool is_static;
 };
+
 struct LitPrivate
 {
     bool initialized;
     bool constant;
 };
+
 struct LitPrivates
 {
     size_t capacity;
     size_t count;
     LitPrivate* values;
 };
-
 
 struct LitLocal
 {
@@ -1366,6 +1406,7 @@ struct LitLocal
     bool captured;
     bool constant;
 };
+
 struct LitLocals
 {
     size_t capacity;
@@ -1378,6 +1419,7 @@ struct LitCompilerUpvalue
     uint8_t index;
     bool isLocal;
 };
+
 struct LitCompiler
 {
     LitLocals locals;
@@ -1391,6 +1433,7 @@ struct LitCompiler
     int slots;
     int max_slots;
 };
+
 struct LitEmitter
 {
     LitState* state;
@@ -1407,12 +1450,14 @@ struct LitEmitter
     bool previous_was_expression_statement;
     int emit_reference;
 };
+
 struct LitParseRule
 {
     LitPrefixParseFn prefix;
     LitInfixParseFn infix;
     LitPrecedence precedence;
 };
+
 struct LitParser
 {
     LitState* state;
@@ -1424,11 +1469,13 @@ struct LitParser
     uint8_t expression_root_count;
     uint8_t statement_root_count;
 };
+
 struct LitEmulatedFile
 {
     const char* source;
     size_t position;
 };
+
 struct LitScanner
 {
     size_t line;
@@ -1440,6 +1487,7 @@ struct LitScanner
     size_t num_braces;
     bool had_error;
 };
+
 struct LitVariable
 {
     const char* name;
@@ -1458,7 +1506,6 @@ struct LitVariables
     LitVariable* values;
 };
 
-
 struct LitOptimizer
 {
     LitState* state;
@@ -1466,6 +1513,7 @@ struct LitOptimizer
     int depth;
     bool mark_used;
 };
+
 struct LitPreprocessor
 {
     LitState* state;
@@ -1481,19 +1529,21 @@ struct LitPreprocessor
     LitValues open_ifs;
 };
 
-void util_custom_quick_sort(LitVm *vm, LitValue *l, int length, LitValue callee);
+void util_custom_quick_sort(LitVM *vm, LitValue *l, int length, LitValue callee);
 int util_table_iterator(LitTable *table, int number);
 LitValue util_table_iterator_key(LitTable *table, int index);
 bool util_is_fiber_done(LitFiber *fiber);
-void util_run_fiber(LitVm *vm, LitFiber *fiber, LitValue *argv, size_t argc, bool catcher);
-int util_indexOf(LitArray *array, LitValue value);
-LitValue util_removeAt(LitArray *array, size_t index);
+void util_run_fiber(LitVM *vm, LitFiber *fiber, LitValue *argv, size_t argc, bool catcher);
+
+int lit_array_indexof(LitArray *array, LitValue value);
+
+LitValue lit_array_removeat(LitArray *array, size_t index);
 void util_basic_quick_sort(LitState *state, LitValue *clist, int length);
-bool util_interpret(LitVm *vm, LitModule *module);
+bool util_interpret(LitVM *vm, LitModule *module);
 bool util_test_file_exists(const char *filename);
-bool util_attempt_to_require(LitVm *vm, LitValue *argv, size_t argc, const char *path, bool ignore_previous, bool folders);
-bool util_attempt_to_require_combined(LitVm *vm, LitValue *argv, size_t argc, const char *a, const char *b, bool ignore_previous);
-LitValue util_invalid_constructor(LitVm *vm, LitValue instance, size_t argc, LitValue *argv);
+bool util_attempt_to_require(LitVM *vm, LitValue *argv, size_t argc, const char *path, bool ignore_previous, bool folders);
+bool util_attempt_to_require_combined(LitVM *vm, LitValue *argv, size_t argc, const char *a, const char *b, bool ignore_previous);
+LitValue util_invalid_constructor(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
 
 
 static inline double lit_value_to_number(LitValue value)
@@ -1569,9 +1619,9 @@ void lit_values_ensure_size(LitState* state, LitValues* values, size_t size);
 const char* lit_get_value_type(LitValue value);
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
 void lit_free_objects(LitState* state, LitObject* objects);
-uint64_t lit_collect_garbage(LitVm* vm);
-void lit_mark_object(LitVm* vm, LitObject* object);
-void lit_mark_value(LitVm* vm, LitValue value);
+uint64_t lit_collect_garbage(LitVM* vm);
+void lit_mark_object(LitVM* vm, LitObject* object);
+void lit_mark_value(LitVM* vm, LitValue value);
 void lit_free_object(LitState* state, LitObject* object);
 int lit_closest_power_of_two(int n);
 void lit_init_chunk(LitChunk* chunk);
@@ -1592,7 +1642,7 @@ bool lit_table_delete(LitTable* table, LitString* key);
 LitString* lit_table_find_string(LitTable* table, const char* chars, size_t length, uint32_t hash);
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
 void lit_table_remove_white(LitTable* table);
-void lit_mark_table(LitVm* vm, LitTable* table);
+void lit_mark_table(LitVM* vm, LitTable* table);
 bool lit_is_callable_function(LitValue value);
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);
 LitString* lit_copy_string(LitState* state, const char* chars, size_t length);
@@ -1603,7 +1653,7 @@ void lit_register_string(LitState* state, LitString* string);
 uint32_t lit_hash_string(const char* key, size_t length);
 LitString* lit_allocate_empty_string(LitState* state, size_t length);
 LitFunction* lit_create_function(LitState* state, LitModule* module);
-LitValue lit_get_function_name(LitVm* vm, LitValue instance);
+LitValue lit_get_function_name(LitVM* vm, LitValue instance);
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot);
 LitClosure* lit_create_closure(LitState* state, LitFunction* function);
 LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name);
@@ -1647,26 +1697,26 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);
 void lit_enable_compilation_time_measurement();
 
-void lit_init_vm(LitState* state, LitVm* vm);
-void lit_free_vm(LitVm* vm);
-void lit_trace_vm_stack(LitVm* vm);
+void lit_init_vm(LitState* state, LitVM* vm);
+void lit_free_vm(LitVM* vm);
+void lit_trace_vm_stack(LitVM* vm);
 
-static inline void lit_push(LitVm* vm, LitValue value)
+static inline void lit_push(LitVM* vm, LitValue value)
 {
     *vm->fiber->stack_top++ = value;
 }
 
-static inline LitValue lit_pop(LitVm* vm)
+static inline LitValue lit_pop(LitVM* vm)
 {
     return *(--vm->fiber->stack_top);
 }
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
-bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
-bool lit_vruntime_error(LitVm* vm, const char* format, va_list args);
-bool lit_runtime_error(LitVm* vm, const char* format, ...);
-bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...);
+bool lit_handle_runtime_error(LitVM* vm, LitString* error_string);
+bool lit_vruntime_error(LitVM* vm, const char* format, va_list args);
+bool lit_runtime_error(LitVM* vm, const char* format, ...);
+bool lit_runtime_error_exiting(LitVM* vm, const char* format, ...);
 
 void lit_native_exit_jump();
 bool lit_set_native_exit_jump();
@@ -1679,7 +1729,7 @@ LitInterpretResult
 lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
 
 LitString* lit_to_string(LitState* state, LitValue object);
-LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, size_t arg_count);
+LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t arg_count);
 
 
 void lit_init_api(LitState* state);
@@ -1693,23 +1743,23 @@ bool lit_global_exists(LitState* state, LitString* name);
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native);
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native);
 
-double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
+double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
 
-bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def);
+bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+bool lit_get_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def);
 
-const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
+const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
 
-LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
-void lit_ensure_bool(LitVm* vm, LitValue value, const char* error);
-void lit_ensure_string(LitVm* vm, LitValue value, const char* error);
-void lit_ensure_number(LitVm* vm, LitValue value, const char* error);
-void lit_ensure_object_type(LitVm* vm, LitValue value, LitObjectType type, const char* error);
+void lit_ensure_bool(LitVM* vm, LitValue value, const char* error);
+void lit_ensure_string(LitVM* vm, LitValue value, const char* error);
+void lit_ensure_number(LitVM* vm, LitValue value, const char* error);
+void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error);
 
 
 LitValue lit_get_field(LitState* state, LitTable* table, const char* name);

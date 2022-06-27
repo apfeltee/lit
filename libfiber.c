@@ -1,7 +1,7 @@
 
 #include "lit.h"
 
-static LitValue objfn_fiber_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     if(argc < 1 || !IS_FUNCTION(argv[0]))
@@ -19,7 +19,7 @@ static LitValue objfn_fiber_constructor(LitVm* vm, LitValue instance, size_t arg
 }
 
 
-static LitValue objfn_fiber_done(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_fiber_done(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -28,7 +28,7 @@ static LitValue objfn_fiber_done(LitVm* vm, LitValue instance, size_t argc, LitV
 }
 
 
-static LitValue objfn_fiber_error(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_fiber_error(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -37,7 +37,7 @@ static LitValue objfn_fiber_error(LitVm* vm, LitValue instance, size_t argc, Lit
 }
 
 
-static LitValue objfn_fiber_current(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_fiber_current(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     (void)argc;
@@ -46,7 +46,7 @@ static LitValue objfn_fiber_current(LitVm* vm, LitValue instance, size_t argc, L
 }
 
 
-static bool objfn_fiber_run(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static bool objfn_fiber_run(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     util_run_fiber(vm, AS_FIBER(instance), argv, argc, false);
@@ -54,14 +54,14 @@ static bool objfn_fiber_run(LitVm* vm, LitValue instance, size_t argc, LitValue*
 }
 
 
-static bool objfn_fiber_try(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static bool objfn_fiber_try(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     util_run_fiber(vm, AS_FIBER(instance), argv, argc, true);
     return true;
 }
 
 
-static bool objfn_fiber_yield(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static bool objfn_fiber_yield(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     if(vm->fiber->parent == NULL)
@@ -82,7 +82,7 @@ static bool objfn_fiber_yield(LitVm* vm, LitValue instance, size_t argc, LitValu
 }
 
 
-static bool objfn_fiber_yeet(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static bool objfn_fiber_yeet(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     if(vm->fiber->parent == NULL)
@@ -103,7 +103,7 @@ static bool objfn_fiber_yeet(LitVm* vm, LitValue instance, size_t argc, LitValue
 }
 
 
-static bool objfn_fiber_abort(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static bool objfn_fiber_abort(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     lit_handle_runtime_error(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was aborted") :
@@ -112,7 +112,13 @@ static bool objfn_fiber_abort(LitVm* vm, LitValue instance, size_t argc, LitValu
     return true;
 }
 
+static LitValue objfn_fiber_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)argc;
+    (void)argv;
+    return OBJECT_VALUE(lit_string_format(vm->state, "fiber"));
 
+}
 
 void lit_open_fiber_library(LitState* state)
 {
@@ -120,6 +126,7 @@ void lit_open_fiber_library(LitState* state)
     {
         LIT_INHERIT_CLASS(state->objectvalue_class);
         LIT_BIND_CONSTRUCTOR(objfn_fiber_constructor);
+        LIT_BIND_METHOD("toString", objfn_fiber_tostring);
         LIT_BIND_PRIMITIVE("run", objfn_fiber_run);
         LIT_BIND_PRIMITIVE("try", objfn_fiber_try);
         LIT_BIND_GETTER("done", objfn_fiber_done);
@@ -128,7 +135,7 @@ void lit_open_fiber_library(LitState* state)
         LIT_BIND_STATIC_PRIMITIVE("yeet", objfn_fiber_yeet);
         LIT_BIND_STATIC_PRIMITIVE("abort", objfn_fiber_abort);
         LIT_BIND_STATIC_GETTER("current", objfn_fiber_current);
-        state->functionvalue_class = klass;
+        state->fibervalue_class = klass;
     }
     LIT_END_CLASS();
 }

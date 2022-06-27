@@ -1,9 +1,9 @@
 
 #include "lit.h"
 
-LitValue util_invalid_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv);
+LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv);
 
-static LitValue objfn_string_plus(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitString* string;
     (void)argc;
@@ -35,7 +35,7 @@ static LitValue objfn_string_plus(LitVm* vm, LitValue instance, size_t argc, Lit
     return OBJECT_VALUE(result);
 }
 
-static LitValue objfn_string_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -43,7 +43,7 @@ static LitValue objfn_string_tostring(LitVm* vm, LitValue instance, size_t argc,
     return instance;
 }
 
-static LitValue objfn_string_splice(LitVm* vm, LitString* string, int from, int to)
+static LitValue objfn_string_splice(LitVM* vm, LitString* string, int from, int to)
 {
     int length = lit_ustring_length(string);
     if(from < 0)
@@ -65,7 +65,7 @@ static LitValue objfn_string_splice(LitVm* vm, LitString* string, int from, int 
     return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, from, to - from + 1));
 }
 
-static LitValue objfn_string_tonumber(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_tonumber(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     double result;
     (void)vm;
@@ -82,7 +82,7 @@ static LitValue objfn_string_tonumber(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_string_touppercase(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
     char* buffer;
@@ -104,7 +104,7 @@ static LitValue objfn_string_touppercase(LitVm* vm, LitValue instance, size_t ar
 }
 
 
-static LitValue objfn_string_tolowercase(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
     LitString* rt;
@@ -124,7 +124,7 @@ static LitValue objfn_string_tolowercase(LitVm* vm, LitValue instance, size_t ar
 }
 
 
-static LitValue objfn_string_contains(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_contains(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -141,7 +141,7 @@ static LitValue objfn_string_contains(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_string_startswith(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_startswith(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitString* string = AS_STRING(instance);
     LitString* sub = LIT_CHECK_OBJECT_STRING(0);
@@ -168,7 +168,7 @@ static LitValue objfn_string_startswith(LitVm* vm, LitValue instance, size_t arg
 }
 
 
-static LitValue objfn_string_endswith(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_endswith(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitString* string = AS_STRING(instance);
     LitString* sub = LIT_CHECK_OBJECT_STRING(0);
@@ -197,7 +197,7 @@ static LitValue objfn_string_endswith(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_string_replace(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(2)
 
@@ -250,7 +250,7 @@ static LitValue objfn_string_replace(LitVm* vm, LitValue instance, size_t argc, 
 }
 
 
-static LitValue objfn_string_substring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int from = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     int to = LIT_CHECK_NUMBER(vm, argv, argc, 1);
@@ -259,7 +259,7 @@ static LitValue objfn_string_substring(LitVm* vm, LitValue instance, size_t argc
 }
 
 
-static LitValue objfn_string_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     if(IS_RANGE(argv[0]))
     {
@@ -291,19 +291,19 @@ static LitValue objfn_string_subscript(LitVm* vm, LitValue instance, size_t argc
 }
 
 
-static LitValue objfn_string_less(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_less(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) < 0);
 }
 
 
-static LitValue objfn_string_greater(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_greater(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) > 0);
 }
 
 
-static LitValue objfn_string_length(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -312,7 +312,7 @@ static LitValue objfn_string_length(LitVm* vm, LitValue instance, size_t argc, L
 }
 
 
-static LitValue objfn_string_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitString* string;
     string = AS_STRING(instance);
@@ -348,7 +348,7 @@ static LitValue objfn_string_iterator(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_string_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_string_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitString* string = AS_STRING(instance);
     uint32_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);

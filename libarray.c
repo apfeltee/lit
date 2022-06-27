@@ -1,7 +1,55 @@
 
 #include "lit.h"
 
-static LitValue objfn_array_constructor(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+int lit_array_indexof(LitArray* array, LitValue value)
+{
+    size_t i;
+    for(i = 0; i < array->values.count; i++)
+    {
+        if(array->values.values[i] == value)
+        {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+
+LitValue lit_array_removeat(LitArray* array, size_t index)
+{
+    size_t i;
+    size_t count;
+    LitValue value;
+    LitValues* values;
+    values = &array->values;
+    count = values->count;
+    if(index >= count)
+    {
+        return NULL_VALUE;
+    }
+    value = values->values[index];
+    if(index == count - 1)
+    {
+        values->values[index] = NULL_VALUE;
+    }
+    else
+    {
+        for(i = index; i < values->count - 1; i++)
+        {
+            values->values[i] = values->values[i + 1];
+        }
+        values->values[count - 1] = NULL_VALUE;
+    }
+    values->count--;
+    return value;
+}
+
+void lit_array_push(LitState* state, LitArray* array, LitValue val)
+{
+    lit_values_write(state, &array->values, val);
+}
+
+static LitValue objfn_array_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
     (void)argc;
@@ -9,8 +57,7 @@ static LitValue objfn_array_constructor(LitVm* vm, LitValue instance, size_t arg
     return OBJECT_VALUE(lit_create_array(vm->state));
 }
 
-
-static LitValue objfn_array_splice(LitVm* vm, LitArray* array, int from, int to)
+static LitValue objfn_array_splice(LitVM* vm, LitArray* array, int from, int to)
 {
     size_t i;
     size_t length;
@@ -39,7 +86,7 @@ static LitValue objfn_array_splice(LitVm* vm, LitArray* array, int from, int to)
     return OBJECT_VALUE(new_array);
 }
 
-static LitValue objfn_array_slice(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_slice(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int from;
     int to;
@@ -50,7 +97,7 @@ static LitValue objfn_array_slice(LitVm* vm, LitValue instance, size_t argc, Lit
 }
 
 
-static LitValue objfn_array_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     if(argc == 2)
     {
@@ -100,7 +147,7 @@ static LitValue objfn_array_subscript(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_array_add(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_add(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
     for(i=0; i<argc; i++)
@@ -111,7 +158,7 @@ static LitValue objfn_array_add(LitVm* vm, LitValue instance, size_t argc, LitVa
 }
 
 
-static LitValue objfn_array_insert(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(2)
 
@@ -144,7 +191,7 @@ static LitValue objfn_array_insert(LitVm* vm, LitValue instance, size_t argc, Li
 }
 
 
-static LitValue objfn_array_addall(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_addall(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1)
 
@@ -164,32 +211,32 @@ static LitValue objfn_array_addall(LitVm* vm, LitValue instance, size_t argc, Li
 }
 
 
-static LitValue objfn_array_indexof(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_indexof(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1)
 
-        int index = util_indexOf(AS_ARRAY(instance), argv[0]);
+        int index = lit_array_indexof(AS_ARRAY(instance), argv[0]);
     return index == -1 ? NULL_VALUE : lit_number_to_value(index);
 }
 
 
-static LitValue objfn_array_remove(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_remove(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1)
 
         LitArray* array = AS_ARRAY(instance);
-    int index = util_indexOf(array, argv[0]);
+    int index = lit_array_indexof(array, argv[0]);
 
     if(index != -1)
     {
-        return util_removeAt(array, (size_t)index);
+        return lit_array_removeat(array, (size_t)index);
     }
 
     return NULL_VALUE;
 }
 
 
-static LitValue objfn_array_removeat(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_removeat(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
 
@@ -198,18 +245,18 @@ static LitValue objfn_array_removeat(LitVm* vm, LitValue instance, size_t argc, 
         return NULL_VALUE;
     }
 
-    return util_removeAt(AS_ARRAY(instance), (size_t)index);
+    return lit_array_removeat(AS_ARRAY(instance), (size_t)index);
 }
 
 
-static LitValue objfn_array_contains(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_contains(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1)
-        return BOOL_VALUE(util_indexOf(AS_ARRAY(instance), argv[0]) != -1);
+        return BOOL_VALUE(lit_array_indexof(AS_ARRAY(instance), argv[0]) != -1);
 }
 
 
-static LitValue objfn_array_clear(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_clear(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -219,7 +266,7 @@ static LitValue objfn_array_clear(LitVm* vm, LitValue instance, size_t argc, Lit
 }
 
 
-static LitValue objfn_array_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int number;
     LitArray* array;
@@ -239,7 +286,7 @@ static LitValue objfn_array_iterator(LitVm* vm, LitValue instance, size_t argc, 
     return array->values.count == 0 ? NULL_VALUE : lit_number_to_value(number);
 }
 
-static LitValue objfn_array_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
     LitValues* values;
@@ -252,7 +299,7 @@ static LitValue objfn_array_iteratorvalue(LitVm* vm, LitValue instance, size_t a
     return values->values[index];
 }
 
-static LitValue objfn_array_join(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
     size_t index;
@@ -283,7 +330,7 @@ static LitValue objfn_array_join(LitVm* vm, LitValue instance, size_t argc, LitV
 }
 
 
-static LitValue objfn_array_sort(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_sort(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitValues* values;
     values = &AS_ARRAY(instance)->values;
@@ -299,7 +346,7 @@ static LitValue objfn_array_sort(LitVm* vm, LitValue instance, size_t argc, LitV
 }
 
 
-static LitValue objfn_array_clone(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_clone(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -322,7 +369,7 @@ static LitValue objfn_array_clone(LitVm* vm, LitValue instance, size_t argc, Lit
     return OBJECT_VALUE(array);
 }
 
-static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -392,7 +439,7 @@ static LitValue objfn_array_tostring(LitVm* vm, LitValue instance, size_t argc, 
     return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
 }
 
-static LitValue objfn_array_length(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;

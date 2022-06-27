@@ -1,7 +1,7 @@
 
 #include "lit.h"
 
-static LitValue objfn_object_class(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_object_class(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -9,14 +9,14 @@ static LitValue objfn_object_class(LitVm* vm, LitValue instance, size_t argc, Li
 }
 
 
-static LitValue objfn_object_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_object_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
     return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
 }
 
-static LitValue objfn_object_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -55,7 +55,7 @@ static LitValue objfn_object_subscript(LitVm* vm, LitValue instance, size_t argc
     return NULL_VALUE;
 }
 
-static LitValue objfn_object_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_object_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
@@ -68,7 +68,7 @@ static LitValue objfn_object_iterator(LitVm* vm, LitValue instance, size_t argc,
 }
 
 
-static LitValue objfn_object_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_object_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     LitInstance* self = AS_INSTANCE(instance);

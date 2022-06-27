@@ -2,7 +2,7 @@
 #include "lit.h"
 
 
-static LitValue objfn_class_tostring(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
@@ -10,7 +10,7 @@ static LitValue objfn_class_tostring(LitVm* vm, LitValue instance, size_t argc, 
 }
 
 
-static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     LIT_ENSURE_ARGS(1);
@@ -37,7 +37,7 @@ static LitValue objfn_class_iterator(LitVm* vm, LitValue instance, size_t argc, 
 }
 
 
-static LitValue objfn_class_iteratorvalue(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
@@ -49,7 +49,7 @@ static LitValue objfn_class_iteratorvalue(LitVm* vm, LitValue instance, size_t a
 }
 
 
-static LitValue objfn_class_super(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_super(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitClass* super;
     (void)vm;
@@ -71,7 +71,7 @@ static LitValue objfn_class_super(LitVm* vm, LitValue instance, size_t argc, Lit
     return OBJECT_VALUE(super);
 }
 
-static LitValue objfn_class_subscript(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitClass* klass;    
     LitValue value;
@@ -102,7 +102,7 @@ static LitValue objfn_class_subscript(LitVm* vm, LitValue instance, size_t argc,
     return NULL_VALUE;
 }
 
-static LitValue objfn_class_name(LitVm* vm, LitValue instance, size_t argc, LitValue* argv)
+static LitValue objfn_class_name(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;

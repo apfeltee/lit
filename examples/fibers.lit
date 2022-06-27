@@ -15,8 +15,8 @@ var walker = new Fiber(() =>
 	// You can even return values with it
 	Fiber.yield("I'm tired")
 	return 32
-})
-
+});
+print("walker=", walker, "\n")
 walker.run() // Expected: Walking...
 print("Fiber returned control\n") // Expected: Fiber returned control
 
