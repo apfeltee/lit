@@ -1,3 +1,12 @@
+NP: i haven't really have put any effort in updating this readme, but this was forked from [egordorichev/lit](github.com/egordorichev/lit)
+
+a quick overview what I've changed:
+
+ - relaxed parser - brackets no longer need to be on the same line
+ - optional switch/case in the virtual machine (could be unstable!)
+ - mild attempt to support windows
+ - generous code cleanup
+
 # lit
 
 Lit is a dynamicaly-typed language, inspired by highly-hackable Lua and familiar C-styled JavaScipt.
