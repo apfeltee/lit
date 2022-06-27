@@ -42,3 +42,4 @@ var errorMaker = new Fiber(() =>
 // In order to catch the error, you have to call errorMaker.try() and not errorMaker.run()
 print("errorMaker.try() = ", errorMaker.try(), "\n") // Expected: Attempt to call a null value
 print("errorMaker.error = ", errorMaker.error, "\n") // Expected: Attempt to call a null value
+print("all is well!\n")

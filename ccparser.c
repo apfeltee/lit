@@ -60,6 +60,98 @@ static LitStatement *parse_class(LitParser *parser);
 static LitStatement *parse_statement(LitParser *parser);
 static LitStatement *parse_declaration(LitParser *parser);
 
+static const char* token_name(int t)
+{
+    switch(t)
+    {
+        case LITTOK_NEW_LINE: return "LITTOK_NEW_LINE";
+        case LITTOK_LEFT_PAREN: return "LITTOK_LEFT_PAREN";
+        case LITTOK_RIGHT_PAREN: return "LITTOK_RIGHT_PAREN";
+        case LITTOK_LEFT_BRACE: return "LITTOK_LEFT_BRACE";
+        case LITTOK_RIGHT_BRACE: return "LITTOK_RIGHT_BRACE";
+        case LITTOK_LEFT_BRACKET: return "LITTOK_LEFT_BRACKET";
+        case LITTOK_RIGHT_BRACKET: return "LITTOK_RIGHT_BRACKET";
+        case LITTOK_COMMA: return "LITTOK_COMMA";
+        case LITTOK_SEMICOLON: return "LITTOK_SEMICOLON";
+        case LITTOK_COLON: return "LITTOK_COLON";
+        case LITTOK_BAR_EQUAL: return "LITTOK_BAR_EQUAL";
+        case LITTOK_BAR: return "LITTOK_BAR";
+        case LITTOK_BAR_BAR: return "LITTOK_BAR_BAR";
+        case LITTOK_AMPERSAND_EQUAL: return "LITTOK_AMPERSAND_EQUAL";
+        case LITTOK_AMPERSAND: return "LITTOK_AMPERSAND";
+        case LITTOK_AMPERSAND_AMPERSAND: return "LITTOK_AMPERSAND_AMPERSAND";
+        case LITTOK_BANG: return "LITTOK_BANG";
+        case LITTOK_BANG_EQUAL: return "LITTOK_BANG_EQUAL";
+        case LITTOK_EQUAL: return "LITTOK_EQUAL";
+        case LITTOK_EQUAL_EQUAL: return "LITTOK_EQUAL_EQUAL";
+        case LITTOK_GREATER: return "LITTOK_GREATER";
+        case LITTOK_GREATER_EQUAL: return "LITTOK_GREATER_EQUAL";
+        case LITTOK_GREATER_GREATER: return "LITTOK_GREATER_GREATER";
+        case LITTOK_LESS: return "LITTOK_LESS";
+        case LITTOK_LESS_EQUAL: return "LITTOK_LESS_EQUAL";
+        case LITTOK_LESS_LESS: return "LITTOK_LESS_LESS";
+        case LITTOK_PLUS: return "LITTOK_PLUS";
+        case LITTOK_PLUS_EQUAL: return "LITTOK_PLUS_EQUAL";
+        case LITTOK_PLUS_PLUS: return "LITTOK_PLUS_PLUS";
+        case LITTOK_MINUS: return "LITTOK_MINUS";
+        case LITTOK_MINUS_EQUAL: return "LITTOK_MINUS_EQUAL";
+        case LITTOK_MINUS_MINUS: return "LITTOK_MINUS_MINUS";
+        case LITTOK_STAR: return "LITTOK_STAR";
+        case LITTOK_STAR_EQUAL: return "LITTOK_STAR_EQUAL";
+        case LITTOK_STAR_STAR: return "LITTOK_STAR_STAR";
+        case LITTOK_SLASH: return "LITTOK_SLASH";
+        case LITTOK_SLASH_EQUAL: return "LITTOK_SLASH_EQUAL";
+        case LITTOK_QUESTION: return "LITTOK_QUESTION";
+        case LITTOK_QUESTION_QUESTION: return "LITTOK_QUESTION_QUESTION";
+        case LITTOK_PERCENT: return "LITTOK_PERCENT";
+        case LITTOK_PERCENT_EQUAL: return "LITTOK_PERCENT_EQUAL";
+        case LITTOK_ARROW: return "LITTOK_ARROW";
+        case LITTOK_SMALL_ARROW: return "LITTOK_SMALL_ARROW";
+        case LITTOK_TILDE: return "LITTOK_TILDE";
+        case LITTOK_CARET: return "LITTOK_CARET";
+        case LITTOK_CARET_EQUAL: return "LITTOK_CARET_EQUAL";
+        case LITTOK_DOT: return "LITTOK_DOT";
+        case LITTOK_DOT_DOT: return "LITTOK_DOT_DOT";
+        case LITTOK_DOT_DOT_DOT: return "LITTOK_DOT_DOT_DOT";
+        case LITTOK_SHARP: return "LITTOK_SHARP";
+        case LITTOK_SHARP_EQUAL: return "LITTOK_SHARP_EQUAL";
+        case LITTOK_IDENTIFIER: return "LITTOK_IDENTIFIER";
+        case LITTOK_STRING: return "LITTOK_STRING";
+        case LITTOK_INTERPOLATION: return "LITTOK_INTERPOLATION";
+        case LITTOK_NUMBER: return "LITTOK_NUMBER";
+        case LITTOK_CLASS: return "LITTOK_CLASS";
+        case LITTOK_ELSE: return "LITTOK_ELSE";
+        case LITTOK_FALSE: return "LITTOK_FALSE";
+        case LITTOK_FOR: return "LITTOK_FOR";
+        case LITTOK_FUNCTION: return "LITTOK_FUNCTION";
+        case LITTOK_IF: return "LITTOK_IF";
+        case LITTOK_NULL: return "LITTOK_NULL";
+        case LITTOK_RETURN: return "LITTOK_RETURN";
+        case LITTOK_SUPER: return "LITTOK_SUPER";
+        case LITTOK_THIS: return "LITTOK_THIS";
+        case LITTOK_TRUE: return "LITTOK_TRUE";
+        case LITTOK_VAR: return "LITTOK_VAR";
+        case LITTOK_WHILE: return "LITTOK_WHILE";
+        case LITTOK_CONTINUE: return "LITTOK_CONTINUE";
+        case LITTOK_BREAK: return "LITTOK_BREAK";
+        case LITTOK_NEW: return "LITTOK_NEW";
+        case LITTOK_EXPORT: return "LITTOK_EXPORT";
+        case LITTOK_IS: return "LITTOK_IS";
+        case LITTOK_STATIC: return "LITTOK_STATIC";
+        case LITTOK_OPERATOR: return "LITTOK_OPERATOR";
+        case LITTOK_GET: return "LITTOK_GET";
+        case LITTOK_SET: return "LITTOK_SET";
+        case LITTOK_IN: return "LITTOK_IN";
+        case LITTOK_CONST: return "LITTOK_CONST";
+        case LITTOK_REF: return "LITTOK_REF";
+        case LITTOK_ERROR: return "LITTOK_ERROR";
+        case LITTOK_EOF: return "LITTOK_EOF";
+        default:
+            break;
+    }
+    return "?unknown?";
+}
+
 static void setup_rules()
 {
     rules[LITTOK_LEFT_PAREN] = (LitParseRule){ parse_grouping_or_lambda, parse_call, LITPREC_CALL };
@@ -310,17 +402,24 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
     prefix_rule = get_rule(parser->previous.type)->prefix;
     if(prefix_rule == NULL)
     {
-        // todo: file start
+        //fprintf(stderr, "parser->previous.type=%s, parser->current.type=%s\n", token_name(parser->previous.type), token_name(parser->current.type));
         if(parser->previous.type == LITTOK_SEMICOLON)
         {
-            //consume(parser, LITTOK_SEMICOLON, "");
+            if(parser->current.type == LITTOK_NEW_LINE)
+            {
+                prs_advance(parser);
+            }
             return parse_precedence(parser, precedence, err);
         }
+        // todo: file start
         new_line = previous.start != NULL && *previous.start == '\n';
         parser_prev_newline = parser->previous.start != NULL && *parser->previous.start == '\n';
-        prs_error(parser, LITERROR_EXPECTED_EXPRESSION, prev_newline ? 8 : previous.length,
-              prev_newline ? "new line" : previous.start, parser_prev_newline ? 8 : parser->previous.length,
-              parser_prev_newline ? "new line" : parser->previous.start);
+        prs_error(parser, LITERROR_EXPECTED_EXPRESSION,
+            (prev_newline ? 8 : previous.length),
+            (prev_newline ? "new line" : previous.start),
+            (parser_prev_newline ? 8 : parser->previous.length),
+            (parser_prev_newline ? "new line" : parser->previous.start)
+        );
         return NULL;
         
     }
