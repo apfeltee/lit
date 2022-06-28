@@ -378,7 +378,7 @@
 #define LIT_CHECK_BOOL(id) lit_check_bool(vm, argv, argc, id)
 #define LIT_GET_BOOL(id, def) lit_get_bool(vm, argv, argc, id, def)
 
-#define LIT_CHECK_STRING(id) lit_check_string(vm, argv, argc, id)
+#define LIT_CHECK_STRING(vm, args, argc, id) lit_check_string(vm, args, argc, id)
 #define LIT_GET_STRING(id, def) lit_get_string(vm, argv, argc, id, def)
 
 #define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, argv, argc, id)

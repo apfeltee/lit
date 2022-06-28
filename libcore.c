@@ -240,10 +240,18 @@ bool util_test_file_exists(const char* filename)
     return stat(filename, &buffer) == 0;
 }
 
+#if 0
 bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char* path, bool ignore_previous, bool folders)
 {
+    bool rt;
     bool found;
+    size_t i;
     size_t length;
+    char c;
+    char* source;
+    char* dir_path;
+    char* modname;
+    char* modnamedotted;
     found = false;
     length = strlen(path);
     should_update_locals = false;
@@ -253,19 +261,23 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
         {
             lit_runtime_error_exiting(vm, "cannot recursively require folders");
         }
-        char dir_path[length - 1];
+        dir_path = LIT_ALLOCATE(vm->state, char, length+1);
         dir_path[length - 2] = '\0';
         memcpy((void*)dir_path, path, length - 2);
-        return util_attempt_to_require(vm, argv, argc, dir_path, ignore_previous, true);
+        rt = util_attempt_to_require(vm, argv, argc, dir_path, ignore_previous, true);
+        LIT_FREE(vm->state, char, dir_path);
+        return rt;
     }
-    char modname[length + 5];
-    char modnamedotted[length + 5];
+    //char modname[length + 5];
+    modname = LIT_ALLOCATE(vm->state, char, length+5);
+    //char modnamedotted[length + 5];
+    modnamedotted = LIT_ALLOCATE(vm->state, char, length+5);
     memcpy((void*)modnamedotted, path, length);
     memcpy((void*)modnamedotted + length, ".lit", 4);
     modnamedotted[length + 4] = '\0';
-    for(size_t i = 0; i < length + 5; i++)
+    for(i = 0; i < length + 5; i++)
     {
-        char c = modnamedotted[i];
+        c = modnamedotted[i];
         if(c == '.' || c == '\\')
         {
             modname[i] = '/';
@@ -370,7 +382,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
             return false;
         }
     }
-    char* source = lit_read_file(modname);
+    source = lit_read_file(modname);
     if(source == NULL)
     {
         return false;
@@ -383,18 +395,27 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
     return true;
 }
 
+
 bool util_attempt_to_require_combined(LitVM* vm, LitValue* argv, size_t argc, const char* a, const char* b, bool ignore_previous)
 {
-    size_t a_length = strlen(a);
-    size_t b_length = strlen(b);
-    size_t total_length = a_length + b_length + 1;
-    char path[total_length + 1];
+    bool rt;
+    size_t a_length;
+    size_t b_length;
+    size_t total_length;
+    char* path;
+    a_length = strlen(a);
+    b_length = strlen(b);
+    total_length = a_length + b_length + 1;
+    path = LIT_ALLOCATE(vm->state, char, total_length+1);
     memcpy((void*)path, a, a_length);
     memcpy((void*)path + a_length + 1, b, b_length);
     path[a_length] = '.';
     path[total_length] = '\0';
-    return util_attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
+    rt = util_attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
+    LIT_FREE(vm->state, char, path);
+    return rt;
 }
+#endif
 
 LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
@@ -457,15 +478,31 @@ static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
     return NULL_VALUE;
 }
 
+static LitValue cfn_println(LitVM* vm, size_t argc, LitValue* argv)
+{
+    size_t i;
+    if(argc == 0)
+    {
+        return NULL_VALUE;
+    }
+    for(i = 0; i < argc; i++)
+    {
+        lit_printf(vm->state, "%s", lit_to_string(vm->state, argv[i])->chars);
+    }
+    lit_printf(vm->state, "\n");
+    return NULL_VALUE;
+}
+
 static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
 {
     char* code;
     (void)argc;
     (void)argv;
-    code = (char*)LIT_CHECK_STRING(0);
+    code = (char*)LIT_CHECK_STRING(vm, argv, argc, 0);
     return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
+#if 0
 static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
 {
     (void)argc;
@@ -507,7 +544,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
     lit_runtime_error_exiting(vm, "failed to require module '%s'", name->chars);
     return false;
 }
-
+#endif
 
 void lit_open_string_library(LitState* state);
 void lit_open_array_library(LitState* state);
@@ -562,7 +599,8 @@ void lit_open_core_library(LitState* state)
         lit_define_native(state, "time", cfn_time);
         lit_define_native(state, "systemTime", cfn_systemTime);
         lit_define_native(state, "print", cfn_print);
-        lit_define_native_primitive(state, "require", cfn_require);
+        lit_define_native(state, "println", cfn_println);
+        //lit_define_native_primitive(state, "require", cfn_require);
         lit_define_native_primitive(state, "eval", cfn_eval);
         lit_set_global(state, CONST_STRING(state, "globals"), OBJECT_VALUE(state->vm->globals));
     }

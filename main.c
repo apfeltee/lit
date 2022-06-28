@@ -192,23 +192,34 @@ int main(int argc, const char* argv[])
     int i;
     int args_left;
     int num_files_to_run;
+    char c;
+    bool found;
     bool dump;
     bool show_repl;
     bool evaled;
     bool showed_help;
     bool create_native;
     bool perform_tests;
+    bool enable_optimization;
+    size_t j;
+    size_t length;
+    int64_t amount;
+    char* file;
     char* bytecode_file;
+    char* source;
+    char* optimization_name;
+    const char* arg_string;
+    const char* string;
     const char* arg;
-    char* files_to_run[argc - 1];
+    const char* module_name;
+    char* files_to_run[128];
+    LitModule* module;
     LitInterpretResultType result;
     LitArray* arg_array;
     LitState* state;
     state = lit_new_state();
     lit_open_libraries(state);
-
     num_files_to_run = 0;
-
     result = LITRESULT_OK;
     dump = false;
     for(i = 1; i < argc; i++)
@@ -233,6 +244,7 @@ int main(int argc, const char* argv[])
             continue;
         }
         files_to_run[num_files_to_run++] = (char*)arg;
+        fprintf(stderr, "num_files_to_run=%d, (argc+1)=%d\n", num_files_to_run, argc+1);
     }
     arg_array = NULL;
     show_repl = false;
@@ -251,8 +263,7 @@ int main(int argc, const char* argv[])
         }
         else if(arg[0] == '-' && arg[1] == 'O')
         {
-            bool enable_optimization = true;
-            char* optimization_name;
+            enable_optimization = true;
 
             // -Ono-whatever
             if(memcmp((char*)(arg + 2), "no-", 3) == 0)
@@ -267,7 +278,7 @@ int main(int argc, const char* argv[])
 
             if(strlen(optimization_name) == 1)
             {
-                char c = optimization_name[0];
+                c = optimization_name[0];
 
                 if(c >= '0' && c <= '4')
                 {
@@ -287,9 +298,9 @@ int main(int argc, const char* argv[])
             }
             else
             {
-                bool found = false;
+                found = false;
                 // Yes I know, this is not the fastest way, and what now?
-                for(size_t j = 0; j < LITOPTSTATE_TOTAL; j++)
+                for(j = 0; j < LITOPTSTATE_TOTAL; j++)
                 {
                     if(strcmp(lit_get_optimization_name((LitOptimization)j), optimization_name) == 0)
                     {
@@ -314,25 +325,25 @@ int main(int argc, const char* argv[])
                 fprintf(stderr, "Expected code to run for the eval argument.\n");
                 return LIT_EXIT_CODE_ARGUMENT_ERROR;
             }
-            const char* string = argv[++i];
-            size_t length = strlen(string) + 1;
-            char source[length];
+            string = argv[++i];
+            length = strlen(string) + 1;
+            source = (char*)malloc(length + 1);
             memcpy(source, string, length);
-            const char* module_name = num_files_to_run == 0 ? "repl" : files_to_run[0];
+            module_name = num_files_to_run == 0 ? "repl" : files_to_run[0];
             if(dump)
             {
-                LitModule* module = lit_compile_module(state, CONST_STRING(state, module_name), source);
-
+                module = lit_compile_module(state, CONST_STRING(state, module_name), source);
                 if(module == NULL)
                 {
                     break;
                 }
-
                 lit_disassemble_module(module, source);
+                free(source);
             }
             else
             {
                 result = lit_interpret(state, module_name, source).type;
+                free(source);
                 if(result != LITRESULT_OK)
                 {
                     break;
@@ -388,9 +399,9 @@ int main(int argc, const char* argv[])
         {
             arg_array = lit_create_array(state);
 
-            for(int j = 0; j < args_left; j++)
+            for(j = 0; j < (size_t)args_left; j++)
             {
-                const char* arg_string = argv[i + j + 1];
+                arg_string = argv[i + j + 1];
                 lit_values_write(state, &arg_array->values, OBJECT_CONST_STRING(state, arg_string));
             }
 
@@ -427,7 +438,7 @@ int main(int argc, const char* argv[])
             lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
             for(i = 0; i < num_files_to_run; i++)
             {
-                char* file = files_to_run[i];
+                file = files_to_run[i];
                 result = (dump ? lit_dump_file(state, file) : lit_interpret_file(state, file)).type;
                 if(result != LITRESULT_OK)
                 {
@@ -449,9 +460,7 @@ int main(int argc, const char* argv[])
     {
         run_repl(state);
     }
-
-    int64_t amount = lit_free_state(state);
-
+    amount = lit_free_state(state);
     if(result != LITRESULT_COMPILE_ERROR && amount != 0)
     {
         fprintf(stderr, "Error: memory leak of %i bytes!\n", (int)amount);

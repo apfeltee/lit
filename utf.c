@@ -60,10 +60,11 @@ LitString* lit_ustring_from_code_point(LitState* state, int value)
     char* bytes;
     LitString* rt;
     length = lit_encode_num_bytes(value);
-    bytes = (char*)malloc(length + 1);
+    bytes = LIT_ALLOCATE(state, char, length + 1);
     lit_ustring_encode(value, (uint8_t*)bytes);
-    rt = lit_take_string(state, bytes, length);
-    //free(bytes);
+    /* this should be lit_take_string, but something prevents the memory from being free'd. */
+    rt = lit_copy_string(state, bytes, length);
+    LIT_FREE(state, char, bytes);
     return rt;
 }
 

@@ -1,7 +1,8 @@
 
 a= [1, 2, 3]
 a.push("dicks", a, 72)
-print("a = ", a, "\n")
+println("a = ", a)
+println("joined = ", a.join("|"))
 
 m = { foo = "bar"}
 print("m = ", m["foo"].toString(), "\n")

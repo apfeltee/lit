@@ -6,7 +6,7 @@
 #include "lit.h"
 
 //#define LIT_TRACE_EXECUTION
-#define LIT_USE_COMPUTEDGOTO
+//#define LIT_USE_COMPUTEDGOTO
 
 
 #ifdef LIT_TRACE_EXECUTION

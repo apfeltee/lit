@@ -135,6 +135,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     size_t value_amount;
     size_t olength;
     size_t buffer_index;
+    char* buffer;
     LitState* state;
     LitMap* map;
     LitTable* values;
@@ -143,6 +144,8 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     LitString* strobval;
     LitString* key;
     LitString* value;
+    LitString** values_converted;
+    LitString** keys;
     state = vm->state;
     map = AS_MAP(instance);
     values = &map->values;
@@ -153,8 +156,8 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     has_wrapper = map->index_fn != NULL;
     has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
     value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
-    LitString* values_converted[value_amount];
-    LitString* keys[value_amount];
+    values_converted = LIT_ALLOCATE(vm->state, LitString*, value_amount+1);
+    keys = LIT_ALLOCATE(vm->state, LitString*, value_amount+1);
     olength = 3;
     if(has_more)
     {
@@ -185,7 +188,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             i++;
         }
     } while(i < value_amount);
-    char buffer[olength + 1];
+    buffer = LIT_ALLOCATE(vm->state, char, olength+1);
     #ifdef SINGLE_LINE_MAPS
     memcpy(buffer, "{ ", 2);
     #else
@@ -226,7 +229,9 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
         lit_pop_root(state);
     }
     buffer[olength] = '\0';
-    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
+    LIT_FREE(vm->state, LitString*, keys);
+    LIT_FREE(vm->state, LitString*, values_converted);
+    return OBJECT_VALUE(lit_take_string(vm->state, buffer, olength));
 }
 
 static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

@@ -304,29 +304,54 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     size_t i;
     size_t index;
     size_t length;
+    char* chars;
+    
     LitValues* values;
     LitString* string;
+    LitString* joinee;
+    LitString** strings;
+    
     (void)argc;
     (void)argv;
+    joinee = NULL;
     length = 0;
+    if(argc > 0)
+    {
+        joinee = AS_STRING(argv[0]);
+    }
     values = &AS_ARRAY(instance)->values;
-    LitString* strings[values->count];
+    //LitString* strings[values->count];
+    strings = LIT_ALLOCATE(vm->state, LitString*, values->count+1);
     for(i = 0; i < values->count; i++)
     {
         string = lit_to_string(vm->state, values->values[i]);
         strings[i] = string;
         length += string->length;
+        if(joinee != NULL)
+        {
+            length += joinee->length;
+        }
     }
     index = 0;
-    char chars[length + 1];
+    //char chars[length + 1];
+    chars = LIT_ALLOCATE(vm->state, char, length+1);
     chars[length] = '\0';
     for(i = 0; i < values->count; i++)
     {
-        LitString* string = strings[i];
+        string = strings[i];
         memcpy(chars + index, string->chars, string->length);
         index += string->length;
+        if(joinee != NULL)
+        {
+            //if((i+1) < values->count)
+            {
+                memcpy(chars+index, joinee->chars, joinee->length);
+            }
+            index += joinee->length;
+        }
     }
-    return OBJECT_VALUE(lit_copy_string(vm->state, chars, length));
+    LIT_FREE(vm->state, LitString*, strings);
+    return OBJECT_VALUE(lit_take_string(vm->state, chars, length));
 }
 
 
@@ -378,12 +403,15 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     size_t buffer_index;
     size_t value_amount;
     size_t olength;
+    char* buffer;
     LitArray* self;
     LitValues* values;
     LitValue val;
     LitState* state;
+    LitString* rt;
     LitString* part;
     LitString* stringified;
+    LitString** values_converted;
     static const char* recstring = "(recursion)";
     self = AS_ARRAY(instance);
     values = &self->values;
@@ -394,8 +422,8 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     }
     has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
     value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
-    LitString* values_converted[value_amount];
-
+    //LitString* values_converted[value_amount];
+    values_converted = LIT_ALLOCATE(vm->state, LitString*, value_amount+1);
     // "[ ]"
     olength = 3;
     if(has_more)
@@ -416,7 +444,8 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
         values_converted[i] = stringified;
         olength += stringified->length + (i == value_amount - 1 ? 1 : 2);
     }
-    char buffer[olength + 1];
+    //char buffer[olength + 1];
+    buffer = LIT_ALLOCATE(vm->state, char, olength+1);
     memcpy(buffer, "[ ", 2);
     buffer_index = 2;
     for(i = 0; i < value_amount; i++)
@@ -435,8 +464,13 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
             buffer_index += 2;
         }
     }
+    LIT_FREE(vm->state, LitString*, values_converted);
     buffer[olength] = '\0';
-    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, olength));
+    // should be lit_take_string, but it doesn't get picked up by the GC for some reason
+    //rt = lit_take_string(vm->state, buffer, olength);
+    rt = lit_copy_string(vm->state, buffer, olength);
+    LIT_FREE(vm->state, char, buffer);
+    return OBJECT_VALUE(rt);
 }
 
 static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

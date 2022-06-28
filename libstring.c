@@ -5,33 +5,30 @@ LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, Lit
 
 static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
+    size_t length;
     LitString* string;
+    LitString* result;
+    LitValue value;
     (void)argc;
     string = AS_STRING(instance);
-    LitValue value = argv[0];
-    LitString* objfn_string_value = NULL;
-
+    value = argv[0];
+    LitString* strval = NULL;
     if(IS_STRING(value))
     {
-        objfn_string_value = AS_STRING(value);
+        strval = AS_STRING(value);
     }
     else
     {
-        objfn_string_value = lit_to_string(vm->state, value);
+        strval = lit_to_string(vm->state, value);
     }
-
-    size_t length = string->length + objfn_string_value->length;
-    LitString* result = lit_allocate_empty_string(vm->state, length);
-
+    length = string->length + strval->length;
+    result = lit_allocate_empty_string(vm->state, length);
     result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
     result->chars[length] = '\0';
-
     memcpy(result->chars, string->chars, string->length);
-    memcpy(result->chars + string->length, objfn_string_value->chars, objfn_string_value->length);
-
+    memcpy(result->chars + string->length, strval->chars, strval->length);
     result->hash = lit_hash_string(result->chars, result->length);
     lit_register_string(vm->state, result);
-
     return OBJECT_VALUE(result);
 }
 
@@ -45,7 +42,8 @@ static LitValue objfn_string_tostring(LitVM* vm, LitValue instance, size_t argc,
 
 static LitValue objfn_string_splice(LitVM* vm, LitString* string, int from, int to)
 {
-    int length = lit_ustring_length(string);
+    int length;
+    length = lit_ustring_length(string);
     if(from < 0)
     {
         from = length + from;
@@ -77,7 +75,6 @@ static LitValue objfn_string_tonumber(LitVM* vm, LitValue instance, size_t argc,
         errno = 0;
         return NULL_VALUE;
     }
-
     return lit_number_to_value(result);
 }
 
@@ -92,14 +89,12 @@ static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t ar
     (void)argc;
     (void)argv;
     buffer = LIT_ALLOCATE(vm->state, char, string->length + 1);
-
     for(i = 0; i < string->length; i++)
     {
         buffer[i] = (char)toupper(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_copy_string(vm->state, buffer, string->length);
-    LIT_FREE(vm->state, char, buffer);
+    rt = lit_take_string(vm->state, buffer, string->length);
     return OBJECT_VALUE(rt);
 }
 
@@ -107,9 +102,10 @@ static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t ar
 static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
-    LitString* rt;
-    LitString* string = AS_STRING(instance);
     char* buffer;
+    LitString* rt;
+    LitString* string;
+    string = AS_STRING(instance);
     (void)argc;
     (void)argv;
     buffer = LIT_ALLOCATE(vm->state, char, string->length + 1);
@@ -118,8 +114,7 @@ static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t ar
         buffer[i] = (char)tolower(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_copy_string(vm->state, buffer, string->length);
-    LIT_FREE(vm->state, char, buffer);
+    rt = lit_take_string(vm->state, buffer, string->length);
     return OBJECT_VALUE(rt);
 }
 
@@ -129,90 +124,90 @@ static LitValue objfn_string_contains(LitVM* vm, LitValue instance, size_t argc,
     (void)vm;
     (void)argc;
     (void)argv;
-    LitString* string = AS_STRING(instance);
-    LitString* sub = LIT_CHECK_OBJECT_STRING(0);
-
+    LitString* sub;
+    LitString* string;
+    string = AS_STRING(instance);
+    sub = LIT_CHECK_OBJECT_STRING(0);
     if(sub == string)
     {
         return TRUE_VALUE;
     }
-
     return BOOL_VALUE(strstr(string->chars, sub->chars) != NULL);
 }
 
 
 static LitValue objfn_string_startswith(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LitString* string = AS_STRING(instance);
-    LitString* sub = LIT_CHECK_OBJECT_STRING(0);
-
+    size_t i;
+    LitString* sub;
+    LitString* string;
+    string = AS_STRING(instance);
+    sub = LIT_CHECK_OBJECT_STRING(0);
     if(sub == string)
     {
         return TRUE_VALUE;
     }
-
     if(sub->length > string->length)
     {
         return FALSE_VALUE;
     }
-
-    for(size_t i = 0; i < sub->length; i++)
+    for(i = 0; i < sub->length; i++)
     {
         if(sub->chars[i] != string->chars[i])
         {
             return FALSE_VALUE;
         }
     }
-
     return TRUE_VALUE;
 }
 
-
 static LitValue objfn_string_endswith(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LitString* string = AS_STRING(instance);
-    LitString* sub = LIT_CHECK_OBJECT_STRING(0);
-
+    size_t i;
+    size_t start;
+    LitString* sub;
+    LitString* string;
+    string = AS_STRING(instance);
+    sub = LIT_CHECK_OBJECT_STRING(0);
     if(sub == string)
     {
         return TRUE_VALUE;
     }
-
     if(sub->length > string->length)
     {
         return FALSE_VALUE;
     }
-
-    size_t start = string->length - sub->length;
-
-    for(size_t i = 0; i < sub->length; i++)
+    start = string->length - sub->length;
+    for(i = 0; i < sub->length; i++)
     {
         if(sub->chars[i] != string->chars[i + start])
         {
             return FALSE_VALUE;
         }
     }
-
     return TRUE_VALUE;
 }
 
 
 static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(2)
-
-        if(!IS_STRING(argv[0]) || !IS_STRING(argv[1]))
+    size_t i;
+    size_t buffer_length;
+    size_t buffer_index;
+    char* buffer;
+    LitString* string;
+    LitString* what;
+    LitString* with;
+    LIT_ENSURE_ARGS(2);
+    if(!IS_STRING(argv[0]) || !IS_STRING(argv[1]))
     {
         lit_runtime_error_exiting(vm, "expected 2 string arguments");
     }
-
-    LitString* string = AS_STRING(instance);
-    LitString* what = AS_STRING(argv[0]);
-    LitString* with = AS_STRING(argv[1]);
-
-    size_t buffer_length = 0;
-
-    for(size_t i = 0; i < string->length; i++)
+    string = AS_STRING(instance);
+    what = AS_STRING(argv[0]);
+    with = AS_STRING(argv[1]);
+    buffer_length = 0;
+    for(i = 0; i < string->length; i++)
     {
         if(strncmp(string->chars + i, what->chars, what->length) == 0)
         {
@@ -224,16 +219,13 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
             buffer_length++;
         }
     }
-
-    size_t buffer_index = 0;
-    char buffer[buffer_length + 1];
-
-    for(size_t i = 0; i < string->length; i++)
+    buffer_index = 0;
+    buffer = LIT_ALLOCATE(vm->state, char, buffer_length+1);
+    for(i = 0; i < string->length; i++)
     {
         if(strncmp(string->chars + i, what->chars, what->length) == 0)
         {
             memcpy(buffer + buffer_index, with->chars, with->length);
-
             buffer_index += with->length;
             i += what->length - 1;
         }
@@ -243,38 +235,35 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
             buffer_index++;
         }
     }
-
     buffer[buffer_length] = '\0';
-
-    return OBJECT_VALUE(lit_copy_string(vm->state, buffer, buffer_length));
+    return OBJECT_VALUE(lit_take_string(vm->state, buffer, buffer_length));
 }
-
 
 static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    int from = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-    int to = LIT_CHECK_NUMBER(vm, argv, argc, 1);
-
+    int to;
+    int from;
+    from = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    to = LIT_CHECK_NUMBER(vm, argv, argc, 1);
     return objfn_string_splice(vm, AS_STRING(instance), from, to);
 }
 
-
 static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
+    int index;
+    LitString* c;
+    LitString* string;
     if(IS_RANGE(argv[0]))
     {
         LitRange* range = AS_RANGE(argv[0]);
         return objfn_string_splice(vm, AS_STRING(instance), range->from, range->to);
     }
-
-    LitString* string = AS_STRING(instance);
-    int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-
+    string = AS_STRING(instance);
+    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     if(argc != 1)
     {
         lit_runtime_error_exiting(vm, "cannot modify strings with the subscript op");
     }
-
     if(index < 0)
     {
         index = lit_ustring_length(string) + index;
@@ -284,24 +273,19 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
             return NULL_VALUE;
         }
     }
-
-    LitString* c = lit_ustring_code_point_at(vm->state, string, lit_uchar_offset(string->chars, index));
-
+    c = lit_ustring_code_point_at(vm->state, string, lit_uchar_offset(string->chars, index));
     return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
-
 static LitValue objfn_string_less(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) < 0);
+    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(vm, argv, argc, 0)) < 0);
 }
-
 
 static LitValue objfn_string_greater(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) > 0);
+    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(vm, argv, argc, 0)) > 0);
 }
-
 
 static LitValue objfn_string_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
@@ -311,56 +295,48 @@ static LitValue objfn_string_length(LitVM* vm, LitValue instance, size_t argc, L
     return lit_number_to_value(lit_ustring_length(AS_STRING(instance)));
 }
 
-
 static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
+    int index;
     LitString* string;
     string = AS_STRING(instance);
-
     if(IS_NULL(argv[0]))
     {
         if(string->length == 0)
         {
             return NULL_VALUE;
         }
-
         return lit_number_to_value(0);
     }
-
-    int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-
+    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     if(index < 0)
     {
         return NULL_VALUE;
     }
-
     do
     {
         index++;
-
         if(index >= (int)string->length)
         {
             return NULL_VALUE;
         }
     } while((string->chars[index] & 0xc0) == 0x80);
-
     return lit_number_to_value(index);
 }
 
 
 static LitValue objfn_string_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LitString* string = AS_STRING(instance);
-    uint32_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-
+    uint32_t index;
+    LitString* string;
+    string = AS_STRING(instance);
+    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     if(index == UINT32_MAX)
     {
         return false;
     }
-
     return OBJECT_VALUE(lit_ustring_code_point_at(vm->state, string, index));
 }
-
 
 void lit_open_string_library(LitState* state)
 {
@@ -373,7 +349,9 @@ void lit_open_string_library(LitState* state)
             LIT_BIND_METHOD("toString", objfn_string_tostring);
             LIT_BIND_METHOD("toNumber", objfn_string_tonumber);
             LIT_BIND_METHOD("toUpperCase", objfn_string_touppercase);
+            LIT_BIND_METHOD("toUpper", objfn_string_touppercase);
             LIT_BIND_METHOD("toLowerCase", objfn_string_tolowercase);
+            LIT_BIND_METHOD("toLower", objfn_string_tolowercase);
             LIT_BIND_METHOD("contains", objfn_string_contains);
             LIT_BIND_METHOD("startsWith", objfn_string_startswith);
             LIT_BIND_METHOD("endsWith", objfn_string_endswith);
