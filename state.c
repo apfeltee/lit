@@ -310,6 +310,9 @@ LitModule* lit_get_module(LitState* state, const char* name)
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code)
 {
+    intptr_t istack;
+    intptr_t itop;
+    intptr_t idif;
     LitModule* module;
     LitFiber* fiber;
     LitInterpretResult result;
@@ -322,7 +325,11 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
     fiber = module->main_fiber;
     if(!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack)
     {
-        lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
+        istack = (intptr_t)(fiber->stack);
+        itop = (intptr_t)(fiber->stack_top);
+        idif = (intptr_t)(fiber->stack - fiber->stack_top);
+        /* me fail english. how do i put this better? */
+        lit_error(state, RUNTIME_ERROR, "stack should be same as stack top", idif, istack, istack, itop, itop);
     }
     state->last_module = module;
     return result;
@@ -384,7 +391,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
         source = lit_read_file(file_name);
         if(source == NULL)
         {
-            lit_error(state, COMPILE_ERROR, "Failed to open file '%s'", file_name);
+            lit_error(state, COMPILE_ERROR, "failed to open file '%s' for reading", file_name);
             return false;
         }
         file_name = lit_patch_file_name(file_name);
@@ -401,7 +408,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     file = fopen(output_file, "w+b");
     if(file == NULL)
     {
-        lit_error(state, COMPILE_ERROR, "Failed to open for writing file '%s'", output_file);
+        lit_error(state, COMPILE_ERROR, "failed to open file '%s' for writing", output_file);
         return false;
     }
     lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
@@ -431,12 +438,12 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
     source = lit_read_file(file_name);
     if(source == NULL)
     {
-        lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
+        lit_error(state, RUNTIME_ERROR, "failed to open file '%s' for reading", file_name);
     }
     file_name = lit_patch_file_name(file_name);
     if(measure_compilation_time)
     {
-        printf("Reading source: %gms\n", last_source_time = (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
+        printf("reading source: %gms\n", last_source_time = (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
     }
     *patched_file_name = file_name;
     return source;
