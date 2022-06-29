@@ -256,7 +256,7 @@ static void mark_roots(LitVM* vm)
     lit_mark_table(vm, &vm->globals->values);
 }
 
-static void mark_array(LitVM* vm, LitValues* array)
+static void mark_array(LitVM* vm, LitValueList* array)
 {
     size_t i;
     for(i = 0; i < array->count; i++)

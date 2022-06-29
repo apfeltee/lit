@@ -21,7 +21,6 @@ function bf(src, input)
     let inPtr = 0
     let ip    = 0
     let stack = []
-    let out = ""
     while(ip < src.length)
     {
         if(ip < 0)
@@ -46,7 +45,7 @@ function bf(src, input)
         }
         else if(c == ".")
         {
-            out = out + memory[mPtr].toChar()
+            print(memory[mPtr].toChar())
         }
         else if(c == "x")
         {
@@ -71,15 +70,15 @@ function bf(src, input)
         }
         else if(c == "[")
         {
-           if (memory[mPtr] != 0)
-           {
+            if (memory[mPtr] != 0)
+            {
                stack.push(ip)
-           }
-           else
-           {
-               let bcount = 0
-               while(true)
-               {
+            }
+            else
+            {
+                let bcount = 0
+                while(true)
+                {
                     ip += 1
                     if(ip > src.length)
                     {
@@ -121,7 +120,6 @@ function bf(src, input)
         ip += 1
     }
     
-    print(out)
 }
 
 let bfsource = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."

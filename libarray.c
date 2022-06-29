@@ -20,7 +20,7 @@ LitValue lit_array_removeat(LitArray* array, size_t index)
     size_t i;
     size_t count;
     LitValue value;
-    LitValues* values;
+    LitValueList* values;
     values = &array->values;
     count = values->count;
     if(index >= count)
@@ -106,7 +106,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
             lit_runtime_error_exiting(vm, "array index must be a number");
         }
 
-        LitValues* values = &AS_ARRAY(instance)->values;
+        LitValueList* values = &AS_ARRAY(instance)->values;
         int index = lit_value_to_number(argv[0]);
 
         if(index < 0)
@@ -130,7 +130,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
         return NULL_VALUE;
     }
 
-    LitValues* values = &AS_ARRAY(instance)->values;
+    LitValueList* values = &AS_ARRAY(instance)->values;
     int index = lit_value_to_number(argv[0]);
 
     if(index < 0)
@@ -144,6 +144,73 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
     }
 
     return values->values[index];
+}
+
+LitInterpretResult lit_call_instance_method(LitState* state, LitInstance* instance, LitString* mthname, LitValue* argv, size_t argc)
+{
+    LitValue mthval;
+    if(lit_table_get(&instance->fields, mthname, &mthval) || lit_table_get(&instance->klass->methods, mthname, &mthval))
+    {
+        return lit_call(state, mthval, argv, argc);
+    }
+    return INTERPRET_RUNTIME_FAIL;    
+}
+
+/*
+
+LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
+
+*/
+bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
+{
+    LitInstance* instance;
+    LitInterpretResult inret;
+    LitValue args[3];
+    if(IS_INSTANCE(a))
+    {
+        instance = AS_INSTANCE(a);
+        args[0] = b;
+        inret = lit_call_instance_method(state, instance, CONST_STRING(state, "=="), args, 1);
+        if(inret.type == LITRESULT_OK)
+        {
+            if(BOOL_VALUE(inret.result) == TRUE_VALUE)
+            {
+                return true;
+            }
+            return false;
+        }
+    }
+    return (a == b);
+}
+
+static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    size_t i;
+    LitArray* self;
+    LitArray* other;
+    fprintf(stderr, "call to objfn_array_compare\n");
+    self = AS_ARRAY(instance);
+    if(IS_ARRAY(argv[0]))
+    {
+        other = AS_ARRAY(argv[0]);
+        if(self->values.count == other->values.count)
+        {
+            for(i=0; i<self->values.count; i++)
+            {
+                if(!lit_compare_values(vm->state, self->values.values[i], other->values.values[i]))
+                {
+                    return FALSE_VALUE;
+                }
+            }
+            return TRUE_VALUE;
+        }
+        return FALSE_VALUE;
+    }
+    lit_runtime_error_exiting(vm, "can only compare array to another array or null");
+    return FALSE_VALUE;
 }
 
 
@@ -162,7 +229,7 @@ static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, Li
 {
     LIT_ENSURE_ARGS(2)
 
-        LitValues* values = &AS_ARRAY(instance)->values;
+        LitValueList* values = &AS_ARRAY(instance)->values;
     int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
 
     if(index < 0)
@@ -289,7 +356,7 @@ static LitValue objfn_array_iterator(LitVM* vm, LitValue instance, size_t argc, 
 static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
-    LitValues* values;
+    LitValueList* values;
     index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
     values = &AS_ARRAY(instance)->values;
     if(values->count <= index)
@@ -306,7 +373,7 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     size_t length;
     char* chars;
     
-    LitValues* values;
+    LitValueList* values;
     LitString* string;
     LitString* joinee;
     LitString** strings;
@@ -357,7 +424,7 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
 
 static LitValue objfn_array_sort(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LitValues* values;
+    LitValueList* values;
     values = &AS_ARRAY(instance)->values;
     if(argc == 1 && IS_CALLABLE_FUNCTION(argv[0]))
     {
@@ -377,9 +444,9 @@ static LitValue objfn_array_clone(LitVM* vm, LitValue instance, size_t argc, Lit
     (void)argv;
     size_t i;
     LitState* state;
-    LitValues* values;
+    LitValueList* values;
     LitArray* array;
-    LitValues* new_values;
+    LitValueList* new_values;
     state = vm->state;
     values = &AS_ARRAY(instance)->values;
     array = lit_create_array(state);
@@ -405,7 +472,7 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     size_t olength;
     char* buffer;
     LitArray* self;
-    LitValues* values;
+    LitValueList* values;
     LitValue val;
     LitState* state;
     LitString* rt;
@@ -481,7 +548,6 @@ static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, Li
     return lit_number_to_value(AS_ARRAY(instance)->values.count);
 }
 
-
 void lit_open_array_library(LitState* state)
 {
     LIT_BEGIN_CLASS("Array");
@@ -489,6 +555,7 @@ void lit_open_array_library(LitState* state)
         LIT_INHERIT_CLASS(state->objectvalue_class);
         LIT_BIND_CONSTRUCTOR(objfn_array_constructor);
         LIT_BIND_METHOD("[]", objfn_array_subscript);
+        LIT_BIND_METHOD("==", objfn_array_compare);
         LIT_BIND_METHOD("add", objfn_array_add);
         LIT_BIND_METHOD("push", objfn_array_add);
         LIT_BIND_METHOD("insert", objfn_array_insert);

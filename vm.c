@@ -6,8 +6,14 @@
 #include "lit.h"
 
 //#define LIT_TRACE_EXECUTION
-//#define LIT_USE_COMPUTEDGOTO
 
+/*
+* visual studio doesn't support computed gotos, so
+* instead a switch-case is used. 
+*/
+#if !defined(_MSC_VER)
+    #define LIT_USE_COMPUTEDGOTO
+#endif
 
 #ifdef LIT_TRACE_EXECUTION
     #define TRACE_FRAME() lit_trace_frame(fiber);
@@ -17,8 +23,6 @@
         { \
         } while(0);
 #endif
-
-
 
 #ifdef LIT_USE_COMPUTEDGOTO
     #define vm_default()
@@ -764,7 +768,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
     LitValue* privates;
     LitValue* pval;
     LitValue* slots;
-    LitValues* values;
+    LitValueList* values;
     LitVM* vm;
     (void)instruction;
     vm = state->vm;
@@ -816,9 +820,20 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             #endif
         #else
             instruction = *ip++;
-            //lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+            #ifdef LIT_TRACE_EXECUTION
+                lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+            #endif
             switch(instruction)
         #endif
+        /*
+        * each op_case(...){...} *MUST* end with either break, return, or continue.
+        * computationally, fall-throughs differ wildly between computed gotos or switch/case statements.
+        * in computed gotos, a "fall-through" just executes the next block (since it's just a labelled block),
+        * which may invalidate the stack, and while the same is technically true for switch/case, they
+        * could end up executing completely unrelated instructions.
+        * think, declaring a block for OP_BUILDHOUSE, and the next block is OP_SETHOUSEONFIRE.
+        * an easy mistake to make, but crucial to check.
+        */
         {
             op_case(POP)
             {
@@ -1047,15 +1062,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(EQUAL)
             {
+                /*
                 if(IS_INSTANCE(vm_peek(1)))
                 {
                     vm_writeframe();
+                    fprintf(stderr, "OP_EQUAL: trying to invoke '==' ...\n");
                     vm_invoke_from_class(AS_INSTANCE(vm_peek(1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
                     continue;
                 }
                 a = vm_pop();
                 b = vm_pop();
                 vm_push(BOOL_VALUE(a == b));
+                */
+                vm_binaryop(lit_number_to_value, ==, "==");
                 continue;
             }
 

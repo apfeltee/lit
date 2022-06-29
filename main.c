@@ -463,10 +463,9 @@ int main(int argc, const char* argv[])
     amount = lit_free_state(state);
     if(result != LITRESULT_COMPILE_ERROR && amount != 0)
     {
-        fprintf(stderr, "Error: memory leak of %i bytes!\n", (int)amount);
+        fprintf(stderr, "gc: freed residual %i bytes\n", (int)amount);
         return LIT_EXIT_CODE_MEM_LEAK;
     }
-
     if(result != LITRESULT_OK)
     {
         return result == LITRESULT_RUNTIME_ERROR ? LIT_EXIT_CODE_RUNTIME_ERROR : LIT_EXIT_CODE_COMPILE_ERROR;

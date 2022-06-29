@@ -9,7 +9,7 @@ void lit_disassemble_module(LitModule* module, const char* source)
 
 void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source)
 {
-    LitValues* values = &chunk->constants;
+    LitValueList* values = &chunk->constants;
 
     for(size_t i = 0; i < values->count; i++)
     {

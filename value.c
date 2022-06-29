@@ -27,20 +27,20 @@ static const char* lit_object_type_names[] =
 };
 
 
-void lit_init_values(LitValues* array)
+void lit_init_values(LitValueList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void lit_free_values(LitState* state, LitValues* array)
+void lit_free_values(LitState* state, LitValueList* array)
 {
     LIT_FREE_ARRAY(state, LitValue, array->values, array->capacity);
     lit_init_values(array);
 }
 
-void lit_values_write(LitState* state, LitValues* array, LitValue value)
+void lit_values_write(LitState* state, LitValueList* array, LitValue value)
 {
     size_t old_capacity;
     if(array->capacity < array->count + 1)
@@ -296,7 +296,7 @@ void lit_print_value(LitValue value)
     }
 }
 
-void lit_values_ensure_size(LitState* state, LitValues* values, size_t size)
+void lit_values_ensure_size(LitState* state, LitValueList* values, size_t size)
 {
     size_t i;
     size_t old_capacity;

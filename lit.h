@@ -707,103 +707,103 @@ enum LitObjectType
     LITTYPE_REFERENCE
 };
 
-typedef enum LitOpCode LitOpCode;
-typedef enum LitExpressionType LitExpressionType;
-typedef enum LitOptimizationLevel LitOptimizationLevel;
-typedef enum LitOptimization LitOptimization;
-typedef enum LitError LitError;
-typedef enum LitPrecedence LitPrecedence;
-typedef enum LitStatementType LitStatementType;
-typedef enum LitTokenType LitTokenType;
-typedef enum LitInterpretResultType LitInterpretResultType;
-typedef enum LitErrorType LitErrorType;
-typedef enum LitFunctionType LitFunctionType;
-typedef enum LitObjectType LitObjectType;
-typedef struct LitScanner LitScanner;
-typedef struct LitPreprocessor LitPreprocessor;
-typedef struct LitVM LitVM;
-typedef struct LitParser LitParser;
-typedef struct LitEmitter LitEmitter;
-typedef struct LitOptimizer LitOptimizer;
-typedef struct LitState LitState;
-typedef struct LitInterpretResult LitInterpretResult;
-typedef struct LitObject LitObject;
-typedef struct LitMap LitMap;
-typedef struct LitString LitString;
-typedef struct LitModule LitModule;
-typedef struct LitFiber LitFiber;
-typedef struct LitUserdata LitUserdata;
-typedef struct LitChunk LitChunk;
-typedef struct LitTableEntry LitTableEntry;
-typedef struct LitTable LitTable;
-typedef struct LitFunction LitFunction;
-typedef struct LitUpvalue LitUpvalue;
-typedef struct LitClosure LitClosure;
-typedef struct LitNativeFunction LitNativeFunction;
-typedef struct LitNativePrimitive LitNativePrimitive;
-typedef struct LitNativeMethod LitNativeMethod;
-typedef struct LitPrimitiveMethod LitPrimitiveMethod;
-typedef struct LitCallFrame LitCallFrame;
-typedef struct LitClass LitClass;
-typedef struct LitInstance LitInstance;
-typedef struct LitBoundMethod LitBoundMethod;
-typedef struct LitArray LitArray;
-typedef struct LitRange LitRange;
-typedef struct LitField LitField;
-typedef struct LitReference LitReference;
-typedef struct LitToken LitToken;
-typedef struct LitExpression LitExpression;
-typedef struct LitStatement LitStatement;
-typedef struct LitLiteralExpression LitLiteralExpression;
-typedef struct LitBinaryExpression LitBinaryExpression;
-typedef struct LitUnaryExpression LitUnaryExpression;
-typedef struct LitVarExpression LitVarExpression;
-typedef struct LitAssignExpression LitAssignExpression;
-typedef struct LitCallExpression LitCallExpression;
-typedef struct LitGetExpression LitGetExpression;
-typedef struct LitSetExpression LitSetExpression;
-typedef struct LitParameter LitParameter;
-typedef struct LitLambdaExpression LitLambdaExpression;
-typedef struct LitArrayExpression LitArrayExpression;
-typedef struct LitObjectExpression LitObjectExpression;
-typedef struct LitSubscriptExpression LitSubscriptExpression;
-typedef struct LitThisExpression LitThisExpression;
-typedef struct LitSuperExpression LitSuperExpression;
-typedef struct LitRangeExpression LitRangeExpression;
-typedef struct LitIfExpression LitIfExpression;
-typedef struct LitInterpolationExpression LitInterpolationExpression;
-typedef struct LitReferenceExpression LitReferenceExpression;
-typedef struct LitExpressionStatement LitExpressionStatement;
-typedef struct LitBlockStatement LitBlockStatement;
-typedef struct LitVarStatement LitVarStatement;
-typedef struct LitIfStatement LitIfStatement;
-typedef struct LitWhileStatement LitWhileStatement;
-typedef struct LitForStatement LitForStatement;
-typedef struct LitContinueStatement LitContinueStatement;
-typedef struct LitBreakStatement LitBreakStatement;
-typedef struct LitFunctionStatement LitFunctionStatement;
-typedef struct LitReturnStatement LitReturnStatement;
-typedef struct LitMethodStatement LitMethodStatement;
-typedef struct LitClassStatement LitClassStatement;
-typedef struct LitFieldStatement LitFieldStatement;
-typedef struct LitPrivate LitPrivate;
-typedef struct LitLocal LitLocal;
-typedef struct LitCompilerUpvalue LitCompilerUpvalue;
-typedef struct LitCompiler LitCompiler;
-typedef struct LitParseRule LitParseRule;
-typedef struct LitEmulatedFile LitEmulatedFile;
-typedef struct LitVariable LitVariable;
+typedef enum /**/LitOpCode LitOpCode;
+typedef enum /**/LitExpressionType LitExpressionType;
+typedef enum /**/LitOptimizationLevel LitOptimizationLevel;
+typedef enum /**/LitOptimization LitOptimization;
+typedef enum /**/LitError LitError;
+typedef enum /**/LitPrecedence LitPrecedence;
+typedef enum /**/LitStatementType LitStatementType;
+typedef enum /**/LitTokenType LitTokenType;
+typedef enum /**/LitInterpretResultType LitInterpretResultType;
+typedef enum /**/LitErrorType LitErrorType;
+typedef enum /**/LitFunctionType LitFunctionType;
+typedef enum /**/LitObjectType LitObjectType;
+typedef struct /**/LitScanner LitScanner;
+typedef struct /**/LitPreprocessor LitPreprocessor;
+typedef struct /**/LitVM LitVM;
+typedef struct /**/LitParser LitParser;
+typedef struct /**/LitEmitter LitEmitter;
+typedef struct /**/LitOptimizer LitOptimizer;
+typedef struct /**/LitState LitState;
+typedef struct /**/LitInterpretResult LitInterpretResult;
+typedef struct /**/LitObject LitObject;
+typedef struct /**/LitMap LitMap;
+typedef struct /**/LitString LitString;
+typedef struct /**/LitModule LitModule;
+typedef struct /**/LitFiber LitFiber;
+typedef struct /**/LitUserdata LitUserdata;
+typedef struct /**/LitChunk LitChunk;
+typedef struct /**/LitTableEntry LitTableEntry;
+typedef struct /**/LitTable LitTable;
+typedef struct /**/LitFunction LitFunction;
+typedef struct /**/LitUpvalue LitUpvalue;
+typedef struct /**/LitClosure LitClosure;
+typedef struct /**/LitNativeFunction LitNativeFunction;
+typedef struct /**/LitNativePrimitive LitNativePrimitive;
+typedef struct /**/LitNativeMethod LitNativeMethod;
+typedef struct /**/LitPrimitiveMethod LitPrimitiveMethod;
+typedef struct /**/LitCallFrame LitCallFrame;
+typedef struct /**/LitClass LitClass;
+typedef struct /**/LitInstance LitInstance;
+typedef struct /**/LitBoundMethod LitBoundMethod;
+typedef struct /**/LitArray LitArray;
+typedef struct /**/LitRange LitRange;
+typedef struct /**/LitField LitField;
+typedef struct /**/LitReference LitReference;
+typedef struct /**/LitToken LitToken;
+typedef struct /**/LitExpression LitExpression;
+typedef struct /**/LitStatement LitStatement;
+typedef struct /**/LitLiteralExpression LitLiteralExpression;
+typedef struct /**/LitBinaryExpression LitBinaryExpression;
+typedef struct /**/LitUnaryExpression LitUnaryExpression;
+typedef struct /**/LitVarExpression LitVarExpression;
+typedef struct /**/LitAssignExpression LitAssignExpression;
+typedef struct /**/LitCallExpression LitCallExpression;
+typedef struct /**/LitGetExpression LitGetExpression;
+typedef struct /**/LitSetExpression LitSetExpression;
+typedef struct /**/LitParameter LitParameter;
+typedef struct /**/LitLambdaExpression LitLambdaExpression;
+typedef struct /**/LitArrayExpression LitArrayExpression;
+typedef struct /**/LitObjectExpression LitObjectExpression;
+typedef struct /**/LitSubscriptExpression LitSubscriptExpression;
+typedef struct /**/LitThisExpression LitThisExpression;
+typedef struct /**/LitSuperExpression LitSuperExpression;
+typedef struct /**/LitRangeExpression LitRangeExpression;
+typedef struct /**/LitIfExpression LitIfExpression;
+typedef struct /**/LitInterpolationExpression LitInterpolationExpression;
+typedef struct /**/LitReferenceExpression LitReferenceExpression;
+typedef struct /**/LitExpressionStatement LitExpressionStatement;
+typedef struct /**/LitBlockStatement LitBlockStatement;
+typedef struct /**/LitVarStatement LitVarStatement;
+typedef struct /**/LitIfStatement LitIfStatement;
+typedef struct /**/LitWhileStatement LitWhileStatement;
+typedef struct /**/LitForStatement LitForStatement;
+typedef struct /**/LitContinueStatement LitContinueStatement;
+typedef struct /**/LitBreakStatement LitBreakStatement;
+typedef struct /**/LitFunctionStatement LitFunctionStatement;
+typedef struct /**/LitReturnStatement LitReturnStatement;
+typedef struct /**/LitMethodStatement LitMethodStatement;
+typedef struct /**/LitClassStatement LitClassStatement;
+typedef struct /**/LitFieldStatement LitFieldStatement;
+typedef struct /**/LitPrivate LitPrivate;
+typedef struct /**/LitLocal LitLocal;
+typedef struct /**/LitCompilerUpvalue LitCompilerUpvalue;
+typedef struct /**/LitCompiler LitCompiler;
+typedef struct /**/LitParseRule LitParseRule;
+typedef struct /**/LitEmulatedFile LitEmulatedFile;
+typedef struct /**/LitVariable LitVariable;
 
 /* ARRAYTYPES */
-typedef struct LitVariables LitVariables;
-typedef struct LitBytes LitBytes;
-typedef struct LitUInts LitUInts;
-typedef struct LitValues LitValues;
-typedef struct LitExprList LitExprList;
-typedef struct LitParameters LitParameters;
-typedef struct LitStmtList LitStmtList;
-typedef struct LitPrivates LitPrivates;
-typedef struct LitLocals LitLocals;
+typedef struct /**/LitVariables LitVariables;
+typedef struct /**/LitBytes LitBytes;
+typedef struct /**/LitUInts LitUInts;
+typedef struct /**/LitValueList LitValueList;
+typedef struct /**/LitExprList LitExprList;
+typedef struct /**/LitParameters LitParameters;
+typedef struct /**/LitStmtList LitStmtList;
+typedef struct /**/LitPrivates LitPrivates;
+typedef struct /**/LitLocals LitLocals;
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM* vm, size_t arg_count, LitValue* args);
 typedef bool (*LitNativePrimitiveFn)(LitVM* vm, size_t arg_count, LitValue* args);
@@ -830,7 +830,7 @@ struct LitBytes
     uint8_t* values;
 };
 
-struct LitValues
+struct LitValueList
 {
     size_t capacity;
     size_t count;
@@ -846,7 +846,7 @@ struct LitChunk
     size_t line_count;
     size_t line_capacity;
     uint16_t* lines;
-    LitValues constants;
+    LitValueList constants;
 };
 
 struct LitTableEntry
@@ -1008,7 +1008,7 @@ struct LitBoundMethod
 struct LitArray
 {
     LitObject object;
-    LitValues values;
+    LitValueList values;
 };
 
 struct LitUserdata
@@ -1222,7 +1222,7 @@ struct LitArrayExpression
 struct LitObjectExpression
 {
     LitExpression expression;
-    LitValues keys;
+    LitValueList keys;
     LitExprList values;
 };
 
@@ -1523,10 +1523,10 @@ struct LitPreprocessor
 	 * We need to store pointers (8 bytes in size),
 	 * and so that we don't have to declare a new
 	 * array type, that we will use only once,
-	 * I'm using LitValues here, because LitValue
+	 * I'm using LitValueList here, because LitValue
 	 * also has the same size (8 bytes)
 	 */
-    LitValues open_ifs;
+    LitValueList open_ifs;
 };
 
 void util_custom_quick_sort(LitVM *vm, LitValue *l, int length, LitValue callee);
@@ -1571,9 +1571,9 @@ void lit_init_bytes(LitBytes* array);
 void lit_free_bytes(LitState* state, LitBytes* array);
 void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value);
 
-void lit_init_values(LitValues* array);
-void lit_free_values(LitState* state, LitValues* array);
-void lit_values_write(LitState* state, LitValues* array, LitValue value);
+void lit_init_values(LitValueList* array);
+void lit_free_values(LitState* state, LitValueList* array);
+void lit_values_write(LitState* state, LitValueList* array, LitValue value);
 
 
 void lit_init_expressions(LitExprList* array);
@@ -1615,7 +1615,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value);
 char* lit_patch_file_name(char* file_name);
 
 void lit_print_value(LitValue value);
-void lit_values_ensure_size(LitState* state, LitValues* values, size_t size);
+void lit_values_ensure_size(LitState* state, LitValueList* values, size_t size);
 const char* lit_get_value_type(LitValue value);
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
 void lit_free_objects(LitState* state, LitObject* objects);
@@ -1703,12 +1703,17 @@ void lit_trace_vm_stack(LitVM* vm);
 
 static inline void lit_push(LitVM* vm, LitValue value)
 {
-    *vm->fiber->stack_top++ = value;
+    *(vm->fiber->stack_top) = value;
+    vm->fiber->stack_top++;
+
 }
 
 static inline LitValue lit_pop(LitVM* vm)
 {
-    return *(--vm->fiber->stack_top);
+    LitValue rt;
+    rt = *(vm->fiber->stack_top);
+    vm->fiber->stack_top--;
+    return rt;
 }
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
@@ -1725,8 +1730,7 @@ bool lit_set_native_exit_jump();
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult
-lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
 
 LitString* lit_to_string(LitState* state, LitValue object);
 LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t arg_count);
