@@ -102,6 +102,7 @@ void lit_register_string(LitState* state, LitString* string)
     }
 }
 
+/* todo: track if $chars is a sds instance - additional argument $fromsds? */
 LitString* lit_string_take(LitState* state, char* chars, size_t length)
 {
     uint32_t hash;
@@ -194,21 +195,25 @@ LitValue lit_string_number_to_string(LitState* state, double value)
 
 LitValue lit_string_format(LitState* state, const char* format, ...)
 {
+    char ch;
     size_t length;
     size_t total_length;
     bool was_allowed;
-    char* start;
+    //char* start;
     const char* c;
     const char* cc;
     const char* strval;
     va_list arg_list;
+    LitValue val;
     LitString* ss;
     LitString* string;
     LitString* result;
     was_allowed = state->allow_gc;
     state->allow_gc = false;
     va_start(arg_list, format);
-    total_length = 0;
+    total_length = strlen(format);
+    /* thanks to sds, this is mostly unnecessary */
+    /*
     for(c = format; *c != '\0'; c++)
     {
         switch(*c)
@@ -251,11 +256,12 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
 
         }
     }
+    */
     va_end(arg_list);
-    result = lit_string_alloc_empty(state, total_length);
-    result->chars = LIT_ALLOCATE(state, char, total_length + 1);
-    result->chars[total_length] = '\0';
-    start = result->chars;
+    result = lit_string_alloc_empty(state, total_length + 1);
+    //result->chars = LIT_ALLOCATE(state, char, total_length + 1);
+    //result->chars[total_length] = '\0';
+    //start = result->chars;
     va_start(arg_list, format);
     for(c = format; *c != '\0'; c++)
     {
@@ -267,8 +273,9 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                     if(strval != NULL)
                     {
                         length = strlen(strval);
-                        memcpy(start, strval, length);
-                        start += length;
+                        //memcpy(start, strval, length);
+                        //start += length;
+                        result->chars = sdscatlen(result->chars, strval, length);
                         break;
                     }
                     goto default_ending_copying;
@@ -276,12 +283,21 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                 break;
             case '@':
                 {
-                    string = AS_STRING(va_arg(arg_list, LitValue));
-                    if(string != NULL)
+                    val = va_arg(arg_list, LitValue);
+                    if(IS_STRING(val))
                     {
-                        memcpy(start, string->chars, lit_string_length(string));
-                        start += lit_string_length(string);
-                        break;
+                        string = AS_STRING(val);
+                        if(string != NULL)
+                        {
+                            //memcpy(start, string->chars, lit_string_length(string));
+                            //start += lit_string_length(string);
+                            length = sdslen(string->chars);
+                            if(length > 0)
+                            {
+                                result->chars = sdscatlen(result->chars, string->chars, length);
+                            }
+                            break;
+                        }
                     }
                     goto default_ending_copying;
                 }
@@ -290,14 +306,21 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
             case '#':
                 {
                     string = AS_STRING(lit_string_number_to_string(state, va_arg(arg_list, double)));
-                    memcpy(start, string->chars, lit_string_length(string));
-                    start += lit_string_length(string);
+                    //memcpy(start, string->chars, lit_string_length(string));
+                    //start += lit_string_length(string);
+                    length = sdslen(string->chars);
+                    if(length > 0)
+                    {
+                        result->chars = sdscatlen(result->chars, string->chars, length);
+                    }
                 }
                 break;
             default:
                 {
                     default_ending_copying:
-                    *start++ = *c;
+                    // *start++ = *c;
+                    ch = *c;
+                    result->chars = sdscatlen(result->chars, &ch, 1);
                 }
                 break;
         }

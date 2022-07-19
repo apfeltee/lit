@@ -1,6 +1,34 @@
 
 #include "lit.h"
 
+#define LIT_DEBUG_OPTIMIZER
+
+#define optc_do_binary_op(op) \
+    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    { \
+        optdbg("translating constant binary expression of '" # op "' to constant value"); \
+        return lit_number_to_value(lit_value_to_number(a) op lit_value_to_number(b)); \
+    } \
+    return NULL_VALUE;
+
+#define optc_do_bitwise_op(op) \
+    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    { \
+        optdbg("translating constant bitwise expression of '" #op "' to constant value"); \
+        return lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
+    } \
+    return NULL_VALUE;
+
+#define optc_do_fn_op(fn, tokstr) \
+    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    { \
+        optdbg("translating constant expression of '" tokstr "' to constant value via call to '" #fn "'"); \
+        return lit_number_to_value(fn(lit_value_to_number(a), lit_value_to_number(b))); \
+    } \
+    return NULL_VALUE;
+
+
+
 static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
 static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressions);
 static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements);
@@ -32,22 +60,39 @@ static bool any_optimization_enabled = false;
 
 static void setup_optimization_states();
 
-void lit_init_variables(LitVariables* array)
+#if defined(LIT_DEBUG_OPTIMIZER)
+void optdbg(const char* fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    fprintf(stderr, "optimizer: ");
+    vfprintf(stderr, fmt, va);
+    fprintf(stderr, "\n");
+    va_end(va);
+}
+#else
+    #define optdbg(msg, ...)
+#endif
+
+void lit_init_variables(LitVarList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
-void lit_free_variables(LitState* state, LitVariables* array)
+
+void lit_free_variables(LitState* state, LitVarList* array)
 {
     LIT_FREE_ARRAY(state, LitVariable, array->values, array->capacity);
     lit_init_variables(array);
 }
-void lit_variables_write(LitState* state, LitVariables* array, LitVariable value)
+
+void lit_variables_write(LitState* state, LitVarList* array, LitVariable value)
 {
+    size_t old_capacity;
     if(array->capacity < array->count + 1)
     {
-        size_t old_capacity = array->capacity;
+        old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
         array->values = LIT_GROW_ARRAY(state, array->values, LitVariable, old_capacity, array->capacity);
     }
@@ -55,13 +100,11 @@ void lit_variables_write(LitState* state, LitVariables* array, LitVariable value
     array->count++;
 }
 
-
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer)
 {
     optimizer->state = state;
     optimizer->depth = -1;
     optimizer->mark_used = false;
-
     lit_init_variables(&optimizer->variables);
 }
 
@@ -72,21 +115,20 @@ static void opt_begin_scope(LitOptimizer* optimizer)
 
 static void opt_end_scope(LitOptimizer* optimizer)
 {
+    bool remove_unused;
+    LitVariable* variable;
+    LitVarList* variables;
     optimizer->depth--;
-    LitVariables* variables = &optimizer->variables;
-
-    bool remove_unused = lit_is_optimization_enabled(LITOPTSTATE_UNUSED_VAR);
-
+    variables = &optimizer->variables;
+    remove_unused = lit_is_optimization_enabled(LITOPTSTATE_UNUSED_VAR);
     while(variables->count > 0 && variables->values[variables->count - 1].depth > optimizer->depth)
     {
         if(remove_unused && !variables->values[variables->count - 1].used)
         {
-            LitVariable* variable = &variables->values[variables->count - 1];
-
+            variable = &variables->values[variables->count - 1];
             lit_free_statement(optimizer->state, *variable->declaration);
             *variable->declaration = NULL;
         }
-
         variables->count--;
     }
 }
@@ -101,18 +143,18 @@ static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, size
 
 static LitVariable* resolve_variable(LitOptimizer* optimizer, const char* name, size_t length)
 {
-    LitVariables* variables = &optimizer->variables;
-
-    for(int i = variables->count - 1; i >= 0; i--)
+    int i;
+    LitVarList* variables;
+    LitVariable* variable;
+    variables = &optimizer->variables;
+    for(i = variables->count - 1; i >= 0; i--)
     {
-        LitVariable* variable = &variables->values[i];
-
+        variable = &variables->values[i];
         if(length == variable->length && memcmp(variable->name, name, length) == 0)
         {
             return variable;
         }
     }
-
     return NULL;
 }
 
@@ -126,137 +168,114 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
     switch(op)
     {
         case LITTOK_MINUS:
-        {
-            if(IS_NUMBER(value))
             {
-                return lit_number_to_value(-lit_value_to_number(value));
+                if(IS_NUMBER(value))
+                {
+                    optdbg("translating constant unary minus on number to literal value");
+                    return lit_number_to_value(-lit_value_to_number(value));
+                }
             }
-
             break;
-        }
-
         case LITTOK_BANG:
-        {
-            return BOOL_VALUE(lit_is_falsey(value));
-        }
-
-        case LITTOK_TILDE:
-        {
-            if(IS_NUMBER(value))
             {
-                return lit_number_to_value(~((int)lit_value_to_number(value)));
+                optdbg("translating constant expression of '=' to literal value");
+                return BOOL_VALUE(lit_is_falsey(value));
             }
-
             break;
-        }
-
+        case LITTOK_TILDE:
+            {
+                if(IS_NUMBER(value))
+                {
+                    optdbg("translating unary tile (~) on number to literal value");
+                    return lit_number_to_value(~((int)lit_value_to_number(value)));
+                }
+            }
+            break;
         default:
-        {
+            {
+            }
             break;
-        }
     }
-
     return NULL_VALUE;
 }
 
 static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
 {
-#define BINARY_OP(op)                                      \
-    if(IS_NUMBER(a) && IS_NUMBER(b))                       \
-    {                                                      \
-        return lit_number_to_value(lit_value_to_number(a) op lit_value_to_number(b)); \
-    }                                                      \
-    return NULL_VALUE;
-
-#define BITWISE_OP(op)                                               \
-    if(IS_NUMBER(a) && IS_NUMBER(b))                                 \
-    {                                                                \
-        return lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
-    }                                                                \
-    return NULL_VALUE;
-
-#define FN_OP(fn)                                            \
-    if(IS_NUMBER(a) && IS_NUMBER(b))                         \
-    {                                                        \
-        return lit_number_to_value(fn(lit_value_to_number(a), lit_value_to_number(b))); \
-    }                                                        \
-    return NULL_VALUE;
-
     switch(op)
     {
         case LITTOK_PLUS:
             {
-                BINARY_OP(+);
+                optc_do_binary_op(+);
             }
             break;
         case LITTOK_MINUS:
             {
-                BINARY_OP(-);
+                optc_do_binary_op(-);
             }
             break;
         case LITTOK_STAR:
             {
-                BINARY_OP(*);
+                optc_do_binary_op(*);
             }
             break;
         case LITTOK_SLASH:
             {
-                BINARY_OP(/);
+                optc_do_binary_op(/);
             }
             break;
         case LITTOK_STAR_STAR:
             {
-                FN_OP(pow);
+                optc_do_fn_op(pow, "**");
             }
             break;
         case LITTOK_PERCENT:
             {
-                FN_OP(fmod);
+                optc_do_fn_op(fmod, "%");
             }
             break;
         case LITTOK_GREATER:
             {
-                BINARY_OP(>);
+                optc_do_binary_op(>);
             }
             break;
         case LITTOK_GREATER_EQUAL:
             {
-                BINARY_OP(>=);
+                optc_do_binary_op(>=);
             }
             break;
         case LITTOK_LESS:
             {
-                BINARY_OP(<);
+                optc_do_binary_op(<);
             }
             break;
         case LITTOK_LESS_EQUAL:
             {
-                BINARY_OP(<=);
+                optc_do_binary_op(<=);
             }
             break;
         case LITTOK_LESS_LESS:
             {
-                BITWISE_OP(<<);
+                optc_do_bitwise_op(<<);
             }
             break;
         case LITTOK_GREATER_GREATER:
             {
-                BITWISE_OP(>>);
+                optc_do_bitwise_op(>>);
             }
             break;
         case LITTOK_BAR:
             {
-                BITWISE_OP(|);
+                optc_do_bitwise_op(|);
             }
             break;
         case LITTOK_AMPERSAND:
             {
-                BITWISE_OP(&);
+                optc_do_bitwise_op(&);
             }
             break;
         case LITTOK_CARET:
             {
-                BITWISE_OP(^);
+                optc_do_bitwise_op(^);
             }
             break;
         case LITTOK_SHARP:
@@ -283,13 +302,7 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
             {
             }
             break;
-
     }
-
-#undef FN_OP
-#undef BITWISE_OP
-#undef BINARY_OP
-
     return NULL_VALUE;
 }
 
@@ -307,10 +320,12 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
         {
             if(number == 0)
             {
+                optdbg("reducing expression to literal '0'");
                 return lit_number_to_value(0);
             }
             else if(number == 1)
             {
+                optdbg("reducing expression to literal '1'");
                 lit_free_expression(optimizer->state, left ? expression->right : expression->left);
                 expression->left = branch;
                 expression->right = NULL;
@@ -318,12 +333,14 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
         }
         else if((op == LITTOK_PLUS || op == LITTOK_MINUS) && number == 0)
         {
+            optdbg("reducing expression that would result in '0' to literal '0'");
             lit_free_expression(optimizer->state, left ? expression->right : expression->left);
             expression->left = branch;
             expression->right = NULL;
         }
         else if(((left && op == LITTOK_SLASH) || op == LITTOK_STAR_STAR) && number == 1)
         {
+            optdbg("reducing expression that would result in '1' to literal '1'");
             lit_free_expression(optimizer->state, left ? expression->right : expression->left);
             expression->left = branch;
             expression->right = NULL;
@@ -403,90 +420,72 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
     {
         case LITEXPR_UNARY:
         case LITEXPR_BINARY:
-        {
-            if(lit_is_optimization_enabled(LITOPTSTATE_LITERAL_FOLDING))
             {
-                LitValue optimized = evaluate_expression(optimizer, expression);
-
-                if(optimized != NULL_VALUE)
+                if(lit_is_optimization_enabled(LITOPTSTATE_LITERAL_FOLDING))
                 {
-                    *slot = (LitExpression*)lit_create_literal_expression(state, expression->line, optimized);
-                    lit_free_expression(state, expression);
-                    break;
+                    LitValue optimized = evaluate_expression(optimizer, expression);
+                    if(optimized != NULL_VALUE)
+                    {
+                        *slot = (LitExpression*)lit_create_literal_expression(state, expression->line, optimized);
+                        lit_free_expression(state, expression);
+                        break;
+                    }
+                }
+                switch(expression->type)
+                {
+                    case LITEXPR_UNARY:
+                        {
+                            optimize_expression(optimizer, &((LitUnaryExpression*)expression)->right);
+                        }
+                        break;
+                    case LITEXPR_BINARY:
+                        {
+                            LitBinaryExpression* expr = (LitBinaryExpression*)expression;
+                            optimize_expression(optimizer, &expr->left);
+                            optimize_expression(optimizer, &expr->right);
+                        }
+                        break;
+                    default:
+                        {
+                            UNREACHABLE
+                        }
+                        break;
                 }
             }
-
-            switch(expression->type)
-            {
-                case LITEXPR_UNARY:
-                {
-                    optimize_expression(optimizer, &((LitUnaryExpression*)expression)->right);
-                    break;
-                }
-
-                case LITEXPR_BINARY:
-                {
-                    LitBinaryExpression* expr = (LitBinaryExpression*)expression;
-
-                    optimize_expression(optimizer, &expr->left);
-                    optimize_expression(optimizer, &expr->right);
-
-                    break;
-                }
-
-                default:
-                {
-                    UNREACHABLE
-                }
-            }
-
             break;
-        }
-
         case LITEXPR_ASSIGN:
-        {
-            LitAssignExpression* expr = (LitAssignExpression*)expression;
-
-            optimize_expression(optimizer, &expr->to);
-            optimize_expression(optimizer, &expr->value);
-
+            {
+                LitAssignExpression* expr = (LitAssignExpression*)expression;
+                optimize_expression(optimizer, &expr->to);
+                optimize_expression(optimizer, &expr->value);
+            }
             break;
-        }
-
         case LITEXPR_CALL:
-        {
-            LitCallExpression* expr = (LitCallExpression*)expression;
-
-            optimize_expression(optimizer, &expr->callee);
-            optimize_expressions(optimizer, &expr->args);
-
+            {
+                LitCallExpression* expr = (LitCallExpression*)expression;
+                optimize_expression(optimizer, &expr->callee);
+                optimize_expressions(optimizer, &expr->args);
+            }
             break;
-        }
-
         case LITEXPR_SET:
-        {
-            LitSetExpression* expr = (LitSetExpression*)expression;
-
-            optimize_expression(optimizer, &expr->where);
-            optimize_expression(optimizer, &expr->value);
-
+            {
+                LitSetExpression* expr = (LitSetExpression*)expression;
+                optimize_expression(optimizer, &expr->where);
+                optimize_expression(optimizer, &expr->value);
+            }
             break;
-        }
-
         case LITEXPR_GET:
-        {
-            optimize_expression(optimizer, &((LitGetExpression*)expression)->where);
+            {
+                optimize_expression(optimizer, &((LitGetExpression*)expression)->where);
+            }
             break;
-        }
-
         case LITEXPR_LAMBDA:
-        {
-            opt_begin_scope(optimizer);
-            optimize_statement(optimizer, &((LitLambdaExpression*)expression)->body);
-            opt_end_scope(optimizer);
-
+            {
+                opt_begin_scope(optimizer);
+                optimize_statement(optimizer, &((LitLambdaExpression*)expression)->body);
+                opt_end_scope(optimizer);
+            }
             break;
-        }
 
         case LITEXPR_ARRAY:
         {

@@ -116,7 +116,7 @@ static LitValue objfn_fiber_tostring(LitVM* vm, LitValue instance, size_t argc, 
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "fiber"));
+    return OBJECT_VALUE(lit_string_format(vm->state, "fiber@%p", &instance));
 
 }
 

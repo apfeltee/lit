@@ -795,7 +795,7 @@ typedef struct /**/LitEmulatedFile LitEmulatedFile;
 typedef struct /**/LitVariable LitVariable;
 
 /* ARRAYTYPES */
-typedef struct /**/LitVariables LitVariables;
+typedef struct /**/LitVarList LitVarList;
 typedef struct /**/LitBytes LitBytes;
 typedef struct /**/LitUInts LitUInts;
 typedef struct /**/LitValueList LitValueList;
@@ -1499,7 +1499,7 @@ struct LitVariable
     LitStatement** declaration;
 };
 
-struct LitVariables
+struct LitVarList
 {
     size_t capacity;
     size_t count;
@@ -1509,7 +1509,7 @@ struct LitVariables
 struct LitOptimizer
 {
     LitState* state;
-    LitVariables variables;
+    LitVarList variables;
     int depth;
     bool mark_used;
 };
@@ -1597,9 +1597,9 @@ void lit_init_locals(LitLocals* array);
 void lit_free_locals(LitState* state, LitLocals* array);
 void lit_locals_write(LitState* state, LitLocals* array, LitLocal value);
 
-void lit_init_variables(LitVariables* array);
-void lit_free_variables(LitState* state, LitVariables* array);
-void lit_variables_write(LitState* state, LitVariables* array, LitVariable value);
+void lit_init_variables(LitVarList* array);
+void lit_free_variables(LitState* state, LitVarList* array);
+void lit_variables_write(LitState* state, LitVarList* array, LitVariable value);
 
 LitState* lit_new_state();
 int64_t lit_free_state(LitState* state);

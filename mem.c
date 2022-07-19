@@ -49,6 +49,7 @@ void lit_free_object(LitState* state, LitObject* object)
                 LitString* string = (LitString*)object;
                 //LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
                 sdsfree(string->chars);
+                string->chars = NULL;
                 LIT_FREE(state, LitString, object);
             }
             break;
