@@ -1,16 +1,325 @@
 
 #include "lit.h"
+#include "sds.h"
+
+/*
+int sdsHdrSize(char type);
+char sdsReqType(size_t string_size);
+size_t sdslen(const dynstring_t *s);
+size_t sdsavail(const dynstring_t *s);
+void sdssetlen(dynstring_t *s, size_t newlen);
+void sdsinclen(dynstring_t *s, size_t inc);
+size_t sdsalloc(const dynstring_t *s);
+void sdssetalloc(dynstring_t *s, size_t newlen);
+dynstring_t *sdsnewlen(const void *init, size_t initlen);
+dynstring_t *sdsempty(void);
+dynstring_t *sdsnew(const char *init);
+dynstring_t *sdsdup(const dynstring_t *s);
+void sdsfree(dynstring_t *s);
+void sdsupdatelen(dynstring_t *s);
+void sdsclear(dynstring_t *s);
+dynstring_t *sdsMakeRoomFor(dynstring_t *s, size_t addlen);
+dynstring_t *sdsRemoveFreeSpace(dynstring_t *s);
+size_t sdsAllocSize(dynstring_t *s);
+void *sdsAllocPtr(dynstring_t *s);
+void sdsIncrLen(dynstring_t *s, ssize_t incr);
+dynstring_t *sdsgrowzero(dynstring_t *s, size_t len);
+dynstring_t *sdscatlen(dynstring_t *s, const void *t, size_t len);
+dynstring_t *sdscat(dynstring_t *s, const char *t);
+dynstring_t *sdscatsds(dynstring_t *s, const dynstring_t *t);
+dynstring_t *sdscpylen(dynstring_t *s, const char *t, size_t len);
+dynstring_t *sdscpy(dynstring_t *s, const char *t);
+int sdsll2str(char *s, long long value);
+int sdsull2str(char *s, unsigned long long v);
+dynstring_t *sdsfromlonglong(long long value);
+dynstring_t *sdscatvprintf(dynstring_t *s, const char *fmt, va_list ap);
+dynstring_t *sdscatprintf(dynstring_t *s, const char *fmt, ...);
+dynstring_t *sdscatfmt(dynstring_t *s, char const *fmt, ...);
+dynstring_t *sdstrim(dynstring_t *s, const char *cset);
+void sdsrange(dynstring_t *s, ssize_t start, ssize_t end);
+void sdstolower(dynstring_t *s);
+void sdstoupper(dynstring_t *s);
+int sdscmp(const dynstring_t *s1, const dynstring_t *s2);
+dynstring_t **sdssplitlen(const char *s, ssize_t len, const char *sep, int seplen, int *count);
+void sdsfreesplitres(dynstring_t **tokens, int count);
+dynstring_t *sdscatrepr(dynstring_t *s, const char *p, size_t len);
+int is_hex_digit(char c);
+int hex_digit_to_int(char c);
+dynstring_t **sdssplitargs(const char *line, int *argc);
+dynstring_t *sdsmapchars(dynstring_t *s, const char *from, const char *to, size_t setlen);
+dynstring_t *sdsjoin(char **argv, int argc, char *sep);
+dynstring_t *sdsjoinsds(dynstring_t **argv, int argc, const char *sep, size_t seplen);
+void *sds_malloc(size_t size);
+void *sds_realloc(void *ptr, size_t size);
+void sds_free(void *ptr);
+*/
+
+uint32_t lit_hash_string(const char* key, size_t length)
+{
+    size_t i;
+    uint32_t hash = 2166136261u;
+
+    for(i = 0; i < length; i++)
+    {
+        hash ^= key[i];
+        hash *= 16777619;
+    }
+    return hash;
+}
+
+LitString* lit_string_alloc_empty(LitState* state, size_t length)
+{
+    LitString* string;
+    string = ALLOCATE_OBJECT(state, LitString, LITTYPE_STRING);
+    string->chars = sdsempty();
+    string->chars = sdsMakeRoomFor(string->chars, length);
+    //string->chars = NULL;
+    string->hash = 0;
+    //sdsMakeRoomFor(string->chars, length);
+    return string;
+}
+
+
+LitString* lit_string_alloc(LitState* state, char* chars, size_t length, uint32_t hash)
+{
+    LitString* string;
+    string = lit_string_alloc_empty(state, length);
+    //string->chars = sdsnewlen(chars, length);
+    string->chars = sdscatlen(string->chars, chars, length);
+    string->hash = hash;
+    LIT_FREE(state, char, chars);
+    lit_register_string(state, string);
+    return string;
+}
+
+void lit_register_string(LitState* state, LitString* string)
+{
+    if(lit_string_length(string) > 0)
+    {
+        lit_push_root(state, (LitObject*)string);
+        lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
+        lit_pop_root(state);
+    }
+}
+
+LitString* lit_string_take(LitState* state, char* chars, size_t length)
+{
+    uint32_t hash;
+    hash = lit_hash_string(chars, length);
+    LitString* interned;
+    interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
+    if(interned != NULL)
+    {
+        LIT_FREE(state, char, chars);
+        //sdsfree(chars);
+        return interned;
+    }
+    return lit_string_alloc(state, (char*)chars, length, hash);
+}
+
+LitString* lit_string_copy(LitState* state, const char* chars, size_t length)
+{
+    uint32_t hash;
+    char* heap_chars;
+    LitString* interned;
+    hash= lit_hash_string(chars, length);
+    interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
+    if(interned != NULL)
+    {
+        return interned;
+    }
+    heap_chars = LIT_ALLOCATE(state, char, length + 1);
+    memcpy(heap_chars, chars, length);
+    heap_chars[length] = '\0';
+#ifdef LIT_LOG_ALLOCATION
+    printf("Allocated new string '%s'\n", chars);
+#endif
+    return lit_string_alloc(state, heap_chars, length, hash);
+}
+
+size_t lit_string_length(LitString* ls)
+{
+    if(ls->chars == NULL)
+    {
+        return 0;
+    }
+    return sdslen(ls->chars);
+}
+
+void lit_string_append_string(LitString* ls, const char* s, size_t len)
+{
+    if(len > 0)
+    {
+        if(ls->chars == NULL)
+        {
+            ls->chars = sdsnewlen(s, len);
+        }
+        else
+        {
+            ls->chars = sdscatlen(ls->chars, s, len);
+        }
+    }
+}
+
+void lit_string_append_strobj(LitString* ls, LitString* other)
+{
+    lit_string_append_string(ls, other->chars, lit_string_length(other));
+}
+
+LitValue lit_string_number_to_string(LitState* state, double value)
+{
+    if(isnan(value))
+    {
+        return OBJECT_CONST_STRING(state, "nan");
+    }
+
+    if(isinf(value))
+    {
+        if(value > 0.0)
+        {
+            return OBJECT_CONST_STRING(state, "infinity");
+        }
+        else
+        {
+            return OBJECT_CONST_STRING(state, "-infinity");
+        }
+    }
+
+    char buffer[24];
+    int length = sprintf(buffer, "%.14g", value);
+
+    return OBJECT_VALUE(lit_string_copy(state, buffer, length));
+}
+
+
+LitValue lit_string_format(LitState* state, const char* format, ...)
+{
+    size_t length;
+    size_t total_length;
+    bool was_allowed;
+    char* start;
+    const char* c;
+    const char* cc;
+    const char* strval;
+    va_list arg_list;
+    LitString* ss;
+    LitString* string;
+    LitString* result;
+    was_allowed = state->allow_gc;
+    state->allow_gc = false;
+    va_start(arg_list, format);
+    total_length = 0;
+    for(c = format; *c != '\0'; c++)
+    {
+        switch(*c)
+        {
+            case '$':
+                {
+                    cc = va_arg(arg_list, const char*);
+                    if(cc != NULL)
+                    {
+                        total_length += strlen(cc);
+                        break;
+                    }
+                    goto default_ending;
+                }
+                break;                
+            case '@':
+                {
+                    LitValue v = va_arg(arg_list, LitValue);
+                    ss = AS_STRING(v);
+                    if(ss != NULL)
+                    {
+                        total_length += lit_string_length(ss);
+                        break;
+                    }
+                    goto default_ending;
+                }
+                break;
+            case '#':
+                {
+                    total_length += lit_string_length(AS_STRING(lit_string_number_to_string(state, va_arg(arg_list, double))));
+                    break;
+                }
+                break;                
+            default:
+                {
+                default_ending:
+                    total_length++;
+                }
+                break;
+
+        }
+    }
+    va_end(arg_list);
+    result = lit_string_alloc_empty(state, total_length);
+    result->chars = LIT_ALLOCATE(state, char, total_length + 1);
+    result->chars[total_length] = '\0';
+    start = result->chars;
+    va_start(arg_list, format);
+    for(c = format; *c != '\0'; c++)
+    {
+        switch(*c)
+        {
+            case '$':
+                {
+                    strval = va_arg(arg_list, const char*);
+                    if(strval != NULL)
+                    {
+                        length = strlen(strval);
+                        memcpy(start, strval, length);
+                        start += length;
+                        break;
+                    }
+                    goto default_ending_copying;
+                }
+                break;
+            case '@':
+                {
+                    string = AS_STRING(va_arg(arg_list, LitValue));
+                    if(string != NULL)
+                    {
+                        memcpy(start, string->chars, lit_string_length(string));
+                        start += lit_string_length(string);
+                        break;
+                    }
+                    goto default_ending_copying;
+                }
+                break;
+
+            case '#':
+                {
+                    string = AS_STRING(lit_string_number_to_string(state, va_arg(arg_list, double)));
+                    memcpy(start, string->chars, lit_string_length(string));
+                    start += lit_string_length(string);
+                }
+                break;
+            default:
+                {
+                    default_ending_copying:
+                    *start++ = *c;
+                }
+                break;
+        }
+    }
+    va_end(arg_list);
+    result->hash = lit_hash_string(result->chars, lit_string_length(result));
+    lit_register_string(state, result);
+    state->allow_gc = was_allowed;
+    return OBJECT_VALUE(result);
+}
+
 
 LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv);
 
 static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t length;
-    LitString* string;
+    LitString* selfstr;
     LitString* result;
     LitValue value;
     (void)argc;
-    string = AS_STRING(instance);
+    selfstr = AS_STRING(instance);
     value = argv[0];
     LitString* strval = NULL;
     if(IS_STRING(value))
@@ -21,13 +330,9 @@ static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, Lit
     {
         strval = lit_to_string(vm->state, value);
     }
-    length = string->length + strval->length;
-    result = lit_allocate_empty_string(vm->state, length);
-    result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
-    result->chars[length] = '\0';
-    memcpy(result->chars, string->chars, string->length);
-    memcpy(result->chars + string->length, strval->chars, strval->length);
-    result->hash = lit_hash_string(result->chars, result->length);
+    result = lit_string_alloc_empty(vm->state, lit_string_length(selfstr) + lit_string_length(strval));
+    lit_string_append_strobj(result, selfstr);
+    lit_string_append_strobj(result, strval);
     lit_register_string(vm->state, result);
     return OBJECT_VALUE(result);
 }
@@ -84,10 +389,12 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
     return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
+/*
 static LitValue string_format(LitState* state, size_t argc, LitValue* argv)
 {
     
 }
+*/
 
 static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
@@ -98,10 +405,10 @@ static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, 
     if(IS_STRING(argv[0]))
     {
         other = AS_STRING(argv[0]);
-        if(self->length == other->length)
+        if(lit_string_length(self) == lit_string_length(other))
         {
             //fprintf(stderr, "string: same length(self=\"%s\" other=\"%s\")... strncmp=%d\n", self->chars, other->chars, strncmp(self->chars, other->chars, self->length));
-            if(memcmp(self->chars, other->chars, self->length) == 0)
+            if(memcmp(self->chars, other->chars, lit_string_length(self)) == 0)
             {
                 return TRUE_VALUE;
             }
@@ -164,13 +471,13 @@ static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t ar
     string = AS_STRING(instance);
     (void)argc;
     (void)argv;
-    buffer = LIT_ALLOCATE(vm->state, char, string->length + 1);
-    for(i = 0; i < string->length; i++)
+    buffer = LIT_ALLOCATE(vm->state, char, lit_string_length(string) + 1);
+    for(i = 0; i < lit_string_length(string); i++)
     {
         buffer[i] = (char)toupper(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_take_string(vm->state, buffer, string->length);
+    rt = lit_string_take(vm->state, buffer, lit_string_length(string));
     return OBJECT_VALUE(rt);
 }
 
@@ -184,13 +491,13 @@ static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t ar
     string = AS_STRING(instance);
     (void)argc;
     (void)argv;
-    buffer = LIT_ALLOCATE(vm->state, char, string->length + 1);
-    for(i = 0; i < string->length; i++)
+    buffer = LIT_ALLOCATE(vm->state, char, lit_string_length(string) + 1);
+    for(i = 0; i < lit_string_length(string); i++)
     {
         buffer[i] = (char)tolower(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_take_string(vm->state, buffer, string->length);
+    rt = lit_string_take(vm->state, buffer, lit_string_length(string));
     return OBJECT_VALUE(rt);
 }
 
@@ -223,11 +530,11 @@ static LitValue objfn_string_startswith(LitVM* vm, LitValue instance, size_t arg
     {
         return TRUE_VALUE;
     }
-    if(sub->length > string->length)
+    if(lit_string_length(sub) > lit_string_length(string))
     {
         return FALSE_VALUE;
     }
-    for(i = 0; i < sub->length; i++)
+    for(i = 0; i < lit_string_length(sub); i++)
     {
         if(sub->chars[i] != string->chars[i])
         {
@@ -249,12 +556,12 @@ static LitValue objfn_string_endswith(LitVM* vm, LitValue instance, size_t argc,
     {
         return TRUE_VALUE;
     }
-    if(sub->length > string->length)
+    if(lit_string_length(sub) > lit_string_length(string))
     {
         return FALSE_VALUE;
     }
-    start = string->length - sub->length;
-    for(i = 0; i < sub->length; i++)
+    start = lit_string_length(string) - lit_string_length(sub);
+    for(i = 0; i < lit_string_length(sub); i++)
     {
         if(sub->chars[i] != string->chars[i + start])
         {
@@ -283,12 +590,12 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
     what = AS_STRING(argv[0]);
     with = AS_STRING(argv[1]);
     buffer_length = 0;
-    for(i = 0; i < string->length; i++)
+    for(i = 0; i < lit_string_length(string); i++)
     {
-        if(strncmp(string->chars + i, what->chars, what->length) == 0)
+        if(strncmp(string->chars + i, what->chars, lit_string_length(what)) == 0)
         {
-            i += what->length - 1;
-            buffer_length += with->length;
+            i += lit_string_length(what) - 1;
+            buffer_length += lit_string_length(with);
         }
         else
         {
@@ -297,13 +604,13 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
     }
     buffer_index = 0;
     buffer = LIT_ALLOCATE(vm->state, char, buffer_length+1);
-    for(i = 0; i < string->length; i++)
+    for(i = 0; i < lit_string_length(string); i++)
     {
-        if(strncmp(string->chars + i, what->chars, what->length) == 0)
+        if(strncmp(string->chars + i, what->chars, lit_string_length(what)) == 0)
         {
-            memcpy(buffer + buffer_index, with->chars, with->length);
-            buffer_index += with->length;
-            i += what->length - 1;
+            memcpy(buffer + buffer_index, with->chars, lit_string_length(with));
+            buffer_index += lit_string_length(with);
+            i += lit_string_length(what) - 1;
         }
         else
         {
@@ -312,7 +619,7 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
         }
     }
     buffer[buffer_length] = '\0';
-    return OBJECT_VALUE(lit_take_string(vm->state, buffer, buffer_length));
+    return OBJECT_VALUE(lit_string_take(vm->state, buffer, buffer_length));
 }
 
 static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -340,7 +647,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
     string = AS_STRING(instance);
     if(IS_NULL(argv[0]))
     {
-        if(string->length == 0)
+        if(lit_string_length(string) == 0)
         {
             return NULL_VALUE;
         }
@@ -354,7 +661,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
     do
     {
         index++;
-        if(index >= (int)string->length)
+        if(index >= (int)lit_string_length(string))
         {
             return NULL_VALUE;
         }

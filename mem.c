@@ -3,39 +3,34 @@
 #include <stdio.h>
 #include <time.h>
 #include "lit.h"
-
+#include "sds.h"
 
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size)
 {
+    void* ptr;
     state->bytes_allocated += (int64_t)new_size - (int64_t)old_size;
-
     if(new_size > old_size)
     {
 #ifdef LIT_STRESS_TEST_GC
         lit_collect_garbage(state->vm);
 #endif
-
         if(state->bytes_allocated > state->next_gc)
         {
             lit_collect_garbage(state->vm);
         }
     }
-
     if(new_size == 0)
     {
         free(pointer);
         return NULL;
     }
-
-    void* ptr = (void*)realloc(pointer, new_size);
-
+    ptr = (void*)realloc(pointer, new_size);
     if(ptr == NULL)
     {
         lit_error(state, RUNTIME_ERROR, "Fatal error:\nOut of memory\nProgram terminated");
         exit(111);
     }
-
     return ptr;
 }
 
@@ -52,7 +47,8 @@ void lit_free_object(LitState* state, LitObject* object)
         case LITTYPE_STRING:
             {
                 LitString* string = (LitString*)object;
-                LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
+                //LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
+                sdsfree(string->chars);
                 LIT_FREE(state, LitString, object);
             }
             break;

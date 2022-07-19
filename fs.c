@@ -73,7 +73,7 @@ size_t lit_write_string(FILE* file, LitString* string)
     uint16_t i;
     uint16_t c;
     size_t rt;
-    c = string->length;
+    c = lit_string_length(string);
     rt = fwrite(&c, 2, 1, file);
     for(i = 0; i < c; i++)
     {
@@ -131,7 +131,7 @@ LitString* lit_read_string(LitState* state, FILE* file)
     {
         line[i] = (char)lit_read_uint8_t(file) ^ LIT_STRING_KEY;
     }
-    return lit_take_string(state, line, length);
+    return lit_string_take(state, line, length);
 }
 
 void lit_init_emulated_file(LitEmulatedFile* file, const char* source)
@@ -188,7 +188,7 @@ LitString* lit_read_estring(LitState* state, LitEmulatedFile* file)
     {
         line[i] = (char)lit_read_euint8_t(file) ^ LIT_STRING_KEY;
     }
-    return lit_take_string(state, line, length);
+    return lit_string_take(state, line, length);
 }
 
 static void save_chunk(FILE* file, LitChunk* chunk);

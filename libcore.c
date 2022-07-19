@@ -351,7 +351,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
         return false;
     }
     modname[length] = '.';
-    LitString* name = lit_copy_string(vm->state, modnamedotted, length);
+    LitString* name = lit_string_copy(vm->state, modnamedotted, length);
     if(!ignore_previous)
     {
         LitValue existing_module;
@@ -429,7 +429,7 @@ static LitValue objfn_number_tostring(LitVM* vm, LitValue instance, size_t argc,
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_number_to_string(vm->state, lit_value_to_number(instance)));
+    return OBJECT_VALUE(lit_string_number_to_string(vm->state, lit_value_to_number(instance)));
 }
 
 static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -438,7 +438,7 @@ static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, L
     (void)argc;
     (void)argv;
     ch = lit_value_to_number(instance);
-    return OBJECT_VALUE(lit_copy_string(vm->state, &ch, 1));
+    return OBJECT_VALUE(lit_string_copy(vm->state, &ch, 1));
 }
 
 static LitValue objfn_bool_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

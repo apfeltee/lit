@@ -829,7 +829,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
     expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
     do
     {
-        if(AS_STRING(parser->previous.value)->length > 0)
+        if(lit_string_length(AS_STRING(parser->previous.value)) > 0)
         {
             lit_expressions_write(
             parser->state, &expression->expressions,
@@ -838,7 +838,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
         lit_expressions_write(parser->state, &expression->expressions, parse_expression(parser));
     } while(prs_match(parser, LITTOK_INTERPOLATION));
     consume(parser, LITTOK_STRING, "end of interpolation");
-    if(AS_STRING(parser->previous.value)->length > 0)
+    if(lit_string_length(AS_STRING(parser->previous.value)) > 0)
     {
         lit_expressions_write(
         parser->state, &expression->expressions,
@@ -861,7 +861,7 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign)
     {
         ignore_new_lines(parser);
         consume(parser, LITTOK_IDENTIFIER, "key string after '{'");
-        lit_values_write(parser->state, &object->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start, parser->previous.length)));
+        lit_values_write(parser->state, &object->keys, OBJECT_VALUE(lit_string_copy(parser->state, parser->previous.start, parser->previous.length)));
         ignore_new_lines(parser);
         consume(parser, LITTOK_EQUAL, "'=' after key string");
         ignore_new_lines(parser);
@@ -1054,14 +1054,14 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign)
     if(!(prs_match(parser, LITTOK_DOT) || prs_match(parser, LITTOK_SMALL_ARROW)))
     {
         expression = (LitExpression*)lit_create_super_expression(
-        parser->state, line, lit_copy_string(parser->state, "constructor", 11), false);
+        parser->state, line, lit_string_copy(parser->state, "constructor", 11), false);
         consume(parser, LITTOK_LEFT_PAREN, "'(' after 'super'");
         return parse_call(parser, expression, false);
     }
     ignoring = parser->previous.type == LITTOK_SMALL_ARROW;
     consume(parser, LITTOK_IDENTIFIER, ignoring ? "super method name after '->'" : "super method name after '.'");
     expression = (LitExpression*)lit_create_super_expression(
-    parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length), ignoring);
+    parser->state, line, lit_string_copy(parser->state, parser->previous.start, parser->previous.length), ignoring);
     if(prs_match(parser, LITTOK_LEFT_PAREN))
     {
         return parse_call(parser, expression, false);
@@ -1384,17 +1384,17 @@ static LitStatement* parse_method(LitParser* parser, bool is_static)
         if(parser->previous.type == LITTOK_LEFT_BRACKET)
         {
             consume(parser, LITTOK_RIGHT_BRACKET, "']' after '[' in op method declaration");
-            name = lit_copy_string(parser->state, "[]", 2);
+            name = lit_string_copy(parser->state, "[]", 2);
         }
         else
         {
-            name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+            name = lit_string_copy(parser->state, parser->previous.start, parser->previous.length);
         }
     }
     else
     {
         consume(parser, LITTOK_IDENTIFIER, "method name");
-        name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+        name = lit_string_copy(parser->state, parser->previous.start, parser->previous.length);
         if(check(parser, LITTOK_LEFT_BRACE) || check(parser, LITTOK_ARROW))
         {
             return parse_field(parser, name, is_static);
@@ -1438,12 +1438,12 @@ static LitStatement* parse_class(LitParser* parser)
         consume(parser, LITTOK_CLASS, "'class' after 'static'");
     }
     consume(parser, LITTOK_IDENTIFIER, "class name after 'class'");
-    name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+    name = lit_string_copy(parser->state, parser->previous.start, parser->previous.length);
     super = NULL;
     if(prs_match(parser, LITTOK_COLON))
     {
         consume(parser, LITTOK_IDENTIFIER, "super class name after ':'");
-        super = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+        super = lit_string_copy(parser->state, parser->previous.start, parser->previous.length);
         if(super == name)
         {
             prs_error(parser, LITERROR_SELF_INHERITED_CLASS);

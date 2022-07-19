@@ -421,7 +421,7 @@ bool lit_vruntime_error(LitVM* vm, const char* format, va_list args)
     va_end(args_copy);
     buffer = (char*)malloc(buffer_size+1);
     vsnprintf(buffer, buffer_size, format, args);
-    return lit_handle_runtime_error(vm, lit_take_string(vm->state, buffer, buffer_size));
+    return lit_handle_runtime_error(vm, lit_string_take(vm->state, buffer, buffer_size));
 }
 
 bool lit_runtime_error(LitVM* vm, const char* format, ...)
@@ -1571,7 +1571,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 klassobj = AS_CLASS(vm_peek(fiber, 1));
                 name = vm_readstringlong(current_chunk, ip);
                 if((klassobj->init_method == NULL || (klassobj->super != NULL && klassobj->init_method == ((LitClass*)klassobj->super)->init_method))
-                   && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0)
+                   && lit_string_length(name) == 11 && memcmp(name->chars, "constructor", 11) == 0)
                 {
                     klassobj->init_method = AS_OBJECT(vm_peek(fiber, 0));
                 }

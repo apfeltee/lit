@@ -393,10 +393,10 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     {
         string = lit_to_string(vm->state, values->values[i]);
         strings[i] = string;
-        length += string->length;
+        length += lit_string_length(string);
         if(joinee != NULL)
         {
-            length += joinee->length;
+            length += lit_string_length(joinee);
         }
     }
     index = 0;
@@ -406,19 +406,19 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     for(i = 0; i < values->count; i++)
     {
         string = strings[i];
-        memcpy(chars + index, string->chars, string->length);
-        index += string->length;
+        memcpy(chars + index, string->chars, lit_string_length(string));
+        index += lit_string_length(string);
         if(joinee != NULL)
         {
             //if((i+1) < values->count)
             {
-                memcpy(chars+index, joinee->chars, joinee->length);
+                memcpy(chars+index, joinee->chars, lit_string_length(joinee));
             }
-            index += joinee->length;
+            index += lit_string_length(joinee);
         }
     }
     LIT_FREE(vm->state, LitString*, strings);
-    return OBJECT_VALUE(lit_take_string(vm->state, chars, length));
+    return OBJECT_VALUE(lit_string_take(vm->state, chars, length));
 }
 
 
@@ -502,14 +502,14 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
         val = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
         if(IS_ARRAY(val) && (AS_ARRAY(val) == self))
         {
-            stringified = lit_copy_string(state, recstring, strlen(recstring));
+            stringified = lit_string_copy(state, recstring, strlen(recstring));
         }
         else
         {
             stringified = lit_to_string(state, val);
         }
         values_converted[i] = stringified;
-        olength += stringified->length + (i == value_amount - 1 ? 1 : 2);
+        olength += lit_string_length(stringified) + (i == value_amount - 1 ? 1 : 2);
     }
     //char buffer[olength + 1];
     buffer = LIT_ALLOCATE(vm->state, char, olength+1);
@@ -518,8 +518,8 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     for(i = 0; i < value_amount; i++)
     {
         part = values_converted[i];
-        memcpy(&buffer[buffer_index], part->chars, part->length);
-        buffer_index += part->length;
+        memcpy(&buffer[buffer_index], part->chars, lit_string_length(part));
+        buffer_index += lit_string_length(part);
         if(has_more && i == value_amount - 2)
         {
             memcpy(&buffer[buffer_index], " ... ", 5);
@@ -533,9 +533,9 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     }
     LIT_FREE(vm->state, LitString*, values_converted);
     buffer[olength] = '\0';
-    // should be lit_take_string, but it doesn't get picked up by the GC for some reason
-    //rt = lit_take_string(vm->state, buffer, olength);
-    rt = lit_copy_string(vm->state, buffer, olength);
+    // should be lit_string_take, but it doesn't get picked up by the GC for some reason
+    //rt = lit_string_take(vm->state, buffer, olength);
+    rt = lit_string_copy(vm->state, buffer, olength);
     LIT_FREE(vm->state, char, buffer);
     return OBJECT_VALUE(rt);
 }

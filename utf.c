@@ -28,7 +28,7 @@ int lit_ustring_length(LitString* string)
     int length;
     uint32_t i;
     length = 0;
-    for(i = 0; i < string->length;)
+    for(i = 0; i < lit_string_length(string);)
     {
         i += lit_decode_num_bytes(string->chars[i]);
         length++;
@@ -40,16 +40,16 @@ LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_
 {
     char bytes[2];
     int code_point;
-    if(index >= string->length)
+    if(index >= lit_string_length(string))
     {
         return NULL;
     }
-    code_point = lit_ustring_decode((uint8_t*)string->chars + index, string->length - index);
+    code_point = lit_ustring_decode((uint8_t*)string->chars + index, lit_string_length(string) - index);
     if(code_point == -1)
     {
         bytes[0] = string->chars[index];
         bytes[1] = '\0';
-        return lit_copy_string(state, bytes, 1);
+        return lit_string_copy(state, bytes, 1);
     }
     return lit_ustring_from_code_point(state, code_point);
 }
@@ -62,8 +62,8 @@ LitString* lit_ustring_from_code_point(LitState* state, int value)
     length = lit_encode_num_bytes(value);
     bytes = LIT_ALLOCATE(state, char, length + 1);
     lit_ustring_encode(value, (uint8_t*)bytes);
-    /* this should be lit_take_string, but something prevents the memory from being free'd. */
-    rt = lit_copy_string(state, bytes, length);
+    /* this should be lit_string_take, but something prevents the memory from being free'd. */
+    rt = lit_string_copy(state, bytes, length);
     LIT_FREE(state, char, bytes);
     return rt;
 }
@@ -88,13 +88,13 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
     for(i = 0; i < count; i++)
     {
         index = start + i;
-        code_point = lit_ustring_decode(from + index, source->length - index);
+        code_point = lit_ustring_decode(from + index, lit_string_length(source) - index);
         if(code_point != -1)
         {
             to += lit_ustring_encode(code_point, to);
         }
     }
-    return lit_take_string(state, bytes, length);
+    return lit_string_take(state, bytes, length);
 }
 
 int lit_encode_num_bytes(int value)

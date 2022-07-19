@@ -232,7 +232,7 @@ static void free_statements(LitState* state, LitStmtList* statements)
 
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code)
 {
-    return lit_internal_interpret(state, lit_copy_string(state, module_name, strlen(module_name)), code);
+    return lit_internal_interpret(state, lit_string_copy(state, module_name, strlen(module_name)), code);
 }
 
 LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code)
@@ -395,7 +395,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
             return false;
         }
         file_name = lit_patch_file_name(file_name);
-        module_name = lit_copy_string(state, file_name, strlen(file_name));
+        module_name = lit_string_copy(state, file_name, strlen(file_name));
         module = lit_compile_module(state, module_name, source);
         compiled_modules[i] = module;
         free((void*)source);
@@ -477,7 +477,7 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
-    module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
+    module_name = lit_string_copy(state, patched_file_name, strlen(patched_file_name));
     module = lit_compile_module(state, module_name, source);
     if(module == NULL)
     {

@@ -96,7 +96,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
             {
                 if(in_arg)
                 {
-                    LitString* arg = lit_copy_string(state, arg_start, (int)(current - arg_start) - 1);
+                    LitString* arg = lit_string_copy(state, arg_start, (int)(current - arg_start) - 1);
 
                     if(memcmp(macro_start, "define", 6) == 0 || memcmp(macro_start, "undef", 5) == 0)
                     {

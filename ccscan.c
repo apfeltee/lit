@@ -43,7 +43,7 @@ static LitToken make_error_token(LitScanner* scanner, LitError error, ...)
 
     token.type = LITTOK_ERROR;
     token.start = result->chars;
-    token.length = result->length;
+    token.length = lit_string_length(result);
     token.line = scanner->line;
 
     return token;
@@ -272,7 +272,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
     }
 
     LitToken token = make_token(scanner, string_type);
-    token.value = OBJECT_VALUE(lit_copy_string(state, (const char*)bytes.values, bytes.count));
+    token.value = OBJECT_VALUE(lit_string_copy(state, (const char*)bytes.values, bytes.count));
     lit_free_bytes(state, &bytes);
 
     return token;

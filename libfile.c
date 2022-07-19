@@ -125,7 +125,7 @@ static LitValue file_write(LitVM* vm, LitValue instance, size_t argc, LitValue* 
     size_t rt;
     LitString* value;
     value = lit_to_string(vm->state, argv[0]);
-    rt = fwrite(value->chars, value->length, 1, ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle);
+    rt = fwrite(value->chars, lit_string_length(value), 1, ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle);
     return lit_number_to_value(rt);
 }
 
@@ -197,7 +197,7 @@ static LitValue file_readAll(LitVM* vm, LitValue instance, size_t argc, LitValue
     fseek(data->handle, 0, SEEK_END);
     length = ftell(data->handle);
     fseek(data->handle, 0, SEEK_SET);
-    result = lit_allocate_empty_string(vm->state, length);
+    result = lit_string_alloc_empty(vm->state, length);
     result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
     result->chars[length] = '\0';
     actuallength = fread(result->chars, 1, length, data->handle);
@@ -223,7 +223,7 @@ static LitValue file_readLine(LitVM* vm, LitValue instance, size_t argc, LitValu
         LIT_FREE(vm->state, char, line);
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(lit_take_string(vm->state, line, strlen(line) - 1));
+    return OBJECT_VALUE(lit_string_take(vm->state, line, strlen(line) - 1));
 }
 
 static LitValue file_readByte(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
