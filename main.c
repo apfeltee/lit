@@ -43,8 +43,7 @@ static int run_repl(LitState* state)
     printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
     while(true)
     {
-        printf("%s>%s ", COLOR_BLUE, COLOR_RESET);
-        line = readline("");
+        line = readline("> ");
         if(line == NULL)
         {
             return 0;

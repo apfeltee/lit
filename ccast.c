@@ -7,11 +7,13 @@ void lit_init_expressions(LitExprList* array)
     array->capacity = 0;
     array->count = 0;
 }
+
 void lit_free_expressions(LitState* state, LitExprList* array)
 {
     LIT_FREE_ARRAY(state, LitExpression*, array->values, array->capacity);
     lit_init_expressions(array);
 }
+
 void lit_expressions_write(LitState* state, LitExprList* array, LitExpression* value)
 {
     if(array->capacity < array->count + 1)
@@ -23,17 +25,20 @@ void lit_expressions_write(LitState* state, LitExprList* array, LitExpression* v
     array->values[array->count] = value;
     array->count++;
 }
+
 void lit_init_statements(LitStmtList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
+
 void lit_free_statements(LitState* state, LitStmtList* array)
 {
     LIT_FREE_ARRAY(state, LitStatement*, array->values, array->capacity);
     lit_init_statements(array);
 }
+
 void lit_statements_write(LitState* state, LitStmtList* array, LitStatement* value)
 {
     if(array->capacity < array->count + 1)
@@ -45,17 +50,20 @@ void lit_statements_write(LitState* state, LitStmtList* array, LitStatement* val
     array->values[array->count] = value;
     array->count++;
 }
+
 void lit_init_parameters(LitParameters* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
+
 void lit_free_parameters(LitState* state, LitParameters* array)
 {
     LIT_FREE_ARRAY(state, LitParameter, array->values, array->capacity);
     lit_init_parameters(array);
 }
+
 void lit_parameters_write(LitState* state, LitParameters* array, LitParameter value)
 {
     if(array->capacity < array->count + 1)

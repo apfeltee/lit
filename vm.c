@@ -207,9 +207,14 @@ static inline LitValue vm_peek(LitFiber* fiber, short distance)
     } \
     if(IS_NULL(a)) \
     { \
-        vm_rterrorvarg("Attempt to use op %s on a null value", op_string); \
+    /* vm_rterrorvarg("Attempt to use op %s on a null value", op_string); */ \
+        vm_drop(fiber); \
+        *(fiber->stack_top - 1) = TRUE_VALUE; \
     } \
-    vm_invokemethod(a, op_string, 1)
+    else \
+    { \
+        vm_invokemethod(a, op_string, 1); \
+    }
 
 #define vm_bitwiseop(op, op_string) \
     LitValue a = vm_peek(fiber, 1); \

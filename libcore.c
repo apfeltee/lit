@@ -581,6 +581,7 @@ void lit_open_core_library(LitState* state)
             LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
             LIT_BIND_METHOD("toString", objfn_number_tostring);
             LIT_BIND_METHOD("toChar", objfn_number_tochar);
+            LIT_BIND_GETTER("chr", objfn_number_tochar);
             state->numbervalue_class = klass;
         }
         LIT_END_CLASS();

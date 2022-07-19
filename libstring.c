@@ -84,6 +84,11 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
     return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
+static LitValue string_format(LitState* state, size_t argc, LitValue* argv)
+{
+    
+}
+
 static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
@@ -100,6 +105,14 @@ static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, 
             {
                 return TRUE_VALUE;
             }
+        }
+        return FALSE_VALUE;
+    }
+    else if(IS_NULL(argv[0]))
+    {
+        if((self == NULL) || IS_NULL(instance))
+        {
+            return TRUE_VALUE;
         }
         return FALSE_VALUE;
     }

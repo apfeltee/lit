@@ -55,38 +55,37 @@ uint32_t lit_hash_string(const char* key, size_t length)
     return hash;
 }
 
-LitString* lit_take_string(LitState* state, const char* chars, size_t length)
+LitString* lit_take_string(LitState* state, char* chars, size_t length)
 {
-    uint32_t hash = lit_hash_string(chars, length);
-    LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
-
+    uint32_t hash;
+    hash = lit_hash_string(chars, length);
+    LitString* interned;
+    interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
     if(interned != NULL)
     {
+        LIT_FREE(state, char, chars);
         return interned;
     }
-
     return allocate_string(state, (char*)chars, length, hash);
 }
 
 LitString* lit_copy_string(LitState* state, const char* chars, size_t length)
 {
-    uint32_t hash = lit_hash_string(chars, length);
-    LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
-
+    uint32_t hash;
+    char* heap_chars;
+    LitString* interned;
+    hash= lit_hash_string(chars, length);
+    interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
     if(interned != NULL)
     {
         return interned;
     }
-
-    char* heap_chars = LIT_ALLOCATE(state, char, length + 1);
-
+    heap_chars = LIT_ALLOCATE(state, char, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
-
 #ifdef LIT_LOG_ALLOCATION
     printf("Allocated new string '%s'\n", chars);
 #endif
-
     return allocate_string(state, heap_chars, length, hash);
 }
 
@@ -117,232 +116,206 @@ LitValue lit_number_to_string(LitState* state, double value)
 
 LitValue lit_string_format(LitState* state, const char* format, ...)
 {
-    bool was_allowed = state->allow_gc;
-    state->allow_gc = false;
-
+    size_t length;
+    size_t total_length;
+    bool was_allowed;
+    char* start;
+    const char* c;
+    const char* cc;
+    const char* strval;
     va_list arg_list;
-
+    LitString* ss;
+    LitString* string;
+    LitString* result;
+    was_allowed = state->allow_gc;
+    state->allow_gc = false;
     va_start(arg_list, format);
-    size_t total_length = 0;
-
-    for(const char* c = format; *c != '\0'; c++)
+    total_length = 0;
+    for(c = format; *c != '\0'; c++)
     {
         switch(*c)
         {
             case '$':
-            {
-                const char* cc = va_arg(arg_list, const char*);
-
-                if(cc != NULL)
                 {
-                    total_length += strlen(cc);
-                    break;
+                    cc = va_arg(arg_list, const char*);
+                    if(cc != NULL)
+                    {
+                        total_length += strlen(cc);
+                        break;
+                    }
+                    goto default_ending;
                 }
-
-                goto default_ending;
-            }
-
+                break;                
             case '@':
-            {
-                LitValue v = va_arg(arg_list, LitValue);
-                LitString* ss = AS_STRING(v);
-
-                if(ss != NULL)
                 {
-                    total_length += ss->length;
+                    LitValue v = va_arg(arg_list, LitValue);
+                    ss = AS_STRING(v);
+                    if(ss != NULL)
+                    {
+                        total_length += ss->length;
+                        break;
+                    }
+                    goto default_ending;
+                }
+                break;
+            case '#':
+                {
+                    total_length += AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)))->length;
                     break;
                 }
-
-                goto default_ending;
-            }
-
-            case '#':
-            {
-                total_length += AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)))->length;
-                break;
-            }
-
+                break;                
             default:
-            {
-            default_ending:
-                total_length++;
-
+                {
+                default_ending:
+                    total_length++;
+                }
                 break;
-            }
+
         }
     }
-
     va_end(arg_list);
-
-    LitString* result = lit_allocate_empty_string(state, total_length);
+    result = lit_allocate_empty_string(state, total_length);
     result->chars = LIT_ALLOCATE(state, char, total_length + 1);
     result->chars[total_length] = '\0';
-
-    char* start = result->chars;
+    start = result->chars;
     va_start(arg_list, format);
-
-    for(const char* c = format; *c != '\0'; c++)
+    for(c = format; *c != '\0'; c++)
     {
         switch(*c)
         {
             case '$':
-            {
-                const char* string = va_arg(arg_list, const char*);
-
-                if(string != NULL)
                 {
-                    size_t length = strlen(string);
-                    memcpy(start, string, length);
-                    start += length;
-
-                    break;
+                    strval = va_arg(arg_list, const char*);
+                    if(strval != NULL)
+                    {
+                        length = strlen(strval);
+                        memcpy(start, strval, length);
+                        start += length;
+                        break;
+                    }
+                    goto default_ending_copying;
                 }
-
-                goto default_ending_copying;
-            }
-
+                break;
             case '@':
-            {
-                LitString* string = AS_STRING(va_arg(arg_list, LitValue));
-
-                if(string != NULL)
                 {
-                    memcpy(start, string->chars, string->length);
-                    start += string->length;
-
-                    break;
+                    string = AS_STRING(va_arg(arg_list, LitValue));
+                    if(string != NULL)
+                    {
+                        memcpy(start, string->chars, string->length);
+                        start += string->length;
+                        break;
+                    }
+                    goto default_ending_copying;
                 }
-
-                goto default_ending_copying;
-            }
+                break;
 
             case '#':
-            {
-                LitString* string = AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)));
-                memcpy(start, string->chars, string->length);
-                start += string->length;
-
+                {
+                    string = AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)));
+                    memcpy(start, string->chars, string->length);
+                    start += string->length;
+                }
                 break;
-            }
-
             default:
-            {
-            default_ending_copying:
-                *start++ = *c;
-
+                {
+                    default_ending_copying:
+                    *start++ = *c;
+                }
                 break;
-            }
         }
     }
-
     va_end(arg_list);
-
     result->hash = lit_hash_string(result->chars, result->length);
     lit_register_string(state, result);
-
     state->allow_gc = was_allowed;
-
     return OBJECT_VALUE(result);
 }
 
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 {
-    LitObject* object = (LitObject*)lit_reallocate(state, NULL, 0, size);
-
+    LitObject* object;
+    object = (LitObject*)lit_reallocate(state, NULL, 0, size);
     object->type = type;
     object->marked = false;
     object->next = state->vm->objects;
-
     state->vm->objects = object;
-
 #ifdef LIT_LOG_ALLOCATION
     printf("%p allocate %ld for %s\n", (void*)object, size, lit_get_value_type(type));
 #endif
-
     return object;
 }
 
 LitFunction* lit_create_function(LitState* state, LitModule* module)
 {
-    LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, LITTYPE_FUNCTION);
+    LitFunction* function;
+    function = ALLOCATE_OBJECT(state, LitFunction, LITTYPE_FUNCTION);
     lit_init_chunk(&function->chunk);
-
     function->name = NULL;
     function->arg_count = 0;
     function->upvalue_count = 0;
     function->max_slots = 0;
     function->module = module;
     function->vararg = false;
-
     return function;
 }
 
-
 LitValue lit_get_function_name(LitVM* vm, LitValue instance)
 {
-    LitString* name = NULL;
-
+    LitString* name;
+    LitField* field;
+    name = NULL;
     switch(OBJECT_TYPE(instance))
     {
         case LITTYPE_FUNCTION:
-        {
-            name = AS_FUNCTION(instance)->name;
-            break;
-        }
-
-        case LITTYPE_CLOSURE:
-        {
-            name = AS_CLOSURE(instance)->function->name;
-            break;
-        }
-
-        case LITTYPE_FIELD:
-        {
-            LitField* field = AS_FIELD(instance);
-
-            if(field->getter != NULL)
             {
-                return lit_get_function_name(vm, OBJECT_VALUE(field->getter));
+                name = AS_FUNCTION(instance)->name;
             }
-
-            return lit_get_function_name(vm, OBJECT_VALUE(field->setter));
-        }
-
+            break;
+        case LITTYPE_CLOSURE:
+            {
+                name = AS_CLOSURE(instance)->function->name;
+            }
+            break;
+        case LITTYPE_FIELD:
+            {
+                field = AS_FIELD(instance);
+                if(field->getter != NULL)
+                {
+                    return lit_get_function_name(vm, OBJECT_VALUE(field->getter));
+                }
+                return lit_get_function_name(vm, OBJECT_VALUE(field->setter));
+            }
+            break;
         case LITTYPE_NATIVE_PRIMITIVE:
-        {
-            name = AS_NATIVE_PRIMITIVE(instance)->name;
+            {
+                name = AS_NATIVE_PRIMITIVE(instance)->name;
+            }
             break;
-        }
-
         case LITTYPE_NATIVE_FUNCTION:
-        {
-            name = AS_NATIVE_FUNCTION(instance)->name;
+            {
+                name = AS_NATIVE_FUNCTION(instance)->name;
+            }
             break;
-        }
-
         case LITTYPE_NATIVE_METHOD:
-        {
-            name = AS_NATIVE_METHOD(instance)->name;
+            {
+                name = AS_NATIVE_METHOD(instance)->name;
+            }
             break;
-        }
-
         case LITTYPE_PRIMITIVE_METHOD:
-        {
-            name = AS_PRIMITIVE_METHOD(instance)->name;
+            {
+                name = AS_PRIMITIVE_METHOD(instance)->name;
+            }
             break;
-        }
-
         case LITTYPE_BOUND_METHOD:
-        {
-            return lit_get_function_name(vm, AS_BOUND_METHOD(instance)->method);
-        }
-
-        default:
-        {
+            {
+                return lit_get_function_name(vm, AS_BOUND_METHOD(instance)->method);
+            }
             break;
-        }
+        default:
+            {
+            }
+            break;
     }
-
     if(name == NULL)
     {
         return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double*)AS_OBJECT(instance))));

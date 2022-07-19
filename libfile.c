@@ -20,7 +20,6 @@ struct LitFileData
 
 typedef void(*CleanupFunc)(LitState*, LitUserdata*, bool);
 
-
 static void* LIT_INSERT_DATA(LitVM* vm, LitValue instance, size_t typsz, CleanupFunc cleanup)
 {
     LitUserdata* userdata = lit_create_userdata(vm->state, typsz);
@@ -221,6 +220,7 @@ static LitValue file_readLine(LitVM* vm, LitValue instance, size_t argc, LitValu
     line = LIT_ALLOCATE(vm->state, char, max_length + 1);
     if(!fgets(line, max_length, data->handle))
     {
+        LIT_FREE(vm->state, char, line);
         return NULL_VALUE;
     }
     return OBJECT_VALUE(lit_take_string(vm->state, line, strlen(line) - 1));

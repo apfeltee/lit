@@ -1646,7 +1646,7 @@ void lit_mark_table(LitVM* vm, LitTable* table);
 bool lit_is_callable_function(LitValue value);
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);
 LitString* lit_copy_string(LitState* state, const char* chars, size_t length);
-LitString* lit_take_string(LitState* state, const char* chars, size_t length);
+LitString* lit_take_string(LitState* state, char* chars, size_t length);
 LitValue lit_string_format(LitState* state, const char* format, ...);
 LitValue lit_number_to_string(LitState* state, double value);
 void lit_register_string(LitState* state, LitString* string);
