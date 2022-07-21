@@ -16,6 +16,13 @@ static LitValue objfn_object_tostring(LitVM* vm, LitValue instance, size_t argc,
     return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
 }
 
+static LitValue objfn_object_tomap(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    (void)argc;
+    (void)argv;
+    return OBJECT_VALUE(AS_MAP(instance));
+}
+
 static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
@@ -70,7 +77,7 @@ static LitValue objfn_object_iterator(LitVM* vm, LitValue instance, size_t argc,
 
 static LitValue objfn_object_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    size_t index = lit_check_number(vm, argv, argc, 0);
     LitInstance* self = AS_INSTANCE(instance);
 
     return util_table_iterator_key(&self->fields, index);
@@ -82,6 +89,7 @@ void lit_open_object_library(LitState* state)
     {
         LIT_INHERIT_CLASS(state->classvalue_class);
         LIT_BIND_METHOD("toString", objfn_object_tostring);
+        LIT_BIND_METHOD("toMap", objfn_object_tomap);
         LIT_BIND_METHOD("[]", objfn_object_subscript);
         LIT_BIND_METHOD("iterator", objfn_object_iterator);
         LIT_BIND_METHOD("iteratorValue", objfn_object_iteratorvalue);

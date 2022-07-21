@@ -72,8 +72,8 @@ static LitValue file_constructor(LitVM* vm, LitValue instance, size_t argc, LitV
     const char* mode;
     FILE* hnd;
     LitFileData* data;
-    path = LIT_CHECK_STRING(vm, argv, argc, 0);
-    mode = LIT_GET_STRING(1, "r");
+    path = lit_check_string(vm, argv, argc, 0);
+    mode = lit_get_string(vm, argv, argc, 1, "r");
     hnd = fopen(path, mode);
     if(hnd == NULL)
     {
@@ -109,7 +109,7 @@ static LitValue file_exists(LitVM* vm, LitValue instance, size_t argc, LitValue*
     }
     else
     {
-        file_name = (char*)LIT_CHECK_STRING(vm, argv, argc, 0);
+        file_name = (char*)lit_check_string(vm, argv, argc, 0);
     }
     return BOOL_VALUE(lit_file_exists(file_name));
 }
@@ -133,7 +133,7 @@ static LitValue file_writeByte(LitVM* vm, LitValue instance, size_t argc, LitVal
 {
     uint8_t rt;
     uint8_t byte;
-    byte = (uint8_t)LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    byte = (uint8_t)lit_check_number(vm, argv, argc, 0);
     rt = lit_write_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, byte);
     return lit_number_to_value(rt);
 }
@@ -142,7 +142,7 @@ static LitValue file_writeShort(LitVM* vm, LitValue instance, size_t argc, LitVa
 {
     uint16_t rt;
     uint16_t shrt;
-    shrt = (uint16_t)LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    shrt = (uint16_t)lit_check_number(vm, argv, argc, 0);
     rt = lit_write_uint16_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, shrt);
     return lit_number_to_value(rt);
 }
@@ -151,7 +151,7 @@ static LitValue file_writeNumber(LitVM* vm, LitValue instance, size_t argc, LitV
 {
     uint32_t rt;
     float num;
-    num = (float)LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    num = (float)lit_check_number(vm, argv, argc, 0);
     rt = lit_write_uint32_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, num);
     return lit_number_to_value(rt);
 }
@@ -160,7 +160,7 @@ static LitValue file_writeBool(LitVM* vm, LitValue instance, size_t argc, LitVal
 {
     bool value;
     uint8_t rt;
-    value = LIT_CHECK_BOOL(0);
+    value = lit_check_bool(vm, argv, argc, 0);
     rt = lit_write_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, (uint8_t)value ? '1' : '0');
     return lit_number_to_value(rt);
 }
@@ -169,7 +169,7 @@ static LitValue file_writeString(LitVM* vm, LitValue instance, size_t argc, LitV
 {
     LitString* string;
     LitFileData* data;
-    if(LIT_CHECK_STRING(vm, argv, argc, 0) == NULL)
+    if(lit_check_string(vm, argv, argc, 0) == NULL)
     {
         return NULL_VALUE;
     }
@@ -197,7 +197,7 @@ static LitValue file_readAll(LitVM* vm, LitValue instance, size_t argc, LitValue
     fseek(data->handle, 0, SEEK_END);
     length = ftell(data->handle);
     fseek(data->handle, 0, SEEK_SET);
-    result = lit_string_alloc_empty(vm->state, length);
+    result = lit_string_alloc_empty(vm->state, length, false);
     result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
     result->chars[length] = '\0';
     actuallength = fread(result->chars, 1, length, data->handle);
@@ -215,7 +215,7 @@ static LitValue file_readLine(LitVM* vm, LitValue instance, size_t argc, LitValu
     size_t max_length;
     char* line;
     LitFileData* data;
-    max_length = (size_t)LIT_GET_NUMBER(0, 128);
+    max_length = (size_t)lit_get_number(vm, argv, argc, 0, 128);
     data = (LitFileData*)LIT_EXTRACT_DATA(vm, instance);
     line = LIT_ALLOCATE(vm->state, char, max_length + 1);
     if(!fgets(line, max_length, data->handle))
@@ -223,7 +223,7 @@ static LitValue file_readLine(LitVM* vm, LitValue instance, size_t argc, LitValu
         LIT_FREE(vm->state, char, line);
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(lit_string_take(vm->state, line, strlen(line) - 1));
+    return OBJECT_VALUE(lit_string_take(vm->state, line, strlen(line) - 1, false));
 }
 
 static LitValue file_readByte(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -287,7 +287,7 @@ static LitValue file_getLastModified(LitVM* vm, LitValue instance, size_t argc, 
     }
     else
     {
-        file_name = (char*)LIT_CHECK_STRING(vm, argv, argc, 0);
+        file_name = (char*)lit_check_string(vm, argv, argc, 0);
     }
 
     if(stat(file_name, &buffer) != 0)
@@ -308,7 +308,7 @@ static LitValue file_getLastModified(LitVM* vm, LitValue instance, size_t argc, 
 
 static LitValue directory_exists(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    const char* directory_name = LIT_CHECK_STRING(vm, argv, argc, 0);
+    const char* directory_name = lit_check_string(vm, argv, argc, 0);
     struct stat buffer;
     (void)vm;
     (void)instance;
@@ -327,7 +327,7 @@ static LitValue directory_listFiles(LitVM* vm, LitValue instance, size_t argc, L
     #if defined(__unix__) || defined(__linux__)
     {
         struct dirent* ep;
-        DIR* dir = opendir(LIT_CHECK_STRING(vm, argv, argc, 0));
+        DIR* dir = opendir(lit_check_string(vm, argv, argc, 0));
         if(dir == NULL)
         {
             return OBJECT_VALUE(array);
@@ -355,7 +355,7 @@ static LitValue directory_listDirectories(LitVM* vm, LitValue instance, size_t a
     state = vm->state;
     array = lit_create_array(state);
 
-    if(lit_dir_open(&rd, LIT_CHECK_STRING(vm, argv, argc, 0)))
+    if(lit_dir_open(&rd, lit_check_string(vm, argv, argc, 0)))
     {
         while(true)
         {

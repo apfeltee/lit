@@ -408,8 +408,9 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
             if(parser->current.type == LITTOK_NEW_LINE)
             {
                 prs_advance(parser);
+                return parse_precedence(parser, precedence, err);
             }
-            return parse_precedence(parser, precedence, err);
+            return NULL;
         }
         // todo: file start
         new_line = previous.start != NULL && *previous.start == '\n';
@@ -563,13 +564,13 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
                     }
                 } while(prs_match(parser, LITTOK_COMMA));
             }
-
+            #if 0
             if(!had_arrow)
             {
                 consume(parser, LITTOK_RIGHT_PAREN, "')' after lambda parameters");
                 consume(parser, LITTOK_ARROW, "=> after lambda parameters");
             }
-
+            #endif
             return parse_lambda(parser, lambda);
         }
         else

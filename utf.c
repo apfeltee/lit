@@ -94,7 +94,7 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
             to += lit_ustring_encode(code_point, to);
         }
     }
-    return lit_string_take(state, bytes, length);
+    return lit_string_take(state, bytes, length, false);
 }
 
 int lit_encode_num_bytes(int value)

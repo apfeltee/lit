@@ -108,7 +108,7 @@ static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, Li
 static LitValue objfn_map_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
-    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    index = lit_check_number(vm, argv, argc, 0);
     return util_table_iterator_key(&AS_MAP(instance)->values, index);
 }
 
@@ -231,7 +231,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     buffer[olength] = '\0';
     LIT_FREE(vm->state, LitString*, keys);
     LIT_FREE(vm->state, LitString*, values_converted);
-    return OBJECT_VALUE(lit_string_take(vm->state, buffer, olength));
+    return OBJECT_VALUE(lit_string_take(vm->state, buffer, olength, false));
 }
 
 static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

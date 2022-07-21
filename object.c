@@ -9,8 +9,15 @@ bool lit_is_callable_function(LitValue value)
     if(IS_OBJECT(value))
     {
         LitObjectType type = OBJECT_TYPE(value);
-        return type == LITTYPE_CLOSURE || type == LITTYPE_FUNCTION || type == LITTYPE_NATIVE_FUNCTION || type == LITTYPE_NATIVE_PRIMITIVE
-               || type == LITTYPE_NATIVE_METHOD || type == LITTYPE_PRIMITIVE_METHOD || type == LITTYPE_BOUND_METHOD;
+        return (
+            (type == LITTYPE_CLOSURE) ||
+            (type == LITTYPE_FUNCTION) ||
+            (type == LITTYPE_NATIVE_FUNCTION) ||
+            (type == LITTYPE_NATIVE_PRIMITIVE) ||
+            (type == LITTYPE_NATIVE_METHOD) ||
+            (type == LITTYPE_PRIMITIVE_METHOD) ||
+            (type == LITTYPE_BOUND_METHOD)
+        );
     }
 
     return false;
@@ -278,6 +285,7 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass)
     instance = ALLOCATE_OBJECT(state, LitInstance, LITTYPE_INSTANCE);
     instance->klass = klass;
     lit_init_table(&instance->fields);
+    instance->fields.count = 0;
     return instance;
 }
 

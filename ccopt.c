@@ -602,77 +602,65 @@ static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressio
 
 static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
 {
-    LitStatement* statement = *slot;
-
+    LitState* state;
+    LitStatement* statement;
+    statement = *slot;
     if(statement == NULL)
     {
         return;
     }
-
-    LitState* state = optimizer->state;
-
+    state = optimizer->state;
     switch(statement->type)
     {
         case LITSTMT_EXPRESSION:
-        {
-            optimize_expression(optimizer, &((LitExpressionStatement*)statement)->expression);
-            break;
-        }
-
-        case LITSTMT_BLOCK:
-        {
-            LitBlockStatement* stmt = (LitBlockStatement*)statement;
-
-            if(stmt->statements.count == 0)
             {
-                lit_free_statement(state, statement);
-                *slot = NULL;
-
-                break;
+                optimize_expression(optimizer, &((LitExpressionStatement*)statement)->expression);
             }
-
-            opt_begin_scope(optimizer);
-            optimize_statements(optimizer, &stmt->statements);
-            opt_end_scope(optimizer);
-
-            bool found = false;
-
-            for(size_t i = 0; i < stmt->statements.count; i++)
+            break;
+        case LITSTMT_BLOCK:
             {
-                LitStatement* step = stmt->statements.values[i];
-
-                if(!is_empty(step))
+                LitBlockStatement* stmt;
+                stmt = (LitBlockStatement*)statement;
+                if(stmt->statements.count == 0)
                 {
-                    found = true;
-
-                    if(step->type == LITSTMT_RETURN)
+                    lit_free_statement(state, statement);
+                    *slot = NULL;
+                    break;
+                }
+                opt_begin_scope(optimizer);
+                optimize_statements(optimizer, &stmt->statements);
+                opt_end_scope(optimizer);
+                bool found = false;
+                for(size_t i = 0; i < stmt->statements.count; i++)
+                {
+                    LitStatement* step = stmt->statements.values[i];
+                    if(!is_empty(step))
                     {
-                        // Remove all the statements post return
-                        for(size_t j = i + 1; j < stmt->statements.count; j++)
+                        found = true;
+                        if(step->type == LITSTMT_RETURN)
                         {
-                            step = stmt->statements.values[j];
-
-                            if(step != NULL)
+                            // Remove all the statements post return
+                            for(size_t j = i + 1; j < stmt->statements.count; j++)
                             {
-                                lit_free_statement(state, step);
-                                stmt->statements.values[j] = NULL;
+                                step = stmt->statements.values[j];
+                                if(step != NULL)
+                                {
+                                    lit_free_statement(state, step);
+                                    stmt->statements.values[j] = NULL;
+                                }
                             }
+                            stmt->statements.count = i + 1;
+                            break;
                         }
-
-                        stmt->statements.count = i + 1;
-                        break;
                     }
                 }
+                if(!found && lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY))
+                {
+                    lit_free_statement(optimizer->state, statement);
+                    *slot = NULL;
+                }
             }
-
-            if(!found && lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY))
-            {
-                lit_free_statement(optimizer->state, statement);
-                *slot = NULL;
-            }
-
             break;
-        }
 
         case LITSTMT_IF:
         {
@@ -765,163 +753,130 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
         }
 
         case LITSTMT_FOR:
-        {
-            LitForStatement* stmt = (LitForStatement*)statement;
-
-            opt_begin_scope(optimizer);
-            // This is required, so that optimizer doesn't optimize out our i variable (and such)
-            optimizer->mark_used = true;
-
-            optimize_expression(optimizer, &stmt->init);
-            optimize_expression(optimizer, &stmt->condition);
-            optimize_expression(optimizer, &stmt->increment);
-
-            optimize_statement(optimizer, &stmt->var);
-            optimizer->mark_used = false;
-
-            optimize_statement(optimizer, &stmt->body);
-            opt_end_scope(optimizer);
-
-            if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
             {
-                lit_free_statement(optimizer->state, statement);
-                *slot = NULL;
-
-                break;
+                LitForStatement* stmt = (LitForStatement*)statement;
+                opt_begin_scope(optimizer);
+                // This is required, so that optimizer doesn't optimize out our i variable (and such)
+                optimizer->mark_used = true;
+                optimize_expression(optimizer, &stmt->init);
+                optimize_expression(optimizer, &stmt->condition);
+                optimize_expression(optimizer, &stmt->increment);
+                optimize_statement(optimizer, &stmt->var);
+                optimizer->mark_used = false;
+                optimize_statement(optimizer, &stmt->body);
+                opt_end_scope(optimizer);
+                if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
+                {
+                    lit_free_statement(optimizer->state, statement);
+                    *slot = NULL;
+                    break;
+                }
+                if(stmt->c_style || !lit_is_optimization_enabled(LITOPTSTATE_C_FOR) || stmt->condition->type != LITEXPR_RANGE)
+                {
+                    break;
+                }
+                LitRangeExpression* range = (LitRangeExpression*)stmt->condition;
+                LitValue from = evaluate_expression(optimizer, range->from);
+                LitValue to = evaluate_expression(optimizer, range->to);
+                if(!IS_NUMBER(from) || !IS_NUMBER(to))
+                {
+                    break;
+                }
+                bool reverse = lit_value_to_number(from) > lit_value_to_number(to);
+                LitVarStatement* var = (LitVarStatement*)stmt->var;
+                size_t line = range->expression.line;
+                // var i = from
+                var->init = range->from;
+                // i <= to
+                stmt->condition = (LitExpression*)lit_create_binary_expression(
+                state, line, (LitExpression*)lit_create_var_expression(state, line, var->name, var->length), range->to, LITTOK_LESS_EQUAL);
+                // i++ (or i--)
+                LitExpression* var_get = (LitExpression*)lit_create_var_expression(state, line, var->name, var->length);
+                LitBinaryExpression* assign_value = lit_create_binary_expression(
+                state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_number_to_value(1)),
+                reverse ? LITTOK_MINUS_MINUS : LITTOK_PLUS);
+                assign_value->ignore_left = true;
+                LitExpression* increment
+                = (LitExpression*)lit_create_assign_expression(state, line, var_get, (LitExpression*)assign_value);
+                stmt->increment = (LitExpression*)increment;
+                range->from = NULL;
+                range->to = NULL;
+                stmt->c_style = true;
+                lit_free_expression(state, (LitExpression*)range);
             }
-
-            if(stmt->c_style || !lit_is_optimization_enabled(LITOPTSTATE_C_FOR) || stmt->condition->type != LITEXPR_RANGE)
-            {
-                break;
-            }
-
-            LitRangeExpression* range = (LitRangeExpression*)stmt->condition;
-            LitValue from = evaluate_expression(optimizer, range->from);
-            LitValue to = evaluate_expression(optimizer, range->to);
-
-            if(!IS_NUMBER(from) || !IS_NUMBER(to))
-            {
-                break;
-            }
-
-            bool reverse = lit_value_to_number(from) > lit_value_to_number(to);
-
-            LitVarStatement* var = (LitVarStatement*)stmt->var;
-            size_t line = range->expression.line;
-
-            // var i = from
-            var->init = range->from;
-
-            // i <= to
-            stmt->condition = (LitExpression*)lit_create_binary_expression(
-            state, line, (LitExpression*)lit_create_var_expression(state, line, var->name, var->length), range->to, LITTOK_LESS_EQUAL);
-
-            // i++ (or i--)
-            LitExpression* var_get = (LitExpression*)lit_create_var_expression(state, line, var->name, var->length);
-            LitBinaryExpression* assign_value = lit_create_binary_expression(
-            state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_number_to_value(1)),
-            reverse ? LITTOK_MINUS_MINUS : LITTOK_PLUS);
-            assign_value->ignore_left = true;
-
-            LitExpression* increment
-            = (LitExpression*)lit_create_assign_expression(state, line, var_get, (LitExpression*)assign_value);
-            stmt->increment = (LitExpression*)increment;
-
-            range->from = NULL;
-            range->to = NULL;
-
-            stmt->c_style = true;
-            lit_free_expression(state, (LitExpression*)range);
-
             break;
-        }
 
         case LITSTMT_VAR:
-        {
-            LitVarStatement* stmt = (LitVarStatement*)statement;
-            LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, stmt->constant, slot);
-
-            optimize_expression(optimizer, &stmt->init);
-
-            if(stmt->constant && lit_is_optimization_enabled(LITOPTSTATE_CONSTANT_FOLDING))
             {
-                LitValue value = evaluate_expression(optimizer, stmt->init);
-
-                if(value != NULL_VALUE)
+                LitVarStatement* stmt = (LitVarStatement*)statement;
+                LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, stmt->constant, slot);
+                optimize_expression(optimizer, &stmt->init);
+                if(stmt->constant && lit_is_optimization_enabled(LITOPTSTATE_CONSTANT_FOLDING))
                 {
-                    variable->constant_value = value;
+                    LitValue value = evaluate_expression(optimizer, stmt->init);
+
+                    if(value != NULL_VALUE)
+                    {
+                        variable->constant_value = value;
+                    }
                 }
             }
-
             break;
-        }
-
         case LITSTMT_FUNCTION:
-        {
-            LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
-            LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, false, slot);
-
-            if(stmt->exported)
             {
-                // Otherwise it will get optimized-out with a big chance
-                variable->used = true;
+                LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
+                LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, false, slot);
+                if(stmt->exported)
+                {
+                    // Otherwise it will get optimized-out with a big chance
+                    variable->used = true;
+                }
+                opt_begin_scope(optimizer);
+                optimize_statement(optimizer, &stmt->body);
+                opt_end_scope(optimizer);
             }
-
-            opt_begin_scope(optimizer);
-            optimize_statement(optimizer, &stmt->body);
-            opt_end_scope(optimizer);
-
             break;
-        }
-
         case LITSTMT_RETURN:
-        {
-            optimize_expression(optimizer, &((LitReturnStatement*)statement)->expression);
+            {
+                optimize_expression(optimizer, &((LitReturnStatement*)statement)->expression);
+            }
             break;
-        }
-
         case LITSTMT_METHOD:
-        {
-            opt_begin_scope(optimizer);
-            optimize_statement(optimizer, &((LitMethodStatement*)statement)->body);
-            opt_end_scope(optimizer);
-
+            {
+                opt_begin_scope(optimizer);
+                optimize_statement(optimizer, &((LitMethodStatement*)statement)->body);
+                opt_end_scope(optimizer);
+            }
             break;
-        }
-
         case LITSTMT_CLASS:
-        {
-            optimize_statements(optimizer, &((LitClassStatement*)statement)->fields);
+            {
+                optimize_statements(optimizer, &((LitClassStatement*)statement)->fields);
+            }
             break;
-        }
-
         case LITSTMT_FIELD:
-        {
-            LitFieldStatement* stmt = (LitFieldStatement*)statement;
-
-            if(stmt->getter != NULL)
             {
-                opt_begin_scope(optimizer);
-                optimize_statement(optimizer, &stmt->getter);
-                opt_end_scope(optimizer);
+                LitFieldStatement* stmt = (LitFieldStatement*)statement;
+                if(stmt->getter != NULL)
+                {
+                    opt_begin_scope(optimizer);
+                    optimize_statement(optimizer, &stmt->getter);
+                    opt_end_scope(optimizer);
+                }
+                if(stmt->setter != NULL)
+                {
+                    opt_begin_scope(optimizer);
+                    optimize_statement(optimizer, &stmt->setter);
+                    opt_end_scope(optimizer);
+                }
             }
-
-            if(stmt->setter != NULL)
-            {
-                opt_begin_scope(optimizer);
-                optimize_statement(optimizer, &stmt->setter);
-                opt_end_scope(optimizer);
-            }
-
             break;
-        }
-
         // Nothing to optimize there
         case LITSTMT_CONTINUE:
         case LITSTMT_BREAK:
-        {
+            {
+            }
             break;
-        }
+
     }
 }
 

@@ -1,5 +1,6 @@
 
 #include "lit.h"
+#include "sds.h"
 
 int lit_array_indexof(LitArray* array, LitValue value)
 {
@@ -90,8 +91,8 @@ static LitValue objfn_array_slice(LitVM* vm, LitValue instance, size_t argc, Lit
 {
     int from;
     int to;
-    from = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-    to = LIT_CHECK_NUMBER(vm, argv, argc, 1);
+    from = lit_check_number(vm, argv, argc, 0);
+    to = lit_check_number(vm, argv, argc, 1);
 
     return objfn_array_splice(vm, AS_ARRAY(instance), from, to);
 }
@@ -146,34 +147,23 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
     return values->values[index];
 }
 
-LitInterpretResult lit_call_instance_method(LitState* state, LitInstance* instance, LitString* mthname, LitValue* argv, size_t argc)
-{
-    LitValue mthval;
-    if(lit_table_get(&instance->fields, mthname, &mthval) || lit_table_get(&instance->klass->methods, mthname, &mthval))
-    {
-        return lit_call(state, mthval, argv, argc);
-    }
-    return INTERPRET_RUNTIME_FAIL;    
-}
 
 /*
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count, bool ignfiber);
 
 */
 bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
 {
-    LitInstance* instance;
     LitInterpretResult inret;
     LitValue args[3];
     if(IS_INSTANCE(a))
     {
-        instance = AS_INSTANCE(a);
         args[0] = b;
-        inret = lit_call_instance_method(state, instance, CONST_STRING(state, "=="), args, 1);
+        inret = lit_instance_call_method(state, a, CONST_STRING(state, "=="), args, 1);
         if(inret.type == LITRESULT_OK)
         {
             if(BOOL_VALUE(inret.result) == TRUE_VALUE)
@@ -230,7 +220,7 @@ static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, Li
     LIT_ENSURE_ARGS(2)
 
         LitValueList* values = &AS_ARRAY(instance)->values;
-    int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    int index = lit_check_number(vm, argv, argc, 0);
 
     if(index < 0)
     {
@@ -305,7 +295,7 @@ static LitValue objfn_array_remove(LitVM* vm, LitValue instance, size_t argc, Li
 
 static LitValue objfn_array_removeat(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    int index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    int index = lit_check_number(vm, argv, argc, 0);
 
     if(index < 0)
     {
@@ -357,7 +347,7 @@ static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t a
 {
     size_t index;
     LitValueList* values;
-    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    index = lit_check_number(vm, argv, argc, 0);
     values = &AS_ARRAY(instance)->values;
     if(values->count <= index)
     {
@@ -369,6 +359,7 @@ static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t a
 static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t i;
+    size_t jlen;
     size_t index;
     size_t length;
     char* chars;
@@ -399,26 +390,32 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
             length += lit_string_length(joinee);
         }
     }
+    jlen = 0;
     index = 0;
-    //char chars[length + 1];
-    chars = LIT_ALLOCATE(vm->state, char, length+1);
-    chars[length] = '\0';
+    chars = sdsempty();
+    chars = sdsMakeRoomFor(chars, length + 1);
+    if(joinee != NULL)
+    {
+        jlen = lit_string_length(joinee);
+    }
     for(i = 0; i < values->count; i++)
     {
         string = strings[i];
         memcpy(chars + index, string->chars, lit_string_length(string));
+        chars = sdscatlen(chars, string->chars, lit_string_length(string));
         index += lit_string_length(string);
         if(joinee != NULL)
         {
+            
             //if((i+1) < values->count)
             {
-                memcpy(chars+index, joinee->chars, lit_string_length(joinee));
+                chars = sdscatlen(chars, joinee->chars, jlen);
             }
-            index += lit_string_length(joinee);
+            index += jlen;
         }
     }
     LIT_FREE(vm->state, LitString*, strings);
-    return OBJECT_VALUE(lit_string_take(vm->state, chars, length));
+    return OBJECT_VALUE(lit_string_take(vm->state, chars, length, true));
 }
 
 
@@ -467,7 +464,6 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     (void)argv;
     bool has_more;
     size_t i;
-    size_t buffer_index;
     size_t value_amount;
     size_t olength;
     char* buffer;
@@ -489,7 +485,6 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     }
     has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
     value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
-    //LitString* values_converted[value_amount];
     values_converted = LIT_ALLOCATE(vm->state, LitString*, value_amount+1);
     // "[ ]"
     olength = 3;
@@ -497,6 +492,9 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     {
         olength += 3;
     }
+    buffer = sdsempty();
+    buffer = sdsMakeRoomFor(buffer, olength+1);
+    buffer = sdscat(buffer, "[");
     for(i = 0; i < value_amount; i++)
     {
         val = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
@@ -508,35 +506,28 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
         {
             stringified = lit_to_string(state, val);
         }
-        values_converted[i] = stringified;
-        olength += lit_string_length(stringified) + (i == value_amount - 1 ? 1 : 2);
-    }
-    //char buffer[olength + 1];
-    buffer = LIT_ALLOCATE(vm->state, char, olength+1);
-    memcpy(buffer, "[ ", 2);
-    buffer_index = 2;
-    for(i = 0; i < value_amount; i++)
-    {
-        part = values_converted[i];
-        memcpy(&buffer[buffer_index], part->chars, lit_string_length(part));
-        buffer_index += lit_string_length(part);
+        part = stringified;
+        buffer = sdscatlen(buffer, part->chars, lit_string_length(part));
         if(has_more && i == value_amount - 2)
         {
-            memcpy(&buffer[buffer_index], " ... ", 5);
-            buffer_index += 5;
+            buffer = sdscat(buffer, " ... ");
         }
         else
         {
-            memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " ]" : ", ", 2);
-            buffer_index += 2;
+            if(i == (value_amount - 1))
+            {
+                buffer = sdscat(buffer, " ]");
+            }
+            else
+            {
+                buffer = sdscat(buffer, ", ");
+            }
         }
     }
     LIT_FREE(vm->state, LitString*, values_converted);
-    buffer[olength] = '\0';
     // should be lit_string_take, but it doesn't get picked up by the GC for some reason
     //rt = lit_string_take(vm->state, buffer, olength);
-    rt = lit_string_copy(vm->state, buffer, olength);
-    LIT_FREE(vm->state, char, buffer);
+    rt = lit_string_take(vm->state, buffer, olength, true);
     return OBJECT_VALUE(rt);
 }
 

@@ -54,6 +54,89 @@ void *sds_realloc(void *ptr, size_t size);
 void sds_free(void *ptr);
 */
 
+char* itoa(int value, char* result, int base) {
+    int tmp_value;
+    char* ptr;
+    char* ptr1;
+    char tmp_char;
+    // check that the base if valid
+    if (base < 2 || base > 36)
+    {
+        *result = '\0';
+        return result;
+    }
+    ptr = result;
+    ptr1 = result;
+    do
+    {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+    // Apply negative sign
+    if (tmp_value < 0)
+    {
+        *ptr++ = '-';
+    }
+    *ptr-- = '\0';
+    while(ptr1 < ptr)
+    {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
+    return result;
+}
+
+static char *int_to_string_helper(char *dest, size_t n, int x)
+{
+    if (n == 0)
+    {
+        return NULL;
+    }
+    if (x <= -10)
+    {
+        dest = int_to_string_helper(dest, n - 1, x / 10);
+        if (dest == NULL)
+        {
+            return NULL;
+        }
+    }
+    *dest = (char) ('0' - x % 10);
+    return dest + 1;
+}
+
+char *int_to_string(char *dest, size_t n, int x)
+{
+    char *p;
+    p = dest;
+    if (n == 0)
+    {
+        return NULL;
+    }
+    n--;
+    if (x < 0)
+    {
+        if(n == 0)
+        {
+            return NULL;
+        }
+        n--;
+        *p++ = '-';
+    }
+    else
+    {
+        x = -x;
+    }
+    p = int_to_string_helper(p, n, x);
+    if(p == NULL)
+    {
+        return NULL;
+    }
+    *p = 0;
+    return dest;
+}
+
 uint32_t lit_hash_string(const char* key, size_t length)
 {
     size_t i;
@@ -67,12 +150,15 @@ uint32_t lit_hash_string(const char* key, size_t length)
     return hash;
 }
 
-LitString* lit_string_alloc_empty(LitState* state, size_t length)
+LitString* lit_string_alloc_empty(LitState* state, size_t length, bool reuse)
 {
     LitString* string;
     string = ALLOCATE_OBJECT(state, LitString, LITTYPE_STRING);
-    string->chars = sdsempty();
-    string->chars = sdsMakeRoomFor(string->chars, length);
+    if(!reuse)
+    {
+        string->chars = sdsempty();
+        string->chars = sdsMakeRoomFor(string->chars, length);
+    }
     //string->chars = NULL;
     string->hash = 0;
     //sdsMakeRoomFor(string->chars, length);
@@ -80,14 +166,24 @@ LitString* lit_string_alloc_empty(LitState* state, size_t length)
 }
 
 
-LitString* lit_string_alloc(LitState* state, char* chars, size_t length, uint32_t hash)
+LitString* lit_string_alloc(LitState* state, char* chars, size_t length, uint32_t hash, bool wassds, bool reuse)
 {
     LitString* string;
-    string = lit_string_alloc_empty(state, length);
-    //string->chars = sdsnewlen(chars, length);
-    string->chars = sdscatlen(string->chars, chars, length);
+    string = lit_string_alloc_empty(state, length, reuse);
+    if(wassds && reuse)
+    {
+        string->chars = chars;
+    }
+    else
+    {
+        //string->chars = sdsnewlen(chars, length);
+        string->chars = sdscatlen(string->chars, chars, length);
+    }
     string->hash = hash;
-    LIT_FREE(state, char, chars);
+    if(!wassds)
+    {
+        LIT_FREE(state, char, chars);
+    }
     lit_register_string(state, string);
     return string;
 }
@@ -103,19 +199,24 @@ void lit_register_string(LitState* state, LitString* string)
 }
 
 /* todo: track if $chars is a sds instance - additional argument $fromsds? */
-LitString* lit_string_take(LitState* state, char* chars, size_t length)
+LitString* lit_string_take(LitState* state, char* chars, size_t length, bool wassds)
 {
+    bool reuse;
     uint32_t hash;
     hash = lit_hash_string(chars, length);
     LitString* interned;
     interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
     if(interned != NULL)
     {
-        LIT_FREE(state, char, chars);
-        //sdsfree(chars);
+        if(!wassds)
+        {
+            LIT_FREE(state, char, chars);
+            //sdsfree(chars);
+        }
         return interned;
     }
-    return lit_string_alloc(state, (char*)chars, length, hash);
+    reuse = wassds;
+    return lit_string_alloc(state, (char*)chars, length, hash, wassds, reuse);
 }
 
 LitString* lit_string_copy(LitState* state, const char* chars, size_t length)
@@ -129,13 +230,16 @@ LitString* lit_string_copy(LitState* state, const char* chars, size_t length)
     {
         return interned;
     }
+    /*
     heap_chars = LIT_ALLOCATE(state, char, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
+    */
+    heap_chars = sdsnewlen(chars, length);
 #ifdef LIT_LOG_ALLOCATION
     printf("Allocated new string '%s'\n", chars);
 #endif
-    return lit_string_alloc(state, heap_chars, length, hash);
+    return lit_string_alloc(state, heap_chars, length, hash, true, true);
 }
 
 size_t lit_string_length(LitString* ls)
@@ -165,6 +269,11 @@ void lit_string_append_string(LitString* ls, const char* s, size_t len)
 void lit_string_append_strobj(LitString* ls, LitString* other)
 {
     lit_string_append_string(ls, other->chars, lit_string_length(other));
+}
+
+void lit_string_append_char(LitString* ls, char ch)
+{
+    ls->chars = sdscatlen(ls->chars, (const char*)&ch, 1);
 }
 
 LitValue lit_string_number_to_string(LitState* state, double value)
@@ -199,69 +308,18 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
     size_t length;
     size_t total_length;
     bool was_allowed;
-    //char* start;
     const char* c;
-    const char* cc;
     const char* strval;
     va_list arg_list;
     LitValue val;
-    LitString* ss;
     LitString* string;
     LitString* result;
     was_allowed = state->allow_gc;
     state->allow_gc = false;
     va_start(arg_list, format);
     total_length = strlen(format);
-    /* thanks to sds, this is mostly unnecessary */
-    /*
-    for(c = format; *c != '\0'; c++)
-    {
-        switch(*c)
-        {
-            case '$':
-                {
-                    cc = va_arg(arg_list, const char*);
-                    if(cc != NULL)
-                    {
-                        total_length += strlen(cc);
-                        break;
-                    }
-                    goto default_ending;
-                }
-                break;                
-            case '@':
-                {
-                    LitValue v = va_arg(arg_list, LitValue);
-                    ss = AS_STRING(v);
-                    if(ss != NULL)
-                    {
-                        total_length += lit_string_length(ss);
-                        break;
-                    }
-                    goto default_ending;
-                }
-                break;
-            case '#':
-                {
-                    total_length += lit_string_length(AS_STRING(lit_string_number_to_string(state, va_arg(arg_list, double))));
-                    break;
-                }
-                break;                
-            default:
-                {
-                default_ending:
-                    total_length++;
-                }
-                break;
-
-        }
-    }
-    */
     va_end(arg_list);
-    result = lit_string_alloc_empty(state, total_length + 1);
-    //result->chars = LIT_ALLOCATE(state, char, total_length + 1);
-    //result->chars[total_length] = '\0';
-    //start = result->chars;
+    result = lit_string_alloc_empty(state, total_length + 1, false);
     va_start(arg_list, format);
     for(c = format; *c != '\0'; c++)
     {
@@ -273,12 +331,12 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                     if(strval != NULL)
                     {
                         length = strlen(strval);
-                        //memcpy(start, strval, length);
-                        //start += length;
                         result->chars = sdscatlen(result->chars, strval, length);
-                        break;
                     }
-                    goto default_ending_copying;
+                    else
+                    {
+                        goto default_ending_copying;
+                    }
                 }
                 break;
             case '@':
@@ -287,27 +345,30 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                     if(IS_STRING(val))
                     {
                         string = AS_STRING(val);
-                        if(string != NULL)
+                    }
+                    else
+                    {
+                        //fprintf(stderr, "format: not a string, but a '%s'\n", lit_get_value_type(val));
+                        //string = lit_to_string(state, val);
+                        goto default_ending_copying;
+                    }
+                    if(string != NULL)
+                    {
+                        length = sdslen(string->chars);
+                        if(length > 0)
                         {
-                            //memcpy(start, string->chars, lit_string_length(string));
-                            //start += lit_string_length(string);
-                            length = sdslen(string->chars);
-                            if(length > 0)
-                            {
-                                result->chars = sdscatlen(result->chars, string->chars, length);
-                            }
-                            break;
+                            result->chars = sdscatlen(result->chars, string->chars, length);
                         }
                     }
-                    goto default_ending_copying;
+                    else
+                    {
+                        goto default_ending_copying;
+                    }
                 }
                 break;
-
             case '#':
                 {
                     string = AS_STRING(lit_string_number_to_string(state, va_arg(arg_list, double)));
-                    //memcpy(start, string->chars, lit_string_length(string));
-                    //start += lit_string_length(string);
                     length = sdslen(string->chars);
                     if(length > 0)
                     {
@@ -318,7 +379,6 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
             default:
                 {
                     default_ending_copying:
-                    // *start++ = *c;
                     ch = *c;
                     result->chars = sdscatlen(result->chars, &ch, 1);
                 }
@@ -337,7 +397,6 @@ LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, Lit
 
 static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    size_t length;
     LitString* selfstr;
     LitString* result;
     LitValue value;
@@ -353,7 +412,7 @@ static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, Lit
     {
         strval = lit_to_string(vm->state, value);
     }
-    result = lit_string_alloc_empty(vm->state, lit_string_length(selfstr) + lit_string_length(strval));
+    result = lit_string_alloc_empty(vm->state, lit_string_length(selfstr) + lit_string_length(strval), false);
     lit_string_append_strobj(result, selfstr);
     lit_string_append_strobj(result, strval);
     lit_register_string(vm->state, result);
@@ -394,7 +453,7 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
         return objfn_string_splice(vm, AS_STRING(instance), range->from, range->to);
     }
     string = AS_STRING(instance);
-    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    index = lit_check_number(vm, argv, argc, 0);
     if(argc != 1)
     {
         lit_runtime_error_exiting(vm, "cannot modify strings with the subscript op");
@@ -421,9 +480,9 @@ static LitValue string_format(LitState* state, size_t argc, LitValue* argv)
 
 static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    size_t i;
     LitString* self;
     LitString* other;
+    (void)argc;
     self = AS_STRING(instance);
     if(IS_STRING(argv[0]))
     {
@@ -452,12 +511,12 @@ static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, 
 
 static LitValue objfn_string_less(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(vm, argv, argc, 0)) < 0);
+    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, lit_check_string(vm, argv, argc, 0)) < 0);
 }
 
 static LitValue objfn_string_greater(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(vm, argv, argc, 0)) > 0);
+    return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, lit_check_string(vm, argv, argc, 0)) > 0);
 }
 
 static LitValue objfn_string_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -500,7 +559,7 @@ static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t ar
         buffer[i] = (char)toupper(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_string_take(vm->state, buffer, lit_string_length(string));
+    rt = lit_string_take(vm->state, buffer, lit_string_length(string), false);
     return OBJECT_VALUE(rt);
 }
 
@@ -520,7 +579,7 @@ static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t ar
         buffer[i] = (char)tolower(string->chars[i]);
     }
     buffer[i] = 0;
-    rt = lit_string_take(vm->state, buffer, lit_string_length(string));
+    rt = lit_string_take(vm->state, buffer, lit_string_length(string), false);
     return OBJECT_VALUE(rt);
 }
 
@@ -533,7 +592,7 @@ static LitValue objfn_string_contains(LitVM* vm, LitValue instance, size_t argc,
     LitString* sub;
     LitString* string;
     string = AS_STRING(instance);
-    sub = LIT_CHECK_OBJECT_STRING(0);
+    sub = lit_check_object_string(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -548,7 +607,7 @@ static LitValue objfn_string_startswith(LitVM* vm, LitValue instance, size_t arg
     LitString* sub;
     LitString* string;
     string = AS_STRING(instance);
-    sub = LIT_CHECK_OBJECT_STRING(0);
+    sub = lit_check_object_string(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -574,7 +633,7 @@ static LitValue objfn_string_endswith(LitVM* vm, LitValue instance, size_t argc,
     LitString* sub;
     LitString* string;
     string = AS_STRING(instance);
-    sub = LIT_CHECK_OBJECT_STRING(0);
+    sub = lit_check_object_string(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -642,15 +701,15 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
         }
     }
     buffer[buffer_length] = '\0';
-    return OBJECT_VALUE(lit_string_take(vm->state, buffer, buffer_length));
+    return OBJECT_VALUE(lit_string_take(vm->state, buffer, buffer_length, false));
 }
 
 static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int to;
     int from;
-    from = LIT_CHECK_NUMBER(vm, argv, argc, 0);
-    to = LIT_CHECK_NUMBER(vm, argv, argc, 1);
+    from = lit_check_number(vm, argv, argc, 0);
+    to = lit_check_number(vm, argv, argc, 1);
     return objfn_string_splice(vm, AS_STRING(instance), from, to);
 }
 
@@ -676,7 +735,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
         }
         return lit_number_to_value(0);
     }
-    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    index = lit_check_number(vm, argv, argc, 0);
     if(index < 0)
     {
         return NULL_VALUE;
@@ -698,12 +757,112 @@ static LitValue objfn_string_iteratorvalue(LitVM* vm, LitValue instance, size_t 
     uint32_t index;
     LitString* string;
     string = AS_STRING(instance);
-    index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    index = lit_check_number(vm, argv, argc, 0);
     if(index == UINT32_MAX)
     {
         return false;
     }
     return OBJECT_VALUE(lit_ustring_code_point_at(vm->state, string, index));
+}
+
+
+bool check_fmt_arg(LitVM* vm, size_t ai, size_t argc, LitValue* argv, const char* fmttext)
+{
+    (void)argv;
+    if(ai <= argc)
+    {
+        return true;
+    }    
+    lit_runtime_error_exiting(vm, "too few arguments for format flag '%s' at position %d (argc=%d)", fmttext, ai, argc);
+    return false;
+}
+
+static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
+{
+    char ch;
+    char pch;
+    char nch;
+    int iv;
+    size_t i;
+    size_t ai;
+    size_t selflen;
+    LitString* selfstr;
+    LitValue rtv;
+    char* buf;
+    (void)pch;
+    selfstr = AS_STRING(instance);
+    selflen = lit_string_length(selfstr);
+    buf = sdsempty();
+    buf = sdsMakeRoomFor(buf, selflen + 10);
+    ai = 0;
+    ch = -1;
+    pch = -1;
+    nch = -1;
+    for(i=0; i<selflen; i++)
+    {
+        pch = ch;
+        ch = selfstr->chars[i];
+        if(i <= selflen)
+        {
+            nch = selfstr->chars[i + 1];
+        }
+        if(ch == '%')
+        {
+            if(nch == '%')
+            {
+                buf = sdscatlen(buf, &ch, 1);
+                i += 1;
+            }
+            else
+            {
+                i++;
+                switch(nch)
+                {
+                    case 's':
+                        {
+                            if(!check_fmt_arg(vm, ai, argc, argv, "%s"))
+                            {
+                                sdsfree(buf);
+                                return NULL_VALUE;
+                            }
+                            buf = sdscatlen(buf, AS_STRING(argv[ai])->chars, lit_string_length(AS_STRING(argv[ai])));
+                        }
+                        break;
+                    case 'd':
+                    case 'i':
+                        {
+                            if(!check_fmt_arg(vm, ai, argc, argv, "%d"))
+                            {
+                                sdsfree(buf);
+                                return NULL_VALUE;
+                            }
+                            if(IS_NUMBER(argv[ai]))
+                            {
+                                iv = lit_check_number(vm, argv, argc, ai);
+                                buf = sdscatfmt(buf, "%i", iv);
+                            }
+                            break;
+                        }
+                        break;
+                    default:
+                        {
+                            lit_runtime_error_exiting(vm, "unrecognized formatting flag '%%%c'", nch);
+                            sdsfree(buf);
+                            return NULL_VALUE;
+                        }
+                        break;
+                }
+                ai++;
+            }
+        }
+        else
+        {
+            buf = sdscatlen(buf, &ch, 1);
+        }
+    }
+    rtv = OBJECT_VALUE(lit_string_copy(vm->state, buf, sdslen(buf)));
+    sdsfree(buf);
+    return rtv;
 }
 
 void lit_open_string_library(LitState* state)
@@ -719,11 +878,20 @@ void lit_open_string_library(LitState* state)
             LIT_BIND_METHOD(">", objfn_string_greater);
             LIT_BIND_METHOD("==", objfn_string_compare);
             LIT_BIND_METHOD("toString", objfn_string_tostring);
-            LIT_BIND_METHOD("toNumber", objfn_string_tonumber);
-            LIT_BIND_METHOD("toUpperCase", objfn_string_touppercase);
-            LIT_BIND_METHOD("toUpper", objfn_string_touppercase);
-            LIT_BIND_METHOD("toLowerCase", objfn_string_tolowercase);
-            LIT_BIND_METHOD("toLower", objfn_string_tolowercase);
+            {
+                LIT_BIND_METHOD("toNumber", objfn_string_tonumber);
+                LIT_BIND_GETTER("to_i", objfn_string_tonumber);
+            }
+            {
+                LIT_BIND_METHOD("toUpperCase", objfn_string_touppercase);
+                LIT_BIND_METHOD("toUpper", objfn_string_touppercase);
+                LIT_BIND_GETTER("upper", objfn_string_touppercase);
+            }
+            {
+                LIT_BIND_METHOD("toLowerCase", objfn_string_tolowercase);
+                LIT_BIND_METHOD("toLower", objfn_string_tolowercase);
+                LIT_BIND_GETTER("lower", objfn_string_tolowercase);
+            }
             LIT_BIND_METHOD("contains", objfn_string_contains);
             LIT_BIND_METHOD("startsWith", objfn_string_startswith);
             LIT_BIND_METHOD("endsWith", objfn_string_endswith);
@@ -732,6 +900,7 @@ void lit_open_string_library(LitState* state)
             LIT_BIND_METHOD("iterator", objfn_string_iterator);
             LIT_BIND_METHOD("iteratorValue", objfn_string_iteratorvalue);
             LIT_BIND_GETTER("length", objfn_string_length);
+            LIT_BIND_METHOD("format", objfn_string_format);
             state->stringvalue_class = klass;
         }
         LIT_END_CLASS();

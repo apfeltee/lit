@@ -336,7 +336,7 @@ int main(int argc, const char* argv[])
                 {
                     break;
                 }
-                lit_disassemble_module(module, source);
+                lit_disassemble_module(state, module, source);
                 free(source);
             }
             else

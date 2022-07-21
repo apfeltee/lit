@@ -320,67 +320,79 @@ static inline void sdssetalloc(dynstring_t* s, size_t newlen)
 
 static inline dynstring_t* sdsnewlen(const void* init, size_t initlen)
 {
+    int hdrlen;
+    char type;
     void* sh;
+    unsigned char* fp;
     dynstring_t* s;
-    char type = sdsReqType(initlen);
+    
+    type = sdsReqType(initlen);
     /* Empty strings are usually created in order to append. Use type 8
      * since type 5 is not good at this. */
     if(type == SDS_TYPE_5 && initlen == 0)
+    {
         type = SDS_TYPE_8;
-    int hdrlen = sdsHdrSize(type);
-    unsigned char* fp; /* flags pointer. */
-
+    }
+    hdrlen = sdsHdrSize(type);
     sh = s_malloc(hdrlen + initlen + 1);
     if(sh == NULL)
+    {
         return NULL;
+    }
     if(init == SDS_NOINIT)
+    {
         init = NULL;
+    }
     else if(!init)
+    {
         memset(sh, 0, hdrlen + initlen + 1);
+    }
     s = (char*)sh + hdrlen;
     fp = ((unsigned char*)s) - 1;
     switch(type)
     {
         case SDS_TYPE_5:
-        {
-            *fp = type | (initlen << SDS_TYPE_BITS);
+            {
+                *fp = type | (initlen << SDS_TYPE_BITS);
+            }
             break;
-        }
         case SDS_TYPE_8:
-        {
-            SDS_HDR_VAR(8, s);
-            sh->len = initlen;
-            sh->alloc = initlen;
-            *fp = type;
+            {
+                SDS_HDR_VAR(8, s);
+                sh->len = initlen;
+                sh->alloc = initlen;
+                *fp = type;
+            }
             break;
-        }
         case SDS_TYPE_16:
-        {
-            SDS_HDR_VAR(16, s);
-            sh->len = initlen;
-            sh->alloc = initlen;
-            *fp = type;
+            {
+                SDS_HDR_VAR(16, s);
+                sh->len = initlen;
+                sh->alloc = initlen;
+                *fp = type;
+            }
             break;
-        }
         case SDS_TYPE_32:
-        {
-            SDS_HDR_VAR(32, s);
-            sh->len = initlen;
-            sh->alloc = initlen;
-            *fp = type;
+            {
+                SDS_HDR_VAR(32, s);
+                sh->len = initlen;
+                sh->alloc = initlen;
+                *fp = type;
+            }
             break;
-        }
         case SDS_TYPE_64:
-        {
-            SDS_HDR_VAR(64, s);
-            sh->len = initlen;
-            sh->alloc = initlen;
-            *fp = type;
+            {
+                SDS_HDR_VAR(64, s);
+                sh->len = initlen;
+                sh->alloc = initlen;
+                *fp = type;
+            }
             break;
-        }
     }
     if(initlen && init)
+    {
         memcpy(s, init, initlen);
+    }
     s[initlen] = '\0';
     return s;
 }
@@ -1350,10 +1362,15 @@ static inline int hex_digit_to_int(char c)
  */
 static inline dynstring_t** sdssplitargs(const char* line, int* argc)
 {
-    const char* p = line;
-    char* current = NULL;
-    char** vector = NULL;
-
+    int inq;
+    int insq;
+    int done;
+    char* current;
+    char** vector;
+    const char* p;
+    p = line;
+    current = NULL;
+    vector = NULL;
     *argc = 0;
     while(1)
     {
@@ -1363,9 +1380,9 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
         if(*p)
         {
             /* get a token */
-            int inq = 0; /* set to 1 if we are in "quotes" */
-            int insq = 0; /* set to 1 if we are in 'single quotes' */
-            int done = 0;
+            inq = 0; /* set to 1 if we are in "quotes" */
+            insq = 0; /* set to 1 if we are in 'single quotes' */
+            done = 0;
 
             if(current == NULL)
                 current = sdsempty();
@@ -1389,22 +1406,34 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
                         switch(*p)
                         {
                             case 'n':
-                                c = '\n';
+                                {
+                                    c = '\n';
+                                }
                                 break;
                             case 'r':
-                                c = '\r';
+                                {
+                                    c = '\r';
+                                }
                                 break;
                             case 't':
-                                c = '\t';
+                                {
+                                    c = '\t';
+                                }
                                 break;
                             case 'b':
-                                c = '\b';
+                                {
+                                    c = '\b';
+                                }
                                 break;
                             case 'a':
-                                c = '\a';
+                                {
+                                    c = '\a';
+                                }
                                 break;
                             default:
-                                c = *p;
+                                {
+                                    c = *p;
+                                }
                                 break;
                         }
                         current = sdscatlen(current, &c, 1);
@@ -1414,7 +1443,9 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
                         /* closing quote must be followed by a space or
                          * nothing at all. */
                         if(*(p + 1) && !isspace(*(p + 1)))
+                        {
                             goto err;
+                        }
                         done = 1;
                     }
                     else if(!*p)
@@ -1439,7 +1470,9 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
                         /* closing quote must be followed by a space or
                          * nothing at all. */
                         if(*(p + 1) && !isspace(*(p + 1)))
+                        {
                             goto err;
+                        }
                         done = 1;
                     }
                     else if(!*p)
@@ -1461,21 +1494,31 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
                         case '\r':
                         case '\t':
                         case '\0':
-                            done = 1;
+                            {
+                                done = 1;
+                            }
                             break;
                         case '"':
-                            inq = 1;
+                            {
+                                inq = 1;
+                            }
                             break;
                         case '\'':
-                            insq = 1;
+                            {
+                                insq = 1;
+                            }
                             break;
                         default:
-                            current = sdscatlen(current, p, 1);
+                            {
+                                current = sdscatlen(current, p, 1);
+                            }
                             break;
                     }
                 }
                 if(*p)
+                {
                     p++;
+                }
             }
             /* add the token to the vector */
             vector = (char**)s_realloc(vector, ((*argc) + 1) * sizeof(char*));
@@ -1487,17 +1530,23 @@ static inline dynstring_t** sdssplitargs(const char* line, int* argc)
         {
             /* Even on empty input string return something not NULL. */
             if(vector == NULL)
+            {
                 vector = (char**)s_malloc(sizeof(void*));
+            }
             return vector;
         }
     }
 
 err:
     while((*argc)--)
+    {
         sdsfree(vector[*argc]);
+    }
     s_free(vector);
     if(current)
+    {
         sdsfree(current);
+    }
     *argc = 0;
     return NULL;
 }
@@ -1513,8 +1562,10 @@ err:
  * as the input pointer since no resize is needed. */
 static inline dynstring_t* sdsmapchars(dynstring_t* s, const char* from, const char* to, size_t setlen)
 {
-    size_t j, i, l = sdslen(s);
-
+    size_t j;
+    size_t i;
+    size_t l;
+    l = sdslen(s);
     for(j = 0; j < l; j++)
     {
         for(i = 0; i < setlen; i++)
@@ -1533,14 +1584,16 @@ static inline dynstring_t* sdsmapchars(dynstring_t* s, const char* from, const c
  * Returns the result as an sds string. */
 static inline dynstring_t* sdsjoin(char** argv, int argc, char* sep)
 {
-    dynstring_t* join = sdsempty();
     int j;
-
+    dynstring_t* join;
+    join = sdsempty();
     for(j = 0; j < argc; j++)
     {
         join = sdscat(join, argv[j]);
         if(j != argc - 1)
+        {
             join = sdscat(join, sep);
+        }
     }
     return join;
 }
@@ -1555,7 +1608,9 @@ static inline dynstring_t* sdsjoinsds(dynstring_t** argv, int argc, const char* 
     {
         join = sdscatsds(join, argv[j]);
         if(j != argc - 1)
+        {
             join = sdscatlen(join, sep, seplen);
+        }
     }
     return join;
 }

@@ -131,7 +131,7 @@ LitString* lit_read_string(LitState* state, FILE* file)
     {
         line[i] = (char)lit_read_uint8_t(file) ^ LIT_STRING_KEY;
     }
-    return lit_string_take(state, line, length);
+    return lit_string_take(state, line, length, false);
 }
 
 void lit_init_emulated_file(LitEmulatedFile* file, const char* source)
@@ -188,7 +188,7 @@ LitString* lit_read_estring(LitState* state, LitEmulatedFile* file)
     {
         line[i] = (char)lit_read_euint8_t(file) ^ LIT_STRING_KEY;
     }
-    return lit_string_take(state, line, length);
+    return lit_string_take(state, line, length, false);
 }
 
 static void save_chunk(FILE* file, LitChunk* chunk);

@@ -1,11 +1,13 @@
 class Vector {
-	constructor(x, y) {
+	constructor(x, y)
+    {
 		this.x = x ?? 0
 		this.y = y ?? 0
 	}
 
-	toString() {
-		return $"({this.x}, {this.y})"
+	toString()
+    {
+		return $"Vector({this.x}, {this.y})"
 	}
 
 	operator + (v) {
@@ -24,15 +26,19 @@ class Vector {
 		return new Vector(this.x / i, this.y / i)
 	}
 
-	operator [] (index, value) {
+	operator [](index, value)
+    {
 		// Make sure, that our index is either 0 or 1
 		index %= 2
-
 		// If value is non-null, that means we called assigment to the []
-		if (value != null) {
-			if (index == 0) {
+		if(value != null)
+        {
+			if (index == 0)
+            {
 				this.x = value
-			} else {
+			}
+            else
+            {
 				this.y = value
 			}
 		}
@@ -42,14 +48,14 @@ class Vector {
 }
 
 var a = new Vector(2, 3)
-print(a) // Expected: (2, 3)
-print(a[0]) // Expected: 2
-print(a[1]) // Expected: 3
+print($"a={a}\n") // Expected: (2, 3)
+print($"a[0] = {a[0]}\n") // Expected: 2
+print($"a[1] = {a[1]}\n") // Expected: 3
 
 var b = new Vector(4, 4)
 
-print(b) // Expected: (4, 4)
-print(a + b) // Expected: (6, 7)
+print($"b = {b}\n") // Expected: (4, 4)
+print($"a + b = {a + b}\n") // Expected: (6, 7)
 
 a[0] = 1
-print(a[0]) // Expected: 1
+print($"a[0] = {a[0]}\n") // Expected: 1

@@ -40,7 +40,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
 static LitValue objfn_class_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
-    size_t index = LIT_CHECK_NUMBER(vm, argv, argc, 0);
+    size_t index = lit_check_number(vm, argv, argc, 0);
     LitClass* klass = AS_CLASS(instance);
     size_t methodsCapacity = klass->methods.capacity;
     bool fields = index >= methodsCapacity;

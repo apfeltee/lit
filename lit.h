@@ -86,6 +86,23 @@
     #define LIT_REPL_INPUT_MAX 1024
 #endif
 
+#define UNREACHABLE assert(false);
+#define UINT8_COUNT UINT8_MAX + 1
+#define UINT16_COUNT UINT16_MAX + 1
+
+#define TABLE_MAX_LOAD 0.75
+// Do not change these, or old bytecode files will break!
+#define LIT_BYTECODE_MAGIC_NUMBER 6932
+#define LIT_BYTECODE_END_NUMBER 2942
+#define LIT_STRING_KEY 48
+
+#define SIGN_BIT ((uint64_t)1 << 63u)
+#define QNAN ((uint64_t)0x7ffc000000000000u)
+
+#define TAG_NULL 1u
+#define TAG_FALSE 2u
+#define TAG_TRUE 3u
+
 #define LIT_EXIT_CODE_ARGUMENT_ERROR 1
 #define LIT_EXIT_CODE_MEM_LEAK 2
 #define LIT_EXIT_CODE_RUNTIME_ERROR 70
@@ -117,22 +134,6 @@
     #define COLOR_CYAN ""
     #define COLOR_WHITE ""
 #endif
-
-
-#define UNREACHABLE assert(false);
-#define UINT8_COUNT UINT8_MAX + 1
-#define UINT16_COUNT UINT16_MAX + 1
-
-
-
-
-#define SIGN_BIT ((uint64_t)1 << 63u)
-#define QNAN ((uint64_t)0x7ffc000000000000u)
-
-#define TAG_NULL 1u
-#define TAG_FALSE 2u
-#define TAG_TRUE 3u
-
 
 #define BOOL_VALUE(boolean) \
     ((boolean) ? TRUE_VALUE : FALSE_VALUE)
@@ -372,19 +373,6 @@
     }
 
 
-#define LIT_CHECK_NUMBER(vm, args, argc, id) lit_check_number(vm, argv, argc, id)
-#define LIT_GET_NUMBER(id, def) lit_get_number(vm, argv, argc, id, def)
-
-#define LIT_CHECK_BOOL(id) lit_check_bool(vm, argv, argc, id)
-#define LIT_GET_BOOL(id, def) lit_get_bool(vm, argv, argc, id, def)
-
-#define LIT_CHECK_STRING(vm, args, argc, id) lit_check_string(vm, args, argc, id)
-#define LIT_GET_STRING(id, def) lit_get_string(vm, argv, argc, id, def)
-
-#define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, argv, argc, id)
-#define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, argv, argc, id)
-#define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, argv, argc, id)
-
 #define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
 #define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, id)
 #define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &AS_INSTANCE(instance)->fields, id, value)
@@ -411,14 +399,6 @@
         lit_runtime_error(vm, "expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
-
-
-#define TABLE_MAX_LOAD 0.75
-// Do not change these, or old bytecode files will break!
-#define LIT_BYTECODE_MAGIC_NUMBER 6932
-#define LIT_BYTECODE_END_NUMBER 2942
-#define LIT_STRING_KEY 48
-
 
 
 typedef uint64_t LitValue;
@@ -1614,7 +1594,10 @@ LitClass* lit_get_class_for(LitState* state, LitValue value);
 
 char* lit_patch_file_name(char* file_name);
 
-void lit_print_value(LitValue value);
+LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
+LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname);
+
+void lit_print_value(LitState* state, LitValue value);
 void lit_values_ensure_size(LitState* state, LitValueList* values, size_t size);
 const char* lit_get_value_type(LitValue value);
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
@@ -1648,12 +1631,12 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 
 
 LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
-LitString* lit_string_take(LitState* state, char* chars, size_t length);
+LitString* lit_string_take(LitState* state, char* chars, size_t length, bool wassds);
 LitValue lit_string_format(LitState* state, const char* format, ...);
 LitValue lit_string_number_to_string(LitState* state, double value);
 void lit_register_string(LitState* state, LitString* string);
 uint32_t lit_hash_string(const char* key, size_t length);
-LitString* lit_string_alloc_empty(LitState* state, size_t length);
+LitString* lit_string_alloc_empty(LitState* state, size_t length, bool reuse);
 size_t lit_string_length(LitString* ls);
 void lit_string_append_string(LitString* ls, const char* s, size_t len);
 void lit_string_append_strobj(LitString* ls, LitString* other);
@@ -1735,13 +1718,13 @@ void lit_native_exit_jump();
 bool lit_set_native_exit_jump();
 
 
-LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count, bool ignfiber);
 
 LitString* lit_to_string(LitState* state, LitValue object);
-LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t arg_count);
+LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t arg_count, bool ignfiber);
 
 
 void lit_init_api(LitState* state);
@@ -1779,9 +1762,9 @@ LitValue lit_get_map_field(LitState* state, LitMap* map, const char* name);
 
 void lit_set_field(LitState* state, LitTable* table, const char* name, LitValue value);
 void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue value);
-void lit_disassemble_module(LitModule* module, const char* source);
-void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source);
-size_t lit_disassemble_instruction(LitChunk* chunk, size_t offset, const char* source);
+void lit_disassemble_module(LitState* state, LitModule* module, const char* source);
+void lit_disassemble_chunk(LitState* state, LitChunk* chunk, const char* name, const char* source);
+size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offset, const char* source);
 
 void lit_trace_frame(LitFiber* fiber);
 

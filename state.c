@@ -485,7 +485,7 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
     }
     else
     {
-        lit_disassemble_module(module, source);
+        lit_disassemble_module(state, module, source);
         result = (LitInterpretResult){ LITRESULT_OK, NULL_VALUE };
     }
     free((void*)source);

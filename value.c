@@ -54,7 +54,7 @@ void lit_values_write(LitState* state, LitValueList* array, LitValue value)
 }
 
 
-static void print_array(LitArray* array, size_t size)
+static void print_array(LitState* state, LitArray* array, size_t size)
 {
     size_t i;
     printf("(%u) [", (unsigned int)size);
@@ -69,7 +69,7 @@ static void print_array(LitArray* array, size_t size)
             }
             else
             {
-                lit_print_value(array->values.values[i]);
+                lit_print_value(state, array->values.values[i]);
             }
             if(i + 1 < size)
             {
@@ -84,7 +84,7 @@ static void print_array(LitArray* array, size_t size)
     printf("]");
 }
 
-static void print_map(LitMap* map, size_t size)
+static void print_map(LitState* state, LitMap* map, size_t size)
 {
     bool had_before;
     size_t i;
@@ -113,7 +113,7 @@ static void print_map(LitMap* map, size_t size)
                 }
                 else
                 {
-                    lit_print_value(entry->value);
+                    lit_print_value(state, entry->value);
                 }
                 had_before = true;
             }
@@ -129,7 +129,7 @@ static void print_map(LitMap* map, size_t size)
     }
 }
 
-static void print_object(LitValue value)
+static void print_object(LitState* state, LitValue value)
 {
     LitObject* obj;
     obj = AS_OBJECT(value);
@@ -188,11 +188,11 @@ static void print_object(LitValue value)
                     LitUpvalue* upvalue = AS_UPVALUE(value);
                     if(upvalue->location == NULL)
                     {
-                        lit_print_value(upvalue->closed);
+                        lit_print_value(state, upvalue->closed);
                     }
                     else
                     {
-                        print_object(*upvalue->location);
+                        print_object(state, *upvalue->location);
                     }
                 }
                 break;
@@ -203,12 +203,23 @@ static void print_object(LitValue value)
                 break;
             case LITTYPE_INSTANCE:
                 {
+                    /*
+                    if(AS_INSTANCE(value)->klass->object.type == LITTYPE_MAP)
+                    {
+                        fprintf(stderr, "instance is a map\n");
+                    }
                     printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
+                    */
+                    printf("<instance '%s' ", AS_INSTANCE(value)->klass->name->chars);
+                    LitMap* map = AS_MAP(value);
+                    size_t size = map->values.count;
+                    print_map(state, map, size);
+                    printf(">");
                 }
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    lit_print_value(AS_BOUND_METHOD(value)->method);
+                    lit_print_value(state, AS_BOUND_METHOD(value)->method);
                     return;
                 }
                 break;
@@ -219,7 +230,7 @@ static void print_object(LitValue value)
                     #else
                         LitArray* array = AS_ARRAY(value);
                         size_t size = array->values.count;
-                        print_array(array, size);
+                        print_array(state, array, size);
                     #endif
                 }
                 break;
@@ -230,7 +241,7 @@ static void print_object(LitValue value)
                     #else
                         LitMap* map = AS_MAP(value);
                         size_t size = map->values.count;
-                        print_map(map, size);
+                        print_map(state, map, size);
                     #endif
                 }
                 break;
@@ -260,7 +271,7 @@ static void print_object(LitValue value)
                     }
                     else
                     {
-                        lit_print_value(*slot);
+                        lit_print_value(state, *slot);
                     }
                 }
                 break;
@@ -276,8 +287,42 @@ static void print_object(LitValue value)
     }
 }
 
-void lit_print_value(LitValue value)
+//LitInterpretResult lit_call_instance_method(LitState* state, LitInstance* instance, LitString* mthname, LitValue* argv, size_t argc)
+//
+void lit_print_value(LitState* state, LitValue value)
 {
+    /*
+    LitValue mthtostring;
+    LitValue tstrval;
+    LitString* tstring;
+    LitString* mthname;
+    LitInterpretResult inret;
+    LitValue args[1] = {NULL_VALUE};
+    mthname = CONST_STRING(state, "toString");
+    fprintf(stderr, "lit_print_value: checking if toString() exists for '%s' ...\n", lit_get_value_type(value));
+    if(AS_CLASS(value) != NULL)
+    {
+        mthtostring = lit_instance_get_method(state, value, mthname);
+        if(!IS_NULL(mthtostring))
+        {
+            fprintf(stderr, "lit_print_value: we got toString()! now checking if calling it works ...\n");
+            inret = lit_instance_call_method(state, value, mthname, args, 0);
+            if(inret.type == LITRESULT_OK)
+            {
+                fprintf(stderr, "lit_print_value: calling toString() succeeded! but is it a string? ...\n");
+                tstrval = inret.result;
+                if(!IS_NULL(tstrval))
+                {
+                    fprintf(stderr, "lit_print_value: toString() returned a string! so that's what we'll use.\n");
+                    tstring = AS_STRING(tstrval);
+                    printf("%.*s", (int)lit_string_length(tstring), tstring->chars);
+                    return;
+                }
+            }
+        }
+    }
+    fprintf(stderr, "lit_print_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
+    */
     if(IS_BOOL(value))
     {
         printf(AS_BOOL(value) ? "true" : "false");
@@ -292,7 +337,7 @@ void lit_print_value(LitValue value)
     }
     else if(IS_OBJECT(value))
     {
-        print_object(value);
+        print_object(state, value);
     }
 }
 

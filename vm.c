@@ -199,7 +199,10 @@ static inline LitValue vm_peek(LitFiber* fiber, short distance)
     { \
         if(!IS_NUMBER(b)) \
         { \
-            vm_rterrorvarg("Attempt to use op %s with a number and a %s", op_string, lit_get_value_type(b)); \
+            if(!IS_NULL(b)) \
+            { \
+                vm_rterrorvarg("Attempt to use op %s with a number and a %s", op_string, lit_get_value_type(b)); \
+            } \
         } \
         vm_drop(fiber); \
         *(fiber->stack_top - 1) = (type(lit_value_to_number(a) op lit_value_to_number(b))); \
@@ -316,14 +319,14 @@ void lit_trace_vm_stack(LitVM* vm)
     for(slot = fiber->stack; slot < top; slot++)
     {
         printf("[ ");
-        lit_print_value(*slot);
+        lit_print_value(vm->state, *slot);
         printf(" ]");
     }
     printf("%s", COLOR_RESET);
     for(slot = top; slot < fiber->stack_top; slot++)
     {
         printf("[ ");
-        lit_print_value(*slot);
+        lit_print_value(vm->state, *slot);
         printf(" ]");
     }
     printf("\n");
@@ -421,7 +424,7 @@ bool lit_vruntime_error(LitVM* vm, const char* format, va_list args)
     va_end(args_copy);
     buffer = (char*)malloc(buffer_size+1);
     vsnprintf(buffer, buffer_size, format, args);
-    return lit_handle_runtime_error(vm, lit_string_take(vm->state, buffer, buffer_size));
+    return lit_handle_runtime_error(vm, lit_string_take(vm->state, buffer, buffer_size, false));
 }
 
 bool lit_runtime_error(LitVM* vm, const char* format, ...)
@@ -829,7 +832,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
         #ifdef LIT_USE_COMPUTEDGOTO
             #ifdef LIT_TRACE_EXECUTION
                 instruction = *ip++;
-                lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+                lit_disassemble_instruction(state, current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
                 goto* dispatch_table[instruction];
             #else
                 goto* dispatch_table[*ip++];
@@ -837,7 +840,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
         #else
             instruction = *ip++;
             #ifdef LIT_TRACE_EXECUTION
-                lit_disassemble_instruction(current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
+                lit_disassemble_instruction(state, current_chunk, (size_t)(ip - current_chunk->code - 1), NULL);
             #endif
             switch(instruction)
         #endif
@@ -1743,7 +1746,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    lit_print_value(object);
+                    lit_print_value(state, object);
                     printf("\n");
                     vm_rterror("You can only reference fields of real instances");
                 }

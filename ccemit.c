@@ -1855,7 +1855,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                 vararg = emit_parameters(emitter, &mthstmt->parameters, statement->line);
                 emit_statement(emitter, mthstmt->body);
                 end_scope(emitter, emitter->last_line);
-                function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), mthstmt->name)));
+                function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), OBJECT_VALUE(mthstmt->name))));
                 function->arg_count = mthstmt->parameters.count;
                 function->max_slots += function->arg_count;
                 function->vararg = vararg;

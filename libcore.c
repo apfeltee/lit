@@ -25,7 +25,7 @@ void lit_open_libraries(LitState* state)
         LitValue argv[2]; \
         argv[0] = a; \
         argv[1] = b; \
-        LitInterpretResult r = lit_call(state, callee, argv, 2); \
+        LitInterpretResult r = lit_call(state, callee, argv, 2, false); \
         if(r.type != LITRESULT_OK) \
         { \
             return; \
@@ -38,7 +38,7 @@ static LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue
     LitValue argv[2];
     argv[0] = a;
     argv[1] = b;
-    return lit_call(state, callee, argv, 2);
+    return lit_call(state, callee, argv, 2, false);
 }
 
 #define COMPARE(state, callee, a, b) \
@@ -164,7 +164,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
         return lit_value_to_number(a) < lit_value_to_number(b);
     }
     argv[0] = b;
-    return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1).result);
+    return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
 }
 
 void util_basic_quick_sort(LitState* state, LitValue* clist, int length)
@@ -498,7 +498,7 @@ static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
     char* code;
     (void)argc;
     (void)argv;
-    code = (char*)LIT_CHECK_STRING(vm, argv, argc, 0);
+    code = (char*)lit_check_string(vm, argv, argc, 0);
     return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
@@ -513,7 +513,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
     char* index;
     LitString* name;
     LitString* modname;
-    name = LIT_CHECK_OBJECT_STRING(0);
+    name = lit_check_object_string(vm, argv, argc, 0);
     ignore_previous = argc > 1 && IS_BOOL(argv[1]) && AS_BOOL(argv[1]);
     // First check, if a file with this name exists in the local path
     if(util_attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))

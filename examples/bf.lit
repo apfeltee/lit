@@ -45,7 +45,7 @@ function bf(src, input)
         }
         else if(c == ".")
         {
-            print(memory[mPtr].toChar())
+            print(memory[mPtr].chr.upper)
         }
         else if(c == "x")
         {

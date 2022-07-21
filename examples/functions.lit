@@ -44,7 +44,8 @@ caller(tester) // Expected: test
 
 // For cases like this, you can use lambdas - functions, without names:
 
-caller((arg) => print("arg=", arg, "\n")) // Expected: test
+nf = (arg) => { print("arg=", arg, "\n") }
+caller(nf) // Expected: test
 
 caller((arg) =>
 {
