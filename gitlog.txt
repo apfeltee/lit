@@ -1,0 +1,167 @@
+commit 5360b7f60704afd96ce5b0bf3d38edea5f52e725
+Author: John Doe <root@localhost>
+Date:   Wed Jul 27 14:06:42 2022 +0200
+
+    moved most compiler guts out of lit.h
+
+commit 36141881f28f1e407c2f1748765bbc2a9c15d310
+Author: John Doe <root@localhost>
+Date:   Tue Jul 26 16:24:05 2022 +0200
+
+    explain changes in sds.h
+
+commit 880e93dbdb5fffd3d370b1315e93ba879112159f
+Author: John Doe <root@localhost>
+Date:   Tue Jul 26 15:58:33 2022 +0200
+
+    overhaul of how debugging prints output; some early attempts to document lit.h (very extremely WIP, but getting there!)
+
+commit 9d041fd397e6734d9f7fb11326f05dc0396d1c56
+Author: John Doe <root@localhost>
+Date:   Tue Jul 26 13:21:15 2022 +0200
+
+    cleanup fs
+
+commit 3904cb419610f10bc2cad1fe9b5f4e780b8afc45
+Author: John Doe <root@localhost>
+Date:   Mon Jul 25 14:53:08 2022 +0200
+
+    some cleanup of api.c
+
+commit 5814d8435a9d87853c8970d192ee3dee378042e9
+Author: John Doe <root@localhost>
+Date:   Sun Jul 24 14:23:58 2022 +0200
+
+    actually implemented Object.toMap
+
+commit d2a56b2b7b5f30a427b079c2f1da570e784e1be6
+Author: John Doe <root@localhost>
+Date:   Sat Jul 23 23:35:02 2022 +0200
+
+    fixed readAll() not checking whether seek() actually succeeded or not
+
+commit 3c9c3a47e5c840d91a70161249f1eb758f22a276
+Author: John Doe <root@localhost>
+Date:   Sat Jul 23 16:07:36 2022 +0200
+
+    heisenbug in attempt to expose stdio handles is... fixed? maybe it was a WSL bug
+
+commit de6c7e156f31a2fa53a06ec077e76a250f46ea9f
+Author: John Doe <root@localhost>
+Date:   Thu Jul 21 13:31:05 2022 +0200
+
+    make use of string reusing (via sds), as well fixing class method name forwarding in ccemit
+
+commit f614fafb6353de9cdf558a71397b5b0d3efee47a
+Author: John Doe <root@localhost>
+Date:   Tue Jul 19 15:17:58 2022 +0200
+
+    fixed lit_string_format
+
+commit e89c84e80dcf4a2b3b52aa13c55925060e192fe6
+Author: John Doe <root@localhost>
+Date:   Tue Jul 19 14:41:49 2022 +0200
+
+    integration with sds - so far so good. hope it don't break
+
+commit e9e5b64a0da165d851c4ecf6299ddeb872405928
+Author: John Doe <root@localhost>
+Date:   Tue Jul 19 13:22:36 2022 +0200
+
+    fix leak in libfile
+
+commit 8ab0c479ee4c5b06935add4ae9e1b0d53d04997b
+Author: John Doe <root@localhost>
+Date:   Wed Jun 29 20:53:10 2022 +0200
+
+    bit more explicitness in vm.c
+
+commit e084d31cf7a72dfa79aaf550ece1bae6f3ffed5d
+Author: John Doe <root@localhost>
+Date:   Wed Jun 29 15:10:26 2022 +0200
+
+    added more general support for ==, since that much is needed to compare arrays, etc
+
+commit 97de7cdb59eded997445236242380892770c9ee5
+Author: John Doe <root@localhost>
+Date:   Tue Jun 28 13:46:12 2022 +0200
+
+    now it even compiles with visualstudio
+
+commit 37436ce89f87f914e0650320c55cdd9b212b7592
+Author: John Doe <root@localhost>
+Date:   Mon Jun 27 14:37:48 2022 +0200
+
+    upd readme (juuust a little bit)
+
+commit 5593d269ede319e320d15786ca75f142abd445c5
+Author: John Doe <root@localhost>
+Date:   Mon Jun 27 14:31:14 2022 +0200
+
+    attempt to parse semicolon away seems to work(-ish)
+
+commit 9e38e6c1147aaf0852a3e08b24eaafceb6af108c
+Author: John Doe <root@localhost>
+Date:   Mon Jun 27 14:09:49 2022 +0200
+
+    embarrassing mistake: did not correctly populate Fiber class object
+
+commit a290eab09821d3ebabb991f34894a854405f9b3c
+Author: John Doe <root@localhost>
+Date:   Fri Jun 24 14:18:20 2022 +0200
+
+    split up libcore.c
+
+commit 0dcf4ecb319ed24014d8451012a917e2c26931a6
+Author: John Doe <root@localhost>
+Date:   Thu Jun 23 17:27:31 2022 +0200
+
+    added dirwrap.h, abstracting dirent, etc
+
+commit 55399d382398535607f5ad9143bd0871c3973427
+Author: John Doe <root@localhost>
+Date:   Thu Jun 23 16:34:42 2022 +0200
+
+    fixes in libfile: added extra checks to ensure there aren't garbage pointers
+
+commit 75978a47e5cabcb758cbd73e552474569e4ccd76
+Author: John Doe <root@localhost>
+Date:   Thu Jun 23 14:49:28 2022 +0200
+
+    in the process of replacing GNU C extensions
+
+commit c1298898771c07fcdd5498d3723a5f508aba33db
+Author: John Doe <root@localhost>
+Date:   Wed Jun 22 15:37:08 2022 +0200
+
+    further cleanup
+
+commit 1c55b019b2ff58197329bc926b1e7d187aecaafd
+Author: John Doe <root@localhost>
+Date:   Sun Jun 19 14:06:02 2022 +0200
+
+    minor changes, check recursion check in Array.toString, etc
+
+commit 733c6af3ddf28fedf928c891d392b3e5eeebcda2
+Author: John Doe <root@localhost>
+Date:   Sun Jun 19 12:47:07 2022 +0200
+
+    fixed the annoying braces position thing. now to figure out how to allow semicolons
+
+commit beb9f0c32440f910072a1706c390cc80132d1a21
+Author: John Doe <root@localhost>
+Date:   Fri Jun 17 22:18:00 2022 +0200
+
+    brainfuck actually runs now!
+
+commit 41ac3be260e1bd55747375c84c4d45ad32944272
+Author: John Doe <root@localhost>
+Date:   Tue Jun 14 01:21:36 2022 +0200
+
+    increased initial frame stack size - which actually decreases memory use. funny that
+
+commit 9d6146ca5c52f693f55a2770edf22de0fad45057
+Author: John Doe <root@localhost>
+Date:   Mon Jun 13 22:02:54 2022 +0200
+
+    working base

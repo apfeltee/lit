@@ -1,0 +1,135 @@
+
+// *should* print "Hello World!"
+// a decent test to ensure the parsed tree is evaluated correctly.
+
+class Memory
+{
+    constructor()
+    {
+        this.actualmem = []
+    }
+
+    operator[](i, val)
+    {
+        if(i >= this.actualmem.length)
+        {
+            this.actualmem.push(0)
+        }
+        if(val != null)
+        {
+            this.actualmem[i] = val
+        }
+        return this.actualmem[i]
+    }
+}
+
+function bf(src, input)
+{
+    memory = new Memory()
+    let memptr  = 0
+    let inptr = 0
+    let instr    = 0
+    let stack = []
+    while(instr < src.length)
+    {
+        if(instr < 0)
+        {
+            Fiber.abort("Invalid instruction pointer (instr=" + instr + ")")
+        }
+        c = src[instr]
+        if(c == "+")
+        {
+            memory[memptr] += 1
+            if(memptr >= memory.length) {
+                Fiber.abort("Heap overrun")
+            }
+        }
+        else if(c == "-")
+        {
+            memory[memptr] -= 1
+            if(memptr < 0)
+            {
+                Fiber.abort("Heap underrun")
+            }
+        }
+        else if(c == ".")
+        {
+            print(memory[memptr].chr.upper)
+        }
+        else if(c == "x")
+        {
+           memory[memptr] = input[inptr]
+           inptr += 1
+        }
+        else if(c == ">")
+        {
+            memptr += 1
+            if(memptr > memory.length)
+            {
+                Fiber.abort("data pointer out of bounds")
+            }
+        }
+        else if(c == "<")
+        {
+            memptr -= 1
+            if(memptr < 0)
+            {
+                Fiber.abort("data pointer cannot go below 0")
+            }
+        }
+        else if(c == "[")
+        {
+            if (memory[memptr] != 0)
+            {
+               stack.push(instr)
+            }
+            else
+            {
+                let bcount = 0
+                while(true)
+                {
+                    instr += 1
+                    if(instr > src.length)
+                    {
+                        Fiber.abort("Missing matching ']'")
+                    }
+                    if(src[instr] == "]")
+                    {
+                        if(bcount != 0)
+                        {
+                            bcount -= 1
+                        }
+                        else
+                        {
+                            break
+                        }
+                    }
+                    else if(src[instr] == "[")
+                    {
+                        bcount += 1
+                    }
+               }
+           }
+        }
+        else if(c == "]")
+        {
+            // since Array.pop() isn't implemented yet ...
+            // emulate by retrieving the last item, then removing it. since
+            // that's what 'pop' basically does :^)
+            if(stack.pop)
+            {
+                instr = stack.pop() - 1
+            }
+            else
+            {
+                instr = stack[stack.length - 1] - 1
+                stack.removeAt(stack.length - 1)
+            }
+        }
+        instr += 1
+    }
+    
+}
+
+let bfsource = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+bf(bfsource, "")

@@ -1,0 +1,20 @@
+
+s = "foo"
+if(s == "foo")
+{
+    println("string cmp works?")
+}
+else
+{
+    println("or does it?")
+}
+
+switch(s)
+{
+    case "foo":
+        println("case works?")
+        break
+    default:
+        println("... or not?\n")
+        break
+}

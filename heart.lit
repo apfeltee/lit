@@ -1,0 +1,27 @@
+
+// tests floating-point correctness
+// cross-check via node (./noderun.sh)
+var i = 1.5
+while(i > -1.5)
+{
+    var x = -1.5
+    while(x < 1.5)
+    {
+        var y = x * x + i * i - 1
+        //println(`y=${y}`)
+        var a = (((y * y) * y) - ((((x * x) * i) * i) * i));
+        var cmp = (a < 0);
+        //println(`cmp(${a} < 0)=${cmp}`);
+        if(cmp)
+        {
+            print("*")
+        }
+        else
+        {
+            print(" ")
+        }
+        x += 0.05
+    }
+    i -= 0.1
+    println()
+}

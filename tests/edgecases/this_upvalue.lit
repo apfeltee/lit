@@ -1,0 +1,10 @@
+class A {
+	constructor() {
+		this.prop = 32
+		this.test = () => {
+			print(this.prop)
+		}
+	}
+}
+
+new A().test() // Expected: 32

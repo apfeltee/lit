@@ -1,0 +1,11 @@
+
+//f = new File("Makefile", "rb")
+f = new File("Makefile", "rb")
+while(true)
+{
+    line = f.readLine()
+    if(line == null) break
+    print("line=<<<", line, ">>>\n")
+}
+f.close()
+

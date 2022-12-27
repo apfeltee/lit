@@ -1,0 +1,6 @@
+
+print($"STDIN={STDIN}, STDOUT={STDOUT}, STDERR={STDERR}\n")
+STDOUT.write("hello! type something: \n")
+STDERR.write("this should go to stderr...\n")
+r = STDIN.readAll()
+STDOUT.write($"received: {r}\n")

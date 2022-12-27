@@ -1,0 +1,24 @@
+
+function check(msg, b)
+{
+    if(!b)
+    {
+        Fiber.abort("test '" + msg + "' failed")
+    }
+}
+
+{
+    println("testing basic vars")
+    {
+        a = 5
+        check("basic integer assignment", a == 5)
+        s = "foo"
+        check("basic string assignment", s == "foo")
+        m = {bar = "foo"}
+        check("basic inline object assignment", m["bar"] == "foo" && m.bar == "foo")
+        a = [1, 2, 3]
+        check("basic array assignment", (a == [1, 2, 3]) && (a.length == 3))
+    }
+}
+
+println("all is well!")

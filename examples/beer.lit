@@ -1,0 +1,14 @@
+
+function bottles(n)
+{
+    for(i=n; i>0; i--)
+    {
+        word = i == 1 ? " bottle " : " bottles "
+        print(i, word.toUpperCase()  , " of beer on the wall.\n")
+        print("take one down, pass it around.\n")
+        print("\n")
+    }
+    print("No more bottles of beer on the wall!\n")
+}
+
+bottles(10)
