@@ -142,23 +142,22 @@
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
 #define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
 
-#define OBJECT_VALUE(obj) \
-    (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
+
 
 #define LIT_GROW_CAPACITY(capacity) \
     ((capacity) < 8 ? 8 : (capacity)*2)
 
-#define LIT_GROW_ARRAY(state, previous, type, old_count, count) \
-    (type*)lit_reallocate(state, previous, sizeof(type) * (old_count), sizeof(type) * (count))
+#define LIT_GROW_ARRAY(state, previous, typesz, old_count, count) \
+    lit_reallocate(state, previous, typesz * (old_count), typesz * (count))
 
-#define LIT_FREE_ARRAY(state, type, pointer, old_count) \
-    lit_reallocate(state, pointer, sizeof(type) * (old_count), 0)
+#define LIT_FREE_ARRAY(state, typesz, pointer, old_count) \
+    lit_reallocate(state, pointer, typesz * (old_count), 0)
 
-#define LIT_ALLOCATE(state, type, count) \
-    (type*)lit_reallocate(state, NULL, 0, sizeof(type) * (count))
+#define LIT_ALLOCATE(state, typesz, count) \
+    lit_reallocate(state, NULL, 0, typesz * (count))
 
-#define LIT_FREE(state, type, pointer) \
-    lit_reallocate(state, pointer, sizeof(type), 0)
+#define LIT_FREE(state, typesz, pointer) \
+    lit_reallocate(state, pointer, typesz, 0)
 
 
 
@@ -719,6 +718,7 @@ typedef struct /**/LitStmtList LitStmtList;
 typedef struct /**/LitPrivates LitPrivates;
 typedef struct /**/LitLocal LitLocal;
 typedef struct /**/LitLocals LitLocals;
+typedef struct /**/LitDataList LitDataList;
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM*, size_t, LitValue*);
 typedef bool (*LitNativePrimitiveFn)(LitVM*, size_t, LitValue*);
@@ -732,6 +732,20 @@ typedef void (*LitPrintFn)(LitState*, const char*);
 typedef void(*LitWriterByteFN)(LitWriter*, int);
 typedef void(*LitWriterStringFN)(LitWriter*, const char*, size_t);
 typedef void(*LitWriterFormatFN)(LitWriter*, const char*, va_list);
+
+struct LitDataList
+{
+    /* how many values *could* this list hold? */
+    size_t capacity;
+
+    /* actual amount of values in this list */
+    size_t count;
+
+    size_t elemsz;
+
+    /* the actual values */
+    uintptr_t* values;
+};
 
 struct LitWriter
 {
@@ -794,16 +808,23 @@ struct LitBytes
     uint8_t* values;
 };
 
+
+#define USE_DATALIST 1
+
 struct LitValueList
 {
-    /* how many values *could* this list hold? */
-    size_t capacity;
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        LitDataList list;
+    #else
+        /* how many values *could* this list hold? */
+        size_t capacity;
 
-    /* actual amount of values in this list */
-    size_t count;
+        /* actual amount of values in this list */
+        size_t count;
 
-    /* the actual values */
-    LitValue* values;
+        /* the actual values */
+        LitValue* values;
+    #endif
 };
 
 struct LitChunk
@@ -1337,28 +1358,131 @@ static inline LitNativeMethod* AS_NATIVE_METHOD(LitValue v)
 }
 
 
-#define AS_PRIMITIVE_METHOD(value) ((LitPrimitiveMethod*)lit_as_object(value))
-#define AS_MODULE(value) ((LitModule*)lit_as_object(value))
-#define AS_CLOSURE(value) ((LitClosure*)lit_as_object(value))
-#define AS_UPVALUE(value) ((LitUpvalue*)lit_as_object(value))
-#define AS_CLASS(value) ((LitClass*)lit_as_object(value))
-#define AS_INSTANCE(value) ((LitInstance*)lit_as_object(value))
-#define AS_ARRAY(value) ((LitArray*)lit_as_object(value))
-#define AS_MAP(value) ((LitMap*)lit_as_object(value))
-#define AS_BOUND_METHOD(value) ((LitBoundMethod*)lit_as_object(value))
-#define AS_USERDATA(value) ((LitUserdata*)lit_as_object(value))
-#define AS_RANGE(value) ((LitRange*)lit_as_object(value))
-#define AS_FIELD(value) ((LitField*)lit_as_object(value))
-#define AS_FIBER(value) ((LitFiber*)lit_as_object(value))
-#define AS_REFERENCE(value) ((LitReference*)lit_as_object(value))
+static inline LitPrimitiveMethod* AS_PRIMITIVE_METHOD(LitValue v)
+{
+    return (LitPrimitiveMethod*)lit_as_object(v);
+}
 
-#define ALLOCATE_OBJECT(state, type, objectType) (type*)lit_allocate_object(state, sizeof(type), objectType)
-#define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_string_copy((state), (text), strlen(text)))
-#define CONST_STRING(state, text) lit_string_copy((state), (text), strlen(text))
+static inline LitModule* AS_MODULE(LitValue v)
+{
+    return (LitModule*)lit_as_object(v);
+}
+
+static inline LitClosure* AS_CLOSURE(LitValue v)
+{
+    return (LitClosure*)lit_as_object(v);
+}
+
+static inline LitUpvalue* AS_UPVALUE(LitValue v)
+{
+    return (LitUpvalue*)lit_as_object(v);
+}
+
+static inline LitClass* AS_CLASS(LitValue v)
+{
+    return (LitClass*)lit_as_object(v);
+}
+
+static inline LitInstance* AS_INSTANCE(LitValue v)
+{
+    return (LitInstance*)lit_as_object(v);
+}
+
+static inline LitArray* AS_ARRAY(LitValue v)
+{
+    return (LitArray*)lit_as_object(v);
+}
+
+static inline LitMap* AS_MAP(LitValue v)
+{
+    return (LitMap*)lit_as_object(v);
+}
+
+static inline LitBoundMethod* AS_BOUND_METHOD(LitValue v)
+{
+    return (LitBoundMethod*)lit_as_object(v);
+}
+
+static inline LitUserdata* AS_USERDATA(LitValue v)
+{
+    return (LitUserdata*)lit_as_object(v);
+}
+
+static inline LitRange* AS_RANGE(LitValue v)
+{
+    return (LitRange*)lit_as_object(v);
+}
+
+static inline LitField* AS_FIELD(LitValue v)
+{
+    return (LitField*)lit_as_object(v);
+}
+
+static inline LitFiber* AS_FIBER(LitValue v)
+{
+    return (LitFiber*)lit_as_object(v);
+}
+
+static inline LitReference* AS_REFERENCE(LitValue v)
+{
+    return (LitReference*)lit_as_object(v);
+}
+
+#define OBJECT_VALUE(obj) lit_object_to_value_actual((uintptr_t)obj)
+
+static inline LitValue lit_object_to_value_actual(uintptr_t obj)
+{
+    return (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj));
+}
+
+/* copy a string, creating a full newly allocated LitString. */
+LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
+
+
+static inline LitValue OBJECT_CONST_STRING(LitState* state, const char* text)
+{
+    return OBJECT_VALUE(lit_string_copy((state), (text), strlen(text)));
+}
+
+static inline LitString* CONST_STRING(LitState* state, const char* text)
+{
+    return lit_string_copy(state, text, strlen(text));
+}
 
 /**
 * memory data functions
 */
+
+
+void lit_datalist_init(LitDataList *array, size_t typsz);
+void lit_datalist_destroy(LitState *state, LitDataList *array);
+size_t lit_datalist_count(LitDataList *arr);
+size_t lit_datalist_size(LitDataList *arr);
+size_t lit_datalist_capacity(LitDataList *arr);
+void lit_datalist_clear(LitDataList *arr);
+void lit_datalist_setcount(LitDataList *arr, size_t nc);
+void lit_datalist_deccount(LitDataList *arr);
+uintptr_t lit_datalist_get(LitDataList *arr, size_t idx);
+uintptr_t lit_datalist_set(LitDataList *arr, size_t idx, uintptr_t val);
+void lit_datalist_push(LitState *state, LitDataList *array, uintptr_t value);
+void lit_datalist_ensuresize(LitState *state, LitDataList *array, size_t size);
+
+void lit_vallist_init(LitValueList *array);
+void lit_vallist_destroy(LitState *state, LitValueList *array);
+size_t lit_vallist_size(LitValueList *arr);
+size_t lit_vallist_count(LitValueList *arr);
+size_t lit_vallist_capacity(LitValueList *arr);
+void lit_vallist_setcount(LitValueList *arr, size_t nc);
+void lit_vallist_clear(LitValueList *arr);
+void lit_vallist_deccount(LitValueList *arr);
+LitValue lit_vallist_set(LitValueList *arr, size_t idx, LitValue val);
+LitValue lit_vallist_get(LitValueList *arr, size_t idx);
+void lit_vallist_push(LitState *state, LitValueList *array, LitValue value);
+void lit_vallist_ensuresize(LitState *state, LitValueList *values, size_t size);
+
+
+
+/* ------ */
 
 /*
 LitUInts -> LitUintList
@@ -1373,12 +1497,6 @@ LitBytes -> LitByteList
 void lit_init_bytes(LitBytes* array);
 void lit_free_bytes(LitState* state, LitBytes* array);
 void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value);
-
-void lit_vallist_init(LitValueList* array);
-void lit_vallist_destroy(LitState* state, LitValueList* array);
-void lit_vallist_push(LitState* state, LitValueList* array, LitValue value);
-void lit_vallist_ensuresize(LitState* state, LitValueList* values, size_t size);
-
 
 
 void lit_init_chunk(LitChunk* chunk);
@@ -1456,8 +1574,6 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 /**
 * string methods
 */
-/* copy a string, creating a full newly allocated LitString. */
-LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
 
 /*
 * create a LitString by reusing $chars. ONLY use this if you're certain that $chars isn't being freed.

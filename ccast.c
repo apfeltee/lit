@@ -11,7 +11,7 @@ void lit_init_expressions(LitExprList* array)
 
 void lit_free_expressions(LitState* state, LitExprList* array)
 {
-    LIT_FREE_ARRAY(state, LitExpression*, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitExpression*), array->values, array->capacity);
     lit_init_expressions(array);
 }
 
@@ -21,7 +21,7 @@ void lit_expressions_write(LitState* state, LitExprList* array, LitExpression* v
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitExpression*, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitExpression*), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -36,7 +36,7 @@ void lit_init_statements(LitStmtList* array)
 
 void lit_free_statements(LitState* state, LitStmtList* array)
 {
-    LIT_FREE_ARRAY(state, LitExpression*, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitExpression*), array->values, array->capacity);
     lit_init_statements(array);
 }
 
@@ -46,7 +46,7 @@ void lit_statements_write(LitState* state, LitStmtList* array, LitExpression* va
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitExpression*, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitExpression*), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -61,7 +61,7 @@ void lit_init_parameters(LitParameters* array)
 
 void lit_free_parameters(LitState* state, LitParameters* array)
 {
-    LIT_FREE_ARRAY(state, LitParameter, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitParameter), array->values, array->capacity);
     lit_init_parameters(array);
 }
 
@@ -71,7 +71,7 @@ void lit_parameters_write(LitState* state, LitParameters* array, LitParameter va
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitParameter, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitParameter), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;

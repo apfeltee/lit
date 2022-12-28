@@ -156,11 +156,11 @@ LitString* lit_ustring_from_code_point(LitState* state, int value)
     char* bytes;
     LitString* rt;
     length = lit_encode_num_bytes(value);
-    bytes = LIT_ALLOCATE(state, char, length + 1);
+    bytes = LIT_ALLOCATE(state, sizeof(char), length + 1);
     lit_ustring_encode(value, (uint8_t*)bytes);
     /* this should be lit_string_take, but something prevents the memory from being free'd. */
     rt = lit_string_copy(state, bytes, length);
-    LIT_FREE(state, char, bytes);
+    LIT_FREE(state, sizeof(char), bytes);
     return rt;
 }
 
@@ -313,7 +313,7 @@ int lit_uchar_offset(char* str, int index)
 LitString* lit_string_alloc_empty(LitState* state, size_t length, bool reuse)
 {
     LitString* string;
-    string = ALLOCATE_OBJECT(state, LitString, LITTYPE_STRING);
+    string = (LitString*)lit_allocate_object(state, sizeof(LitString), LITTYPE_STRING);
     if(!reuse)
     {
         string->chars = sdsempty();
@@ -351,7 +351,7 @@ LitString* lit_string_alloc(LitState* state, char* chars, size_t length, uint32_
     string->hash = hash;
     if(!wassds)
     {
-        LIT_FREE(state, char, chars);
+        LIT_FREE(state, sizeof(char), chars);
     }
     lit_register_string(state, string);
     return string;
@@ -379,7 +379,7 @@ LitString* lit_string_take(LitState* state, char* chars, size_t length, bool was
     {
         if(!wassds)
         {
-            LIT_FREE(state, char, chars);
+            LIT_FREE(state, sizeof(char), chars);
             //sdsfree(chars);
         }
         return interned;
@@ -400,7 +400,7 @@ LitString* lit_string_copy(LitState* state, const char* chars, size_t length)
         return interned;
     }
     /*
-    heap_chars = LIT_ALLOCATE(state, char, length + 1);
+    heap_chars = LIT_ALLOCATE(state, sizeof(char), length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
     */
@@ -723,7 +723,7 @@ static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t ar
     string = lit_as_string(instance);
     (void)argc;
     (void)argv;
-    buffer = LIT_ALLOCATE(vm->state, char, lit_string_length(string) + 1);
+    buffer = LIT_ALLOCATE(vm->state, sizeof(char), lit_string_length(string) + 1);
     for(i = 0; i < lit_string_length(string); i++)
     {
         buffer[i] = (char)toupper(string->chars[i]);
@@ -742,7 +742,7 @@ static LitValue objfn_string_tolowercase(LitVM* vm, LitValue instance, size_t ar
     string = lit_as_string(instance);
     (void)argc;
     (void)argv;
-    buffer = LIT_ALLOCATE(vm->state, char, lit_string_length(string) + 1);
+    buffer = LIT_ALLOCATE(vm->state, sizeof(char), lit_string_length(string) + 1);
     for(i = 0; i < lit_string_length(string); i++)
     {
         buffer[i] = (char)tolower(string->chars[i]);
@@ -864,7 +864,7 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
         }
     }
     buffer_index = 0;
-    buffer = LIT_ALLOCATE(vm->state, char, buffer_length+1);
+    buffer = LIT_ALLOCATE(vm->state, sizeof(char), buffer_length+1);
     for(i = 0; i < lit_string_length(string); i++)
     {
         if(strncmp(string->chars + i, what->chars, lit_string_length(what)) == 0)

@@ -69,10 +69,10 @@ static inline uint16_t vm_readshort(uint8_t* ip)
 #endif
 
 #define vm_readconstant(current_chunk) \
-    (current_chunk->constants.values[vm_readbyte(ip)])
+    (lit_vallist_get(&current_chunk->constants, vm_readbyte(ip)))
 
 #define vm_readconstantlong(current_chunk, ip) \
-    (current_chunk->constants.values[vm_readshort(ip)])
+    (lit_vallist_get(&current_chunk->constants, vm_readshort(ip)))
 
 #define vm_readstring(current_chunk) \
     lit_as_string(vm_readconstant(current_chunk))
@@ -514,7 +514,7 @@ static bool call(LitVM* vm, LitFunction* function, LitClosure* closure, uint8_t 
             lit_pop_root(vm->state);
             for(i = 0; i < vararg_count; i++)
             {
-                array->list.values[i] = vm->fiber->stack_top[(int)i - (int)vararg_count];
+                lit_vallist_set(&array->list, i, vm->fiber->stack_top[(int)i - (int)vararg_count]);
             }
             vm->fiber->stack_top -= vararg_count;
             lit_push(vm, OBJECT_VALUE(array));
@@ -1596,9 +1596,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(PUSH_ARRAY_ELEMENT)
             {
                 values = &AS_ARRAY(vm_peek(fiber, 1))->list;
-                arindex = values->count;
+                arindex = lit_vallist_count(values);
                 lit_vallist_ensuresize(state, values, arindex + 1);
-                values->values[arindex] = vm_peek(fiber, 0);
+                lit_vallist_set(values, arindex, vm_peek(fiber, 0));
                 vm_drop(fiber);
                 continue;
             }
@@ -1748,13 +1748,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     continue;
                 }
                 values = &AS_ARRAY(slot)->list;
-                lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int)(fiber->stack_top - fiber->stack));
-                for(i = 0; i < values->count; i++)
+                lit_ensure_fiber_stack(state, fiber, lit_vallist_count(values) + frame->function->max_slots + (int)(fiber->stack_top - fiber->stack));
+                for(i = 0; i < lit_vallist_count(values); i++)
                 {
-                    vm_push(fiber, values->values[i]);
+                    vm_push(fiber, lit_vallist_get(values, i));
                 }
                 // Hot-bytecode patching, increment the amount of arguments to OP_CALL
-                ip[1] = ip[1] + values->count - 1;
+                ip[1] = ip[1] + lit_vallist_count(values) - 1;
                 continue;
             }
 

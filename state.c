@@ -388,7 +388,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     LitString* module_name;
     LitModule* module;
     LitModule** compiled_modules;
-    compiled_modules = LIT_ALLOCATE(state, LitModule*, num_files+1);
+    compiled_modules = LIT_ALLOCATE(state, sizeof(LitModule*), num_files+1);
     lit_set_optimization_level(LITOPTLEVEL_EXTREME);
     for(i = 0; i < num_files; i++)
     {
@@ -424,7 +424,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
         lit_save_module(compiled_modules[i], file);
     }
     lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
-    LIT_FREE(state, LitModule, compiled_modules);
+    LIT_FREE(state, sizeof(LitModule), compiled_modules);
     fclose(file);
     return true;
 }

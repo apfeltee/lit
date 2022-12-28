@@ -149,7 +149,7 @@ void util_run_fiber(LitVM* vm, LitFiber* fiber, LitValue* argv, size_t argc, boo
                 lit_vallist_ensuresize(vm->state, &array->list, vararg_count);
                 for(i = 0; i < vararg_count; i++)
                 {
-                    array->list.values[i] = argv[i + objfn_function_arg_count - 1];
+                    lit_vallist_set(&array->list, i, argv[i + objfn_function_arg_count - 1]);
                 }
             }
         }
@@ -261,17 +261,17 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
         {
             lit_runtime_error_exiting(vm, "cannot recursively require folders");
         }
-        dir_path = LIT_ALLOCATE(vm->state, char, length+1);
+        dir_path = LIT_ALLOCATE(vm->state, sizeof(char), length+1);
         dir_path[length - 2] = '\0';
         memcpy((void*)dir_path, path, length - 2);
         rt = util_attempt_to_require(vm, argv, argc, dir_path, ignore_previous, true);
-        LIT_FREE(vm->state, char, dir_path);
+        LIT_FREE(vm->state, sizeof(char), dir_path);
         return rt;
     }
     //char modname[length + 5];
-    modname = LIT_ALLOCATE(vm->state, char, length+5);
+    modname = LIT_ALLOCATE(vm->state, sizeof(char), length+5);
     //char modnamedotted[length + 5];
-    modnamedotted = LIT_ALLOCATE(vm->state, char, length+5);
+    modnamedotted = LIT_ALLOCATE(vm->state, sizeof(char), length+5);
     memcpy((void*)modnamedotted, path, length);
     memcpy((void*)modnamedotted + length, ".lit", 4);
     modnamedotted[length + 4] = '\0';
@@ -406,13 +406,13 @@ bool util_attempt_to_require_combined(LitVM* vm, LitValue* argv, size_t argc, co
     a_length = strlen(a);
     b_length = strlen(b);
     total_length = a_length + b_length + 1;
-    path = LIT_ALLOCATE(vm->state, char, total_length+1);
+    path = LIT_ALLOCATE(vm->state, sizeof(char), total_length+1);
     memcpy((void*)path, a, a_length);
     memcpy((void*)path + a_length + 1, b, b_length);
     path[a_length] = '.';
     path[total_length] = '\0';
     rt = util_attempt_to_require(vm, argv, argc, (const char*)&path, ignore_previous, false);
-    LIT_FREE(vm->state, char, path);
+    LIT_FREE(vm->state, sizeof(char), path);
     return rt;
 }
 #endif

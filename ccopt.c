@@ -84,7 +84,7 @@ void lit_init_variables(LitVarList* array)
 
 void lit_free_variables(LitState* state, LitVarList* array)
 {
-    LIT_FREE_ARRAY(state, LitVariable, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitVariable), array->values, array->capacity);
     lit_init_variables(array);
 }
 
@@ -95,7 +95,7 @@ void lit_variables_write(LitState* state, LitVarList* array, LitVariable value)
     {
         old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitVariable, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitVariable), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;

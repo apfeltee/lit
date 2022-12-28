@@ -149,17 +149,17 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                             if(ignore_depth > -1)
                             {
                                 // Remove the whole if branch from code
-                                branch_start = (char*)preprocessor->open_ifs.values[preprocessor->open_ifs.count - 1];
+                                branch_start = (char*)lit_vallist_get(&preprocessor->open_ifs, lit_vallist_count(&preprocessor->open_ifs) - 1);
                                 override(branch_start - 1, (int)(current - branch_start));
                                 if(ignore_depth == depth + 1)
                                 {
                                     ignore_depth = -1;
-                                    preprocessor->open_ifs.count--;
+                                    lit_vallist_deccount(&preprocessor->open_ifs);
                                 }
                             }
                             else
                             {
-                                preprocessor->open_ifs.count--;
+                                lit_vallist_deccount(&preprocessor->open_ifs);
                                 // Remove #endif
                                 override(macro_start - 1, (int)(current - macro_start));
                             }
@@ -170,13 +170,13 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                             if(ignore_depth == depth)
                             {
                                 // Remove the macro from code
-                                branch_start = (char*)preprocessor->open_ifs.values[preprocessor->open_ifs.count - 1];
+                                branch_start = (char*)lit_vallist_get(&preprocessor->open_ifs, lit_vallist_count(&preprocessor->open_ifs) - 1);
                                 override(branch_start - 1, (int)(current - branch_start));
                                 ignore_depth = -1;
                             }
                             else
                             {
-                                preprocessor->open_ifs.values[preprocessor->open_ifs.count - 1] = (LitValue)macro_start;
+                                lit_vallist_set(&preprocessor->open_ifs, lit_vallist_count(&preprocessor->open_ifs) - 1, (LitValue)macro_start);
                                 ignore_depth = depth;
                             }
                         }
@@ -208,7 +208,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
             }
         }
     } while(c != '\0');
-    if(in_macro || preprocessor->open_ifs.count > 0 || depth > 0)
+    if(in_macro || lit_vallist_count(&preprocessor->open_ifs) > 0 || depth > 0)
     {
         lit_error(preprocessor->state, (LitErrorType)0, lit_format_error(preprocessor->state, 0, LITERROR_UNCLOSED_MACRO)->chars);
         return false;

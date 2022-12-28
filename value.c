@@ -308,13 +308,13 @@ static void print_array(LitState* state, LitWriter* wr, LitArray* array, size_t 
         lit_writer_writestring(wr, " ");
         for(i = 0; i < size; i++)
         {
-            if(IS_ARRAY(array->list.values[i]) && (array == AS_ARRAY(array->list.values[i])))
+            if(IS_ARRAY(lit_vallist_get(&array->list, i)) && (array == AS_ARRAY(lit_vallist_get(&array->list,i))))
             {
                 lit_writer_writestring(wr, "(recursion)");
             }
             else
             {
-                lit_print_value(state, wr, array->list.values[i]);
+                lit_print_value(state, wr, lit_vallist_get(&array->list, i));
             }
             if(i + 1 < size)
             {
@@ -480,7 +480,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                         lit_writer_writestring(wr, "array");
                     #else
                         array = AS_ARRAY(value);
-                        size = array->list.count;
+                        size = lit_vallist_count(&array->list);
                         print_array(state, wr, array, size);
                     #endif
                 }

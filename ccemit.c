@@ -25,7 +25,7 @@ void lit_init_privates(LitPrivates* array)
 
 void lit_free_privates(LitState* state, LitPrivates* array)
 {
-    LIT_FREE_ARRAY(state, LitPrivate, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitPrivate), array->values, array->capacity);
     lit_init_privates(array);
 }
 
@@ -35,7 +35,7 @@ void lit_privates_write(LitState* state, LitPrivates* array, LitPrivate value)
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitPrivate, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitPrivate), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -49,7 +49,7 @@ void lit_init_locals(LitLocals* array)
 
 void lit_free_locals(LitState* state, LitLocals* array)
 {
-    LIT_FREE_ARRAY(state, LitLocal, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(LitLocal), array->values, array->capacity);
     lit_init_locals(array);
 }
 
@@ -59,7 +59,7 @@ void lit_locals_write(LitState* state, LitLocals* array, LitLocal value)
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitLocal, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitLocal), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -1028,7 +1028,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                 {
                     LitExpression* e = init->values.values[i];
                     emitter->last_line = e->line;
-                    emit_constant(emitter, emitter->last_line, init->keys.values[i]);
+                    emit_constant(emitter, emitter->last_line, lit_vallist_get(&init->keys, i));
                     emit_expression(emitter, e);
                     emit_op(emitter, emitter->last_line, OP_PUSH_OBJECT_FIELD);
                 }
@@ -1130,7 +1130,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                 emit_op(emitter, expr->line, OP_OBJECT);
                 for(size_t i = 0; i < objexpr->values.count; i++)
                 {
-                    emit_constant(emitter, emitter->last_line, objexpr->keys.values[i]);
+                    emit_constant(emitter, emitter->last_line, lit_vallist_get(&objexpr->keys, i));
                     emit_expression(emitter, objexpr->values.values[i]);
                     emit_op(emitter, emitter->last_line, OP_PUSH_OBJECT_FIELD);
                 }
@@ -1378,7 +1378,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
                 }
                 //uint64_t end_jumps[ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count];
-                end_jumps = (uint64_t*)malloc(ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count);
+                end_jumps = (uint64_t*)malloc(sizeof(uint64_t) * (ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count));
                 if(ifstmt->elseif_branches != NULL)
                 {
                     for(i = 0; i < ifstmt->elseif_branches->count; i++)
@@ -1850,7 +1850,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     if(isnew)
     {
         total = emitter->privates.count;
-        module->privates = LIT_ALLOCATE(emitter->state, LitValue, total);
+        module->privates = LIT_ALLOCATE(emitter->state, sizeof(LitValue), total);
         for(i = 0; i < total; i++)
         {
             module->privates[i] = NULL_VALUE;
@@ -1858,7 +1858,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     }
     else
     {
-        module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_count);
+        module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, sizeof(LitValue), old_privates_count, module->private_count);
         for(i = old_privates_count; i < module->private_count; i++)
         {
             module->privates[i] = NULL_VALUE;

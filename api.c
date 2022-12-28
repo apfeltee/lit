@@ -270,7 +270,7 @@ void lit_uintlist_init(LitUInts* array)
 
 void lit_uintlist_destroy(LitState* state, LitUInts* array)
 {
-    LIT_FREE_ARRAY(state, size_t, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(size_t), array->values, array->capacity);
     lit_uintlist_init(array);
 }
 
@@ -280,7 +280,7 @@ void lit_uintlist_push(LitState* state, LitUInts* array, size_t value)
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, size_t, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(size_t), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -295,7 +295,7 @@ void lit_init_bytes(LitBytes* array)
 
 void lit_free_bytes(LitState* state, LitBytes* array)
 {
-    LIT_FREE_ARRAY(state, uint8_t, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, sizeof(uint8_t), array->values, array->capacity);
     lit_init_bytes(array);
 }
 
@@ -305,7 +305,7 @@ void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value)
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, uint8_t, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(uint8_t), old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -404,7 +404,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
             lit_vallist_ensuresize(vm->state, &array->list, varargc);
             for(i = 0; i < varargc; i++)
             {
-                array->list.values[i] = fiber->stack_top[(int)i - (int)varargc];
+                lit_vallist_set(&array->list, i, fiber->stack_top[(int)i - (int)varargc]);
             }
 
             fiber->stack_top -= varargc;
@@ -690,7 +690,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
         function->name = state->api_name;
         chunk = &function->chunk;
         chunk->count = 0;
-        chunk->constants.count = 0;
+        lit_vallist_setcount(&chunk->constants, 0);
         function->max_slots = 3;
         lit_write_chunk(state, chunk, OP_INVOKE, 1);
         lit_emit_byte(state, chunk, 0);

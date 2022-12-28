@@ -292,11 +292,11 @@ static void save_chunk(FILE* file, LitChunk* chunk)
         lit_write_uint32_t(file, 0);
     }
 
-    lit_write_uint32_t(file, chunk->constants.count);
+    lit_write_uint32_t(file, lit_vallist_count(&chunk->constants));
 
-    for(size_t i = 0; i < chunk->constants.count; i++)
+    for(size_t i = 0; i < lit_vallist_count(&chunk->constants); i++)
     {
-        LitValue constant = chunk->constants.values[i];
+        LitValue constant = lit_vallist_get(&chunk->constants, i);
 
         if(IS_OBJECT(constant))
         {
@@ -362,15 +362,22 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
         chunk->has_line_info = false;
     }
     count = lit_read_euint32_t(file);
+    /*
     chunk->constants.values = (LitValue*)lit_reallocate(state, NULL, 0, sizeof(LitValue) * count);
     chunk->constants.count = count;
     chunk->constants.capacity = count;
+    */
+    lit_vallist_init(&chunk->constants);
+    lit_vallist_ensuresize(state, &chunk->constants, count);
+
     for(i = 0; i < count; i++)
     {
         type = lit_read_euint8_t(file);
         if(type == 0)
         {
-            chunk->constants.values[i] = lit_number_to_value(lit_read_edouble(file));
+            //chunk->constants.values[i] = lit_number_to_value(lit_read_edouble(file));
+            lit_vallist_set(&chunk->constants, i, lit_number_to_value(lit_read_edouble(file)));
+
         }
         else
         {
@@ -378,12 +385,16 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
             {
                 case LITTYPE_STRING:
                     {
-                        chunk->constants.values[i] = OBJECT_VALUE(lit_read_estring(state, file));
+                        //chunk->constants.values[i] = OBJECT_VALUE(lit_read_estring(state, file));
+                        lit_vallist_set(&chunk->constants, i, OBJECT_VALUE(lit_read_estring(state, file)));
+
                     }
                     break;
                 case LITTYPE_FUNCTION:
                     {
-                        chunk->constants.values[i] = OBJECT_VALUE(load_function(state, file, module));
+                        //chunk->constants.values[i] = OBJECT_VALUE(load_function(state, file, module));
+                        lit_vallist_set(&chunk->constants, i, OBJECT_VALUE(load_function(state, file, module)));
+
                     }
                     break;
                 default:
@@ -453,7 +464,7 @@ LitModule* lit_load_module(LitState* state, const char* input)
         privates = &module->private_names->values;
         privates_count = lit_read_euint16_t(&file);
         enabled = !((bool)lit_read_euint8_t(&file));
-        module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
+        module->privates = LIT_ALLOCATE(state, sizeof(LitValue), privates_count);
         module->private_count = privates_count;
         for(i = 0; i < privates_count; i++)
         {
@@ -702,10 +713,10 @@ static LitValue objmethod_file_readline(LitVM* vm, LitValue instance, size_t arg
     LitFileData* data;
     max_length = (size_t)lit_get_number(vm, argv, argc, 0, 128);
     data = (LitFileData*)LIT_EXTRACT_DATA(vm, instance);
-    line = LIT_ALLOCATE(vm->state, char, max_length + 1);
+    line = LIT_ALLOCATE(vm->state, sizeof(char), max_length + 1);
     if(!fgets(line, max_length, data->handle))
     {
-        LIT_FREE(vm->state, char, line);
+        LIT_FREE(vm->state, sizeof(char), line);
         return NULL_VALUE;
     }
     return OBJECT_VALUE(lit_string_take(vm->state, line, strlen(line) - 1, false));
@@ -866,7 +877,7 @@ static void free_handle(LitState* state, LitUserdata* userdata, bool mark)
     LitStdioHandle* hstd;
     (void)mark;
     hstd = (LitStdioHandle*)(userdata->data);
-    LIT_FREE(state, LitStdioHandle, hstd);
+    LIT_FREE(state, sizeof(LitStdioHandle), hstd);
 }
 
 static void make_handle(LitState* state, LitValue fileval, const char* name, FILE* hnd, bool canread, bool canwrite)
@@ -881,7 +892,7 @@ static void make_handle(LitState* state, LitValue fileval, const char* name, FIL
     oldfiber = state->vm->fiber;
     state->vm->fiber = lit_create_fiber(state, state->last_module, NULL);
     {
-        hstd = LIT_ALLOCATE(state, LitStdioHandle, 1);
+        hstd = LIT_ALLOCATE(state, sizeof(LitStdioHandle), 1);
         hstd->handle = hnd;
         hstd->name = name;
         hstd->canread = canread;

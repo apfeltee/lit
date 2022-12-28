@@ -52,10 +52,10 @@ void lit_free_object(LitState* state, LitObject* object)
         case LITTYPE_STRING:
             {
                 string = (LitString*)object;
-                //LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
+                //LIT_FREE_ARRAY(state, sizeof(char), string->chars, string->length + 1);
                 sdsfree(string->chars);
                 string->chars = NULL;
-                LIT_FREE(state, LitString, object);
+                LIT_FREE(state, sizeof(LitString), object);
             }
             break;
 
@@ -63,54 +63,54 @@ void lit_free_object(LitState* state, LitObject* object)
             {
                 function = (LitFunction*)object;
                 lit_free_chunk(state, &function->chunk);
-                LIT_FREE(state, LitFunction, object);
+                LIT_FREE(state, sizeof(LitFunction), object);
             }
             break;
         case LITTYPE_NATIVE_FUNCTION:
             {
-                LIT_FREE(state, LitNativeFunction, object);
+                LIT_FREE(state, sizeof(LitNativeFunction), object);
             }
             break;
         case LITTYPE_NATIVE_PRIMITIVE:
             {
-                LIT_FREE(state, LitNativePrimFunction, object);
+                LIT_FREE(state, sizeof(LitNativePrimFunction), object);
             }
             break;
         case LITTYPE_NATIVE_METHOD:
             {
-                LIT_FREE(state, LitNativeMethod, object);
+                LIT_FREE(state, sizeof(LitNativeMethod), object);
             }
             break;
         case LITTYPE_PRIMITIVE_METHOD:
             {
-                LIT_FREE(state, LitPrimitiveMethod, object);
+                LIT_FREE(state, sizeof(LitPrimitiveMethod), object);
             }
             break;
         case LITTYPE_FIBER:
             {
                 fiber = (LitFiber*)object;
-                LIT_FREE_ARRAY(state, LitCallFrame, fiber->frames, fiber->frame_capacity);
-                LIT_FREE_ARRAY(state, LitValue, fiber->stack, fiber->stack_capacity);
-                LIT_FREE(state, LitFiber, object);
+                LIT_FREE_ARRAY(state, sizeof(LitCallFrame), fiber->frames, fiber->frame_capacity);
+                LIT_FREE_ARRAY(state, sizeof(LitValue), fiber->stack, fiber->stack_capacity);
+                LIT_FREE(state, sizeof(LitFiber), object);
             }
             break;
         case LITTYPE_MODULE:
             {
                 module = (LitModule*)object;
-                LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_count);
-                LIT_FREE(state, LitModule, object);
+                LIT_FREE_ARRAY(state, sizeof(LitValue), module->privates, module->private_count);
+                LIT_FREE(state, sizeof(LitModule), object);
             }
             break;
         case LITTYPE_CLOSURE:
             {
                 closure = (LitClosure*)object;
-                LIT_FREE_ARRAY(state, LitUpvalue*, closure->upvalues, closure->upvalue_count);
-                LIT_FREE(state, LitClosure, object);
+                LIT_FREE_ARRAY(state, sizeof(LitUpvalue*), closure->upvalues, closure->upvalue_count);
+                LIT_FREE(state, sizeof(LitClosure), object);
             }
             break;
         case LITTYPE_UPVALUE:
             {
-                LIT_FREE(state, LitUpvalue, object);
+                LIT_FREE(state, sizeof(LitUpvalue), object);
             }
             break;
         case LITTYPE_CLASS:
@@ -118,31 +118,31 @@ void lit_free_object(LitState* state, LitObject* object)
                 LitClass* klass = (LitClass*)object;
                 lit_free_table(state, &klass->methods);
                 lit_free_table(state, &klass->static_fields);
-                LIT_FREE(state, LitClass, object);
+                LIT_FREE(state, sizeof(LitClass), object);
             }
             break;
 
         case LITTYPE_INSTANCE:
             {
                 lit_free_table(state, &((LitInstance*)object)->fields);
-                LIT_FREE(state, LitInstance, object);
+                LIT_FREE(state, sizeof(LitInstance), object);
             }
             break;
         case LITTYPE_BOUND_METHOD:
             {
-                LIT_FREE(state, LitBoundMethod, object);
+                LIT_FREE(state, sizeof(LitBoundMethod), object);
             }
             break;
         case LITTYPE_ARRAY:
             {
                 lit_vallist_destroy(state, &((LitArray*)object)->list);
-                LIT_FREE(state, LitArray, object);
+                LIT_FREE(state, sizeof(LitArray), object);
             }
             break;
         case LITTYPE_MAP:
             {
                 lit_free_table(state, &((LitMap*)object)->values);
-                LIT_FREE(state, LitMap, object);
+                LIT_FREE(state, sizeof(LitMap), object);
             }
             break;
         case LITTYPE_USERDATA:
@@ -159,23 +159,23 @@ void lit_free_object(LitState* state, LitObject* object)
                         lit_reallocate(state, data->data, data->size, 0);
                     }
                 }
-                LIT_FREE(state, LitUserdata, data);
+                LIT_FREE(state, sizeof(LitUserdata), data);
                 //free(data);
             }
             break;
         case LITTYPE_RANGE:
             {
-                LIT_FREE(state, LitRange, object);
+                LIT_FREE(state, sizeof(LitRange), object);
             }
             break;
         case LITTYPE_FIELD:
             {
-                LIT_FREE(state, LitField, object);
+                LIT_FREE(state, sizeof(LitField), object);
             }
             break;
         case LITTYPE_REFERENCE:
             {
-                LIT_FREE(state, LitReference, object);
+                LIT_FREE(state, sizeof(LitReference), object);
             }
             break;
         default:
@@ -265,9 +265,9 @@ static void mark_roots(LitVM* vm)
 static void mark_array(LitVM* vm, LitValueList* array)
 {
     size_t i;
-    for(i = 0; i < array->count; i++)
+    for(i = 0; i < lit_vallist_count(array); i++)
     {
-        lit_mark_value(vm, array->values[i]);
+        lit_mark_value(vm, lit_vallist_get(array, i));
     }
 }
 

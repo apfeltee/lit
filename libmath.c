@@ -285,12 +285,12 @@ static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue*
         {
             LitArray* array = AS_ARRAY(argv[0]);
 
-            if(array->list.count == 0)
+            if(lit_vallist_count(&array->list) == 0)
             {
                 return NULL_VALUE;
             }
 
-            return array->list.values[value % array->list.count];
+            return lit_vallist_get(&array->list, value % lit_vallist_count(&array->list));
         }
         else if(IS_MAP(argv[0]))
         {

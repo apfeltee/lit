@@ -2,58 +2,239 @@
 #include "lit.h"
 #include "sds.h"
 
-void lit_vallist_init(LitValueList* array)
+
+void lit_datalist_init(LitDataList* array, size_t typsz)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
+    array->elemsz = typsz;
 }
 
-void lit_vallist_destroy(LitState* state, LitValueList* array)
+void lit_datalist_destroy(LitState* state, LitDataList* array)
 {
-    LIT_FREE_ARRAY(state, LitValue, array->values, array->capacity);
-    lit_vallist_init(array);
+    LIT_FREE_ARRAY(state, array->elemsz, array->values, array->capacity);
+    lit_datalist_init(array, array->elemsz);
 }
 
-void lit_vallist_push(LitState* state, LitValueList* array, LitValue value)
+size_t lit_datalist_count(LitDataList* arr)
+{
+    return arr->count;
+}
+
+size_t lit_datalist_size(LitDataList* arr)
+{
+    return arr->count;
+}
+
+size_t lit_datalist_capacity(LitDataList* arr)
+{
+    return arr->capacity;
+}
+
+void lit_datalist_clear(LitDataList* arr)
+{
+    arr->count = 0;
+}
+
+void lit_datalist_setcount(LitDataList* arr, size_t nc)
+{
+    arr->count = nc;
+}
+
+void lit_datalist_deccount(LitDataList* arr)
+{
+    arr->count--;
+}
+
+uintptr_t lit_datalist_get(LitDataList* arr, size_t idx)
+{
+    return arr->values[idx];
+}
+
+uintptr_t lit_datalist_set(LitDataList* arr, size_t idx, uintptr_t val)
+{
+    arr->values[idx] = val;
+    return val;
+}
+
+void lit_datalist_push(LitState* state, LitDataList* array, uintptr_t value)
 {
     size_t old_capacity;
     if(array->capacity < array->count + 1)
     {
         old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitValue, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, array->elemsz, old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
 }
 
-void lit_vallist_ensuresize(LitState* state, LitValueList* values, size_t size)
+void lit_datalist_ensuresize(LitState* state, LitDataList* array, size_t size)
 {
     size_t i;
     size_t old_capacity;
-    if(values->capacity < size)
+    if(array->capacity < size)
     {
-        old_capacity = values->capacity;
-        values->capacity = size;
-        values->values = LIT_GROW_ARRAY(state, values->values, LitValue, old_capacity, size);
+        old_capacity = array->capacity;
+        array->capacity = size;
+        array->values = LIT_GROW_ARRAY(state, array->values, array->elemsz, old_capacity, size);
         for(i = old_capacity; i < size; i++)
         {
-            values->values[i] = NULL_VALUE;
+            array->values[i] = NULL_VALUE;
         }
     }
-    if(values->count < size)
+    if(array->count < size)
     {
-        values->count = size;
+        array->count = size;
     }
+}
+
+/* -------------------------*/
+
+void lit_vallist_init(LitValueList* array)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_init(&array->list, sizeof(LitValue));
+    #else
+        array->values = NULL;
+        array->capacity = 0;
+        array->count = 0;
+    #endif
+}
+
+void lit_vallist_destroy(LitState* state, LitValueList* array)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_destroy(state, &array->list);
+    #else
+        LIT_FREE_ARRAY(state, sizeof(LitValue), array->values, array->capacity);
+        lit_vallist_init(array);
+    #endif
+}
+
+size_t lit_vallist_size(LitValueList* arr)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        return lit_datalist_count(&arr->list);
+    #else
+        return arr->count;
+    #endif
+}
+
+size_t lit_vallist_count(LitValueList* arr)
+{
+    return lit_vallist_size(arr);
+}
+
+size_t lit_vallist_capacity(LitValueList* arr)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        return lit_datalist_capacity(&arr->list);
+    #else
+        return arr->capacity;
+    #endif
+}
+
+void lit_vallist_setcount(LitValueList* arr, size_t nc)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_setcount(&arr->list, nc);
+    #else
+        arr->count = nc;
+    #endif
+}
+
+
+void lit_vallist_clear(LitValueList* arr)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_setcount(&arr->list, 0);
+    #else
+        arr->count = 0;
+    #endif
+}
+
+
+void lit_vallist_deccount(LitValueList* arr)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_deccount(&arr->list);
+    #else
+        arr->count--;
+    #endif
+}
+
+LitValue lit_vallist_set(LitValueList* arr, size_t idx, LitValue val)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_set(&arr->list, idx, val);
+    #else
+        arr->values[idx] = val;
+    #endif
+    return val;
+}
+
+
+LitValue lit_vallist_get(LitValueList* arr, size_t idx)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        return (LitValue)lit_datalist_get(&arr->list, idx);
+    #else
+        return arr->values[idx];
+    #endif
+}
+
+void lit_vallist_push(LitState* state, LitValueList* array, LitValue value)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_push(state, &array->list, (uintptr_t)value);
+    #else
+        size_t old_capacity;
+        if(array->capacity < array->count + 1)
+        {
+            old_capacity = array->capacity;
+            array->capacity = LIT_GROW_CAPACITY(old_capacity);
+            array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitValue), old_capacity, array->capacity);
+        }
+        array->values[array->count] = value;
+        array->count++;
+    #endif
+}
+
+
+void lit_vallist_ensuresize(LitState* state, LitValueList* values, size_t size)
+{
+    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
+        lit_datalist_ensuresize(state, &values->list, size);
+    #else
+        size_t i;
+        size_t old_capacity;
+        if(values->capacity < size)
+        {
+            old_capacity = values->capacity;
+            values->capacity = size;
+            values->values = LIT_GROW_ARRAY(state, values->values, sizeof(LitValue), old_capacity, size);
+            for(i = old_capacity; i < size; i++)
+            {
+                values->values[i] = NULL_VALUE;
+            }
+        }
+        if(values->count < size)
+        {
+            values->count = size;
+        }
+    #endif
+
 }
 
 int lit_array_indexof(LitArray* array, LitValue value)
 {
     size_t i;
-    for(i = 0; i < array->list.count; i++)
+    for(i = 0; i < lit_vallist_count(&array->list); i++)
     {
-        if(array->list.values[i] == value)
+        if(lit_vallist_get(&array->list, i) == value)
         {
             return (int)i;
         }
@@ -69,25 +250,25 @@ LitValue lit_array_removeat(LitArray* array, size_t index)
     LitValue value;
     LitValueList* values;
     values = &array->list;
-    count = values->count;
+    count = lit_vallist_count(values);
     if(index >= count)
     {
         return NULL_VALUE;
     }
-    value = values->values[index];
+    value = lit_vallist_get(values, index);
     if(index == count - 1)
     {
-        values->values[index] = NULL_VALUE;
+        lit_vallist_set(values, index, NULL_VALUE);
     }
     else
     {
-        for(i = index; i < values->count - 1; i++)
+        for(i = index; i < lit_vallist_count(values) - 1; i++)
         {
-            values->values[i] = values->values[i + 1];
+            lit_vallist_set(values, i, lit_vallist_get(values, i + 1));
         }
-        values->values[count - 1] = NULL_VALUE;
+        lit_vallist_set(values, count - 1, NULL_VALUE);
     }
-    values->count--;
+    lit_vallist_deccount(values);
     return value;
 }
 
@@ -109,7 +290,7 @@ static LitValue objfn_array_splice(LitVM* vm, LitArray* array, int from, int to)
     size_t i;
     size_t length;
     LitArray* new_array;
-    length = array->list.count;
+    length = lit_vallist_count(&array->list);
     if(from < 0)
     {
         from = (int)length + from;
@@ -128,7 +309,7 @@ static LitValue objfn_array_splice(LitVM* vm, LitArray* array, int from, int to)
     new_array = lit_create_array(vm->state);
     for(i = 0; i < length; i++)
     {
-        lit_vallist_push(vm->state, &new_array->list, array->list.values[from + i]);
+        lit_vallist_push(vm->state, &new_array->list, lit_vallist_get(&array->list, from + i));
     }
     return OBJECT_VALUE(new_array);
 }
@@ -157,10 +338,10 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
         index = lit_value_to_number(argv[0]);
         if(index < 0)
         {
-            index = fmax(0, values->count + index);
+            index = fmax(0, lit_vallist_count(values) + index);
         }
         lit_vallist_ensuresize(vm->state, values, index + 1);
-        return values->values[index] = argv[1];
+        return lit_vallist_set(values, index, argv[1]);
     }
     if(!IS_NUMBER(argv[0]))
     {
@@ -176,13 +357,13 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
     index = lit_value_to_number(argv[0]);
     if(index < 0)
     {
-        index = fmax(0, values->count + index);
+        index = fmax(0, lit_vallist_count(values) + index);
     }
-    if(values->capacity <= (size_t)index)
+    if(lit_vallist_capacity(values) <= (size_t)index)
     {
         return NULL_VALUE;
     }
-    return values->values[index];
+    return lit_vallist_get(values, index);
 }
 
 bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
@@ -216,11 +397,11 @@ static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, L
     if(IS_ARRAY(argv[0]))
     {
         other = AS_ARRAY(argv[0]);
-        if(self->list.count == other->list.count)
+        if(lit_vallist_count(&self->list) == lit_vallist_count(&other->list))
         {
-            for(i=0; i<self->list.count; i++)
+            for(i=0; i<lit_vallist_count(&self->list); i++)
             {
-                if(!lit_compare_values(vm->state, self->list.values[i], other->list.values[i]))
+                if(!lit_compare_values(vm->state, lit_vallist_get(&self->list, i), lit_vallist_get(&other->list, i)))
                 {
                     return FALSE_VALUE;
                 }
@@ -257,22 +438,22 @@ static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, Li
 
     if(index < 0)
     {
-        index = fmax(0, values->count + index);
+        index = fmax(0, lit_vallist_count(values) + index);
     }
     value = argv[1];
-    if((int)values->count <= index)
+    if((int)lit_vallist_count(values) <= index)
     {
         lit_vallist_ensuresize(vm->state, values, index + 1);
     }
     else
     {
-        lit_vallist_ensuresize(vm->state, values, values->count + 1);
-        for(i = values->count - 1; i > index; i--)
+        lit_vallist_ensuresize(vm->state, values, lit_vallist_count(values)  + 1);
+        for(i = lit_vallist_count(values) - 1; i > index; i--)
         {
-            values->values[i] = values->values[i - 1];
+            lit_vallist_set(values, i, lit_vallist_get(values, i - 1));
         }
     }
-    values->values[index] = value;
+    lit_vallist_set(values, index, value);
     return NULL_VALUE;
 }
 
@@ -288,9 +469,9 @@ static LitValue objfn_array_addall(LitVM* vm, LitValue instance, size_t argc, Li
     }
     array = AS_ARRAY(instance);
     toadd = AS_ARRAY(argv[0]);
-    for(i = 0; i < toadd->list.count; i++)
+    for(i = 0; i < lit_vallist_count(&toadd->list); i++)
     {
-        lit_array_push(vm->state, array, toadd->list.values[i]);
+        lit_array_push(vm->state, array, lit_vallist_get(&toadd->list, i));
     }
     return NULL_VALUE;
 }
@@ -340,7 +521,7 @@ static LitValue objfn_array_clear(LitVM* vm, LitValue instance, size_t argc, Lit
     (void)vm;
     (void)argc;
     (void)argv;
-    AS_ARRAY(instance)->list.count = 0;
+    lit_vallist_clear(&AS_ARRAY(instance)->list);
     return NULL_VALUE;
 }
 
@@ -355,13 +536,13 @@ static LitValue objfn_array_iterator(LitVM* vm, LitValue instance, size_t argc, 
     if(IS_NUMBER(argv[0]))
     {
         number = lit_value_to_number(argv[0]);
-        if(number >= (int)array->list.count - 1)
+        if(number >= (int)lit_vallist_count(&array->list) - 1)
         {
             return NULL_VALUE;
         }
         number++;
     }
-    return array->list.count == 0 ? NULL_VALUE : lit_number_to_value(number);
+    return lit_vallist_count(&array->list) == 0 ? NULL_VALUE : lit_number_to_value(number);
 }
 
 static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -370,11 +551,11 @@ static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t a
     LitValueList* values;
     index = lit_check_number(vm, argv, argc, 0);
     values = &AS_ARRAY(instance)->list;
-    if(values->count <= index)
+    if(lit_vallist_count(values) <= index)
     {
         return NULL_VALUE;
     }
-    return values->values[index];
+    return lit_vallist_get(values, index);
 }
 
 static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -398,10 +579,10 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     }
     values = &AS_ARRAY(instance)->list;
     //LitString* strings[values->count];
-    strings = LIT_ALLOCATE(vm->state, LitString*, values->count+1);
-    for(i = 0; i < values->count; i++)
+    strings = LIT_ALLOCATE(vm->state, sizeof(LitString*), lit_vallist_count(values)+1);
+    for(i = 0; i < lit_vallist_count(values); i++)
     {
-        string = lit_to_string(vm->state, values->values[i]);
+        string = lit_to_string(vm->state, lit_vallist_get(values, i));
         strings[i] = string;
         length += lit_string_length(string);
         if(joinee != NULL)
@@ -417,7 +598,7 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     {
         jlen = lit_string_length(joinee);
     }
-    for(i = 0; i < values->count; i++)
+    for(i = 0; i < lit_vallist_count(values); i++)
     {
         string = strings[i];
         memcpy(chars + index, string->chars, lit_string_length(string));
@@ -433,7 +614,7 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
             index += jlen;
         }
     }
-    LIT_FREE(vm->state, LitString*, strings);
+    LIT_FREE(vm->state, sizeof(LitString*), strings);
     return OBJECT_VALUE(lit_string_take(vm->state, chars, length, true));
 }
 
@@ -441,6 +622,7 @@ static LitValue objfn_array_sort(LitVM* vm, LitValue instance, size_t argc, LitV
 {
     LitValueList* values;
     values = &AS_ARRAY(instance)->list;
+    /*
     if(argc == 1 && lit_is_callable_function(argv[0]))
     {
         util_custom_quick_sort(vm, values->values, values->count, argv[0]);
@@ -449,6 +631,7 @@ static LitValue objfn_array_sort(LitVM* vm, LitValue instance, size_t argc, LitV
     {
         util_basic_quick_sort(vm->state, values->values, values->count);
     }
+    */
     return instance;
 }
 
@@ -465,12 +648,12 @@ static LitValue objfn_array_clone(LitVM* vm, LitValue instance, size_t argc, Lit
     values = &AS_ARRAY(instance)->list;
     array = lit_create_array(state);
     new_values = &array->list;
-    lit_vallist_ensuresize(state, new_values, values->count);
+    lit_vallist_ensuresize(state, new_values, lit_vallist_count(values));
     // lit_vallist_ensuresize sets the count to max of previous count (0 in this case) and new count, so we have to reset it
-    new_values->count = 0;
-    for(i = 0; i < values->count; i++)
+    lit_vallist_setcount(new_values, 0);
+    for(i = 0; i < lit_vallist_count(values); i++)
     {
-        lit_vallist_push(state, new_values, values->values[i]);
+        lit_vallist_push(state, new_values, lit_vallist_get(values, i));
     }
     return OBJECT_VALUE(array);
 }
@@ -496,13 +679,13 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     self = AS_ARRAY(instance);
     values = &self->list;
     state = vm->state;
-    if(values->count == 0)
+    if(lit_vallist_count(values) == 0)
     {
         return OBJECT_CONST_STRING(state, "[]");
     }
-    has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
-    value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
-    values_converted = LIT_ALLOCATE(vm->state, LitString*, value_amount+1);
+    has_more = lit_vallist_count(values) > LIT_CONTAINER_OUTPUT_MAX;
+    value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : lit_vallist_count(values);
+    values_converted = LIT_ALLOCATE(vm->state, sizeof(LitString*), value_amount+1);
     // "[ ]"
     olength = 3;
     if(has_more)
@@ -514,7 +697,7 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
     buffer = sdscat(buffer, "[");
     for(i = 0; i < value_amount; i++)
     {
-        val = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
+        val = lit_vallist_get(values, (has_more && i == value_amount - 1) ? lit_vallist_count(values) - 1 : i);
         if(IS_ARRAY(val) && (AS_ARRAY(val) == self))
         {
             stringified = lit_string_copy(state, recstring, strlen(recstring));
@@ -541,7 +724,7 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
             }
         }
     }
-    LIT_FREE(vm->state, LitString*, values_converted);
+    LIT_FREE(vm->state, sizeof(LitString*), values_converted);
     // should be lit_string_take, but it doesn't get picked up by the GC for some reason
     //rt = lit_string_take(vm->state, buffer, olength);
     rt = lit_string_take(vm->state, buffer, olength, true);
@@ -557,10 +740,10 @@ static LitValue objfn_array_pop(LitVM* vm, LitValue instance, size_t argc, LitVa
     LitValue val;
     LitState* state;
     self = AS_ARRAY(instance);
-    if(self->list.count > 0)
+    if(lit_vallist_count(&self->list) > 0)
     {
-        val = self->list.values[self->list.count - 1];
-        self->list.count--;
+        val = lit_vallist_get(&self->list, lit_vallist_count(&self->list) - 1);
+        lit_vallist_deccount(&self->list);
         return val;
         
     }
@@ -573,7 +756,7 @@ static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, Li
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(AS_ARRAY(instance)->list.count);
+    return lit_number_to_value(lit_vallist_count(&AS_ARRAY(instance)->list));
 }
 
 void lit_open_array_library(LitState* state)
