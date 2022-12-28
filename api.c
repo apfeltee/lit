@@ -261,20 +261,20 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
     lit_table_set(state, &map->values, CONST_STRING(state, name), value);
 }
 
-void lit_init_uints(LitUInts* array)
+void lit_uintlist_init(LitUInts* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void lit_free_uints(LitState* state, LitUInts* array)
+void lit_uintlist_destroy(LitState* state, LitUInts* array)
 {
     LIT_FREE_ARRAY(state, size_t, array->values, array->capacity);
-    lit_init_uints(array);
+    lit_uintlist_init(array);
 }
 
-void lit_uints_write(LitState* state, LitUInts* array, size_t value)
+void lit_uintlist_push(LitState* state, LitUInts* array, size_t value)
 {
     if(array->capacity < array->count + 1)
     {

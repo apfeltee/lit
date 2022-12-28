@@ -36,17 +36,17 @@ void lit_init_statements(LitStmtList* array)
 
 void lit_free_statements(LitState* state, LitStmtList* array)
 {
-    LIT_FREE_ARRAY(state, LitStatement*, array->values, array->capacity);
+    LIT_FREE_ARRAY(state, LitExpression*, array->values, array->capacity);
     lit_init_statements(array);
 }
 
-void lit_statements_write(LitState* state, LitStmtList* array, LitStatement* value)
+void lit_statements_write(LitState* state, LitStmtList* array, LitExpression* value)
 {
     if(array->capacity < array->count + 1)
     {
         size_t old_capacity = array->capacity;
         array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, LitStatement*, old_capacity, array->capacity);
+        array->values = LIT_GROW_ARRAY(state, array->values, LitExpression*, old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -457,7 +457,7 @@ LitReferenceExpression* lit_create_reference_expression(LitState* state, size_t 
     return expression;
 }
 
-void lit_free_statement(LitState* state, LitStatement* statement)
+void lit_free_statement(LitState* state, LitExpression* statement)
 {
     if(statement == NULL)
     {
@@ -568,10 +568,10 @@ void lit_free_statement(LitState* state, LitStatement* statement)
     }
 }
 
-static LitStatement* allocate_statement(LitState* state, uint64_t line, size_t size, LitStatementType type)
+static LitExpression* allocate_statement(LitState* state, uint64_t line, size_t size, LitExpressionType type)
 {
-    LitStatement* object;
-    object = (LitStatement*)lit_reallocate(state, NULL, 0, size);
+    LitExpression* object;
+    object = (LitExpression*)lit_reallocate(state, NULL, 0, size);
     object->type = type;
     object->line = line;
     return object;
@@ -608,8 +608,8 @@ LitVarStatement* lit_create_var_statement(LitState* state, size_t line, const ch
 LitIfStatement* lit_create_if_statement(LitState* state,
                                         size_t line,
                                         LitExpression* condition,
-                                        LitStatement* if_branch,
-                                        LitStatement* else_branch,
+                                        LitExpression* if_branch,
+                                        LitExpression* else_branch,
                                         LitExprList* elseif_conditions,
                                         LitStmtList* elseif_branches)
 {
@@ -623,7 +623,7 @@ LitIfStatement* lit_create_if_statement(LitState* state,
     return statement;
 }
 
-LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitStatement* body)
+LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitExpression* body)
 {
     LitWhileStatement* statement;
     statement = (LitWhileStatement*)allocate_statement(state, line, sizeof(LitWhileStatement), LITSTMT_WHILE);
@@ -635,10 +635,10 @@ LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitE
 LitForStatement* lit_create_for_statement(LitState* state,
                                           size_t line,
                                           LitExpression* init,
-                                          LitStatement* var,
+                                          LitExpression* var,
                                           LitExpression* condition,
                                           LitExpression* increment,
-                                          LitStatement* body,
+                                          LitExpression* body,
                                           bool c_style)
 {
     LitForStatement* statement;
@@ -702,7 +702,7 @@ LitClassStatement* lit_create_class_statement(LitState* state, size_t line, LitS
     return statement;
 }
 
-LitFieldStatement* lit_create_field_statement(LitState* state, size_t line, LitString* name, LitStatement* getter, LitStatement* setter, bool is_static)
+LitFieldStatement* lit_create_field_statement(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static)
 {
     LitFieldStatement* statement;
     statement = (LitFieldStatement*)allocate_statement(state, line, sizeof(LitFieldStatement), LITSTMT_FIELD);

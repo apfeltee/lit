@@ -399,7 +399,21 @@ enum LitExpressionType
     LITEXPR_RANGE,
     LITEXPR_IF,
     LITEXPR_INTERPOLATION,
-    LITEXPR_REFERENCE
+    LITEXPR_REFERENCE,
+
+    LITSTMT_EXPRESSION,
+    LITSTMT_BLOCK,
+    LITSTMT_IF,
+    LITSTMT_WHILE,
+    LITSTMT_FOR,
+    LITSTMT_VAR,
+    LITSTMT_CONTINUE,
+    LITSTMT_BREAK,
+    LITSTMT_FUNCTION,
+    LITSTMT_RETURN,
+    LITSTMT_METHOD,
+    LITSTMT_CLASS,
+    LITSTMT_FIELD
 };
 
 enum LitOptimizationLevel
@@ -497,23 +511,6 @@ enum LitPrecedence
     LITPREC_NULL,// ??
     LITPREC_CALL,// . ()
     LITPREC_PRIMARY
-};
-
-enum LitStatementType
-{
-    LITSTMT_EXPRESSION,
-    LITSTMT_BLOCK,
-    LITSTMT_IF,
-    LITSTMT_WHILE,
-    LITSTMT_FOR,
-    LITSTMT_VAR,
-    LITSTMT_CONTINUE,
-    LITSTMT_BREAK,
-    LITSTMT_FUNCTION,
-    LITSTMT_RETURN,
-    LITSTMT_METHOD,
-    LITSTMT_CLASS,
-    LITSTMT_FIELD
 };
 
 enum LitTokenType
@@ -665,7 +662,6 @@ typedef enum /**/LitOptimizationLevel LitOptimizationLevel;
 typedef enum /**/LitOptimization LitOptimization;
 typedef enum /**/LitError LitError;
 typedef enum /**/LitPrecedence LitPrecedence;
-typedef enum /**/LitStatementType LitStatementType;
 typedef enum /**/LitTokenType LitTokenType;
 typedef enum /**/LitInterpretResultType LitInterpretResultType;
 typedef enum /**/LitErrorType LitErrorType;
@@ -705,7 +701,6 @@ typedef struct /**/LitField LitField;
 typedef struct /**/LitReference LitReference;
 typedef struct /**/LitToken LitToken;
 typedef struct /**/LitExpression LitExpression;
-typedef struct /**/LitStatement LitStatement;
 typedef struct /**/LitCompilerUpvalue LitCompilerUpvalue;
 typedef struct /**/LitCompiler LitCompiler;
 typedef struct /**/LitParseRule LitParseRule;
@@ -769,7 +764,7 @@ struct LitVariable
     bool constant;
     bool used;
     LitValue constant_value;
-    LitStatement** declaration;
+    LitExpression** declaration;
 };
 
 struct LitVarList
@@ -782,12 +777,6 @@ struct LitVarList
 struct LitExpression
 {
     LitExpressionType type;
-    size_t line;
-};
-
-struct LitStatement
-{
-    LitStatementType type;
     size_t line;
 };
 
@@ -1370,10 +1359,17 @@ static inline LitNativeMethod* AS_NATIVE_METHOD(LitValue v)
 /**
 * memory data functions
 */
-void lit_init_uints(LitUInts* array);
-void lit_free_uints(LitState* state, LitUInts* array);
-void lit_uints_write(LitState* state, LitUInts* array, size_t value);
 
+/*
+LitUInts -> LitUintList
+*/
+void lit_uintlist_init(LitUInts* array);
+void lit_uintlist_destroy(LitState* state, LitUInts* array);
+void lit_uintlist_push(LitState* state, LitUInts* array, size_t value);
+
+/*
+LitBytes -> LitByteList
+*/
 void lit_init_bytes(LitBytes* array);
 void lit_free_bytes(LitState* state, LitBytes* array);
 void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value);

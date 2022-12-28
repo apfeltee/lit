@@ -1,1 +1,6 @@
--4.27
+
+var max = 5;
+for(i=0; i<max; i++)
+{
+    println("i=", i, "")
+}

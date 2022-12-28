@@ -171,7 +171,7 @@ struct LitLambdaExpression
 {
     LitExpression expression;
     LitParameters parameters;
-    LitStatement* body;
+    LitExpression* body;
 };
 
 struct LitArrayExpression
@@ -216,7 +216,7 @@ struct LitRangeExpression
 
 struct LitIfExpression
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* condition;
     LitExpression* if_branch;
     LitExpression* else_branch;
@@ -241,25 +241,25 @@ struct LitStmtList
 {
     size_t capacity;
     size_t count;
-    LitStatement** values;
+    LitExpression** values;
 };
 
 struct LitExpressionStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* expression;
     bool pop;
 };
 
 struct LitBlockStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitStmtList statements;
 };
 
 struct LitVarStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     const char* name;
     size_t length;
     bool constant;
@@ -268,70 +268,70 @@ struct LitVarStatement
 
 struct LitIfStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* condition;
-    LitStatement* if_branch;
-    LitStatement* else_branch;
+    LitExpression* if_branch;
+    LitExpression* else_branch;
     LitExprList* elseif_conditions;
     LitStmtList* elseif_branches;
 };
 
 struct LitWhileStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* condition;
-    LitStatement* body;
+    LitExpression* body;
 };
 
 struct LitForStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* init;
-    LitStatement* var;
+    LitExpression* var;
     LitExpression* condition;
     LitExpression* increment;
-    LitStatement* body;
+    LitExpression* body;
     bool c_style;
 };
 
 struct LitContinueStatement
 {
-    LitStatement statement;
+    LitExpression statement;
 };
 
 struct LitBreakStatement
 {
-    LitStatement statement;
+    LitExpression statement;
 };
 
 struct LitFunctionStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     const char* name;
     size_t length;
     LitParameters parameters;
-    LitStatement* body;
+    LitExpression* body;
     bool exported;
 };
 
 struct LitReturnStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitExpression* expression;
 };
 
 struct LitMethodStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitString* name;
     LitParameters parameters;
-    LitStatement* body;
+    LitExpression* body;
     bool is_static;
 };
 
 struct LitClassStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitString* name;
     LitString* parent;
     LitStmtList fields;
@@ -339,10 +339,10 @@ struct LitClassStatement
 
 struct LitFieldStatement
 {
-    LitStatement statement;
+    LitExpression statement;
     LitString* name;
-    LitStatement* getter;
-    LitStatement* setter;
+    LitExpression* getter;
+    LitExpression* setter;
     bool is_static;
 };
 
@@ -356,7 +356,7 @@ void lit_parameters_write(LitState* state, LitParameters* array, LitParameter va
 
 void lit_init_statements(LitStmtList* array);
 void lit_free_statements(LitState* state, LitStmtList* array);
-void lit_statements_write(LitState* state, LitStmtList* array, LitStatement* value);
+void lit_statements_write(LitState* state, LitStmtList* array, LitExpression* value);
 
 
 void lit_init_privates(LitPrivates* array);
@@ -397,7 +397,7 @@ lit_create_if_experssion(LitState* state, size_t line, LitExpression* condition,
 
 LitInterpolationExpression* lit_create_interpolation_expression(LitState* state, size_t line);
 LitReferenceExpression* lit_create_reference_expression(LitState* state, size_t line, LitExpression* to);
-void lit_free_statement(LitState* state, LitStatement* statement);
+void lit_free_statement(LitState* state, LitExpression* statement);
 LitExpressionStatement* lit_create_expression_statement(LitState* state, size_t line, LitExpression* expression);
 LitBlockStatement* lit_create_block_statement(LitState* state, size_t line);
 LitVarStatement* lit_create_var_statement(LitState* state, size_t line, const char* name, size_t length, LitExpression* init, bool constant);
@@ -405,20 +405,20 @@ LitVarStatement* lit_create_var_statement(LitState* state, size_t line, const ch
 LitIfStatement* lit_create_if_statement(LitState* state,
                                         size_t line,
                                         LitExpression* condition,
-                                        LitStatement* if_branch,
-                                        LitStatement* else_branch,
+                                        LitExpression* if_branch,
+                                        LitExpression* else_branch,
                                         LitExprList* elseif_conditions,
                                         LitStmtList* elseif_branches);
 
-LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitStatement* body);
+LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitExpression* body);
 
 LitForStatement* lit_create_for_statement(LitState* state,
                                           size_t line,
                                           LitExpression* init,
-                                          LitStatement* var,
+                                          LitExpression* var,
                                           LitExpression* condition,
                                           LitExpression* increment,
-                                          LitStatement* body,
+                                          LitExpression* body,
                                           bool c_style);
 LitContinueStatement* lit_create_continue_statement(LitState* state, size_t line);
 LitBreakStatement* lit_create_break_statement(LitState* state, size_t line);
@@ -427,7 +427,7 @@ LitReturnStatement* lit_create_return_statement(LitState* state, size_t line, Li
 LitMethodStatement* lit_create_method_statement(LitState* state, size_t line, LitString* name, bool is_static);
 LitClassStatement* lit_create_class_statement(LitState* state, size_t line, LitString* name, LitString* parent);
 LitFieldStatement*
-lit_create_field_statement(LitState* state, size_t line, LitString* name, LitStatement* getter, LitStatement* setter, bool is_static);
+lit_create_field_statement(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static);
 
 LitExprList* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExprList* expressions);

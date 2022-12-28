@@ -33,7 +33,7 @@
 static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
 static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressions);
 static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements);
-static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
+static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot);
 
 static const char* optimization_level_descriptions[LITOPTLEVEL_TOTAL]
 = { "No optimizations (same as -Ono-all)", "Super light optimizations, sepcific to interactive shell.",
@@ -134,7 +134,7 @@ static void opt_end_scope(LitOptimizer* optimizer)
     }
 }
 
-static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, size_t length, bool constant, LitStatement** declaration)
+static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, size_t length, bool constant, LitExpression** declaration)
 {
     lit_variables_write(optimizer->state, &optimizer->variables,
                         (LitVariable){ name, length, optimizer->depth, constant, optimizer->mark_used, NULL_VALUE, declaration });
@@ -159,7 +159,7 @@ static LitVariable* resolve_variable(LitOptimizer* optimizer, const char* name, 
     return NULL;
 }
 
-static bool is_empty(LitStatement* statement)
+static bool is_empty(LitExpression* statement)
 {
     return statement == NULL || (statement->type == LITSTMT_BLOCK && ((LitBlockStatement*)statement)->statements.count == 0);
 }
@@ -602,10 +602,10 @@ static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressio
     }
 }
 
-static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
+static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 {
     LitState* state;
-    LitStatement* statement;
+    LitExpression* statement;
     statement = *slot;
     if(statement == NULL)
     {
@@ -635,7 +635,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot)
                 bool found = false;
                 for(size_t i = 0; i < stmt->statements.count; i++)
                 {
-                    LitStatement* step = stmt->statements.values[i];
+                    LitExpression* step = stmt->statements.values[i];
                     if(!is_empty(step))
                     {
                         found = true;

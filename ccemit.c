@@ -4,8 +4,8 @@
 #include "priv.h"
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression);
-static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
-static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
+static bool emit_statement(LitEmitter* emitter, LitExpression* statement);
+static void resolve_statement(LitEmitter* emitter, LitExpression* statement);
 
 static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
 {
@@ -79,14 +79,14 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter)
     emitter->class_has_super = false;
 
     lit_init_privates(&emitter->privates);
-    lit_init_uints(&emitter->breaks);
-    lit_init_uints(&emitter->continues);
+    lit_uintlist_init(&emitter->breaks);
+    lit_uintlist_init(&emitter->continues);
 }
 
 void lit_free_emitter(LitEmitter* emitter)
 {
-    lit_free_uints(emitter->state, &emitter->breaks);
-    lit_free_uints(emitter->state, &emitter->continues);
+    lit_uintlist_destroy(emitter->state, &emitter->breaks);
+    lit_uintlist_destroy(emitter->state, &emitter->continues);
 }
 
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte)
@@ -554,7 +554,7 @@ static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks, size_t line)
         patch_jump(emitter, breaks->values[i], line);
     }
 
-    lit_free_uints(emitter->state, breaks);
+    lit_uintlist_destroy(emitter->state, breaks);
 }
 
 static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, size_t line)
@@ -587,22 +587,22 @@ static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, size
     return false;
 }
 
-static void resolve_statement(LitEmitter* emitter, LitStatement* statement)
+static void resolve_statement(LitEmitter* emitter, LitExpression* statement)
 {
     switch(statement->type)
     {
         case LITSTMT_VAR:
             {
-                LitVarStatement* stmt = (LitVarStatement*)statement;
-                mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, stmt->constant));
+                LitVarStatement* varstmt = (LitVarStatement*)statement;
+                mark_private_initialized(emitter, add_private(emitter, varstmt->name, varstmt->length, statement->line, varstmt->constant));
             }
             break;
         case LITSTMT_FUNCTION:
             {
-                LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
-                if(!stmt->exported)
+                LitFunctionStatement* funcstmt = (LitFunctionStatement*)statement;
+                if(!funcstmt->exported)
                 {
-                    mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, false));
+                    mark_private_initialized(emitter, add_private(emitter, funcstmt->name, funcstmt->length, statement->line, false));
                 }
             }
             break;
@@ -623,24 +623,24 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement)
     }
 }
 
-static void emit_expression(LitEmitter* emitter, LitExpression* expression)
+static void emit_expression(LitEmitter* emitter, LitExpression* expr)
 {
-    switch(expression->type)
+    switch(expr->type)
     {
         case LITEXPR_LITERAL:
             {
-                LitValue value = ((LitLiteralExpr*)expression)->value;
+                LitValue value = ((LitLiteralExpr*)expr)->value;
                 if(IS_NUMBER(value) || IS_STRING(value))
                 {
-                    emit_constant(emitter, expression->line, value);
+                    emit_constant(emitter, expr->line, value);
                 }
                 else if(IS_BOOL(value))
                 {
-                    emit_op(emitter, expression->line, lit_as_bool(value) ? OP_TRUE : OP_FALSE);
+                    emit_op(emitter, expr->line, lit_as_bool(value) ? OP_TRUE : OP_FALSE);
                 }
                 else if(IS_NULL(value))
                 {
-                    emit_op(emitter, expression->line, OP_NULL);
+                    emit_op(emitter, expr->line, OP_NULL);
                 }
                 else
                 {
@@ -650,117 +650,117 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_BINARY:
             {
-                LitBinaryExpr* expr = (LitBinaryExpr*)expression;
-                emit_expression(emitter, expr->left);
-                if(expr->right == NULL)
+                LitBinaryExpr* binexpr = (LitBinaryExpr*)expr;
+                emit_expression(emitter, binexpr->left);
+                if(binexpr->right == NULL)
                 {
                     break;
                 }
-                LitTokenType op = expr->op;
+                LitTokenType op = binexpr->op;
                 if(op == LITTOK_AMPERSAND_AMPERSAND || op == LITTOK_BAR_BAR || op == LITTOK_QUESTION_QUESTION)
                 {
                     size_t jump = emit_jump(emitter, op == LITTOK_BAR_BAR ? OP_OR : (op == LITTOK_QUESTION_QUESTION ? OP_NULL_OR : OP_AND),
                                           emitter->last_line);
-                    emit_expression(emitter, expr->right);
+                    emit_expression(emitter, binexpr->right);
                     patch_jump(emitter, jump, emitter->last_line);
                     break;
                 }
-                emit_expression(emitter, expr->right);
+                emit_expression(emitter, binexpr->right);
                 switch(op)
                 {
                     case LITTOK_PLUS:
                         {
-                            emit_op(emitter, expression->line, OP_ADD);
+                            emit_op(emitter, expr->line, OP_ADD);
                         }
                         break;
                     case LITTOK_MINUS:
                         {
-                            emit_op(emitter, expression->line, OP_SUBTRACT);
+                            emit_op(emitter, expr->line, OP_SUBTRACT);
                         }
                         break;
                     case LITTOK_STAR:
                         {
-                            emit_op(emitter, expression->line, OP_MULTIPLY);
+                            emit_op(emitter, expr->line, OP_MULTIPLY);
                         }
                         break;
                     case LITTOK_STAR_STAR:
                         {
-                            emit_op(emitter, expression->line, OP_POWER);
+                            emit_op(emitter, expr->line, OP_POWER);
                         }
                         break;
                     case LITTOK_SLASH:
                         {
-                            emit_op(emitter, expression->line, OP_DIVIDE);
+                            emit_op(emitter, expr->line, OP_DIVIDE);
                         }
                         break;
                     case LITTOK_SHARP:
                         {
-                            emit_op(emitter, expression->line, OP_FLOOR_DIVIDE);
+                            emit_op(emitter, expr->line, OP_FLOOR_DIVIDE);
                         }
                         break;
                     case LITTOK_PERCENT:
                         {
-                            emit_op(emitter, expression->line, OP_MOD);
+                            emit_op(emitter, expr->line, OP_MOD);
                         }
                         break;
                     case LITTOK_IS:
                         {
-                            emit_op(emitter, expression->line, OP_IS);
+                            emit_op(emitter, expr->line, OP_IS);
                         }
                         break;
                     case LITTOK_EQUAL_EQUAL:
                         {
-                            emit_op(emitter, expression->line, OP_EQUAL);
+                            emit_op(emitter, expr->line, OP_EQUAL);
                         }
                         break;
                     case LITTOK_BANG_EQUAL:
                         {
-                            emit_ops(emitter, expression->line, OP_EQUAL, OP_NOT);
+                            emit_ops(emitter, expr->line, OP_EQUAL, OP_NOT);
                         }
                         break;
                     case LITTOK_GREATER:
                         {
-                            emit_op(emitter, expression->line, OP_GREATER);
+                            emit_op(emitter, expr->line, OP_GREATER);
                         }
                         break;
                     case LITTOK_GREATER_EQUAL:
                         {
-                            emit_op(emitter, expression->line, OP_GREATER_EQUAL);
+                            emit_op(emitter, expr->line, OP_GREATER_EQUAL);
                         }
                         break;
                     case LITTOK_LESS:
                         {
-                            emit_op(emitter, expression->line, OP_LESS);
+                            emit_op(emitter, expr->line, OP_LESS);
                         }
                         break;
                     case LITTOK_LESS_EQUAL:
                         {
-                            emit_op(emitter, expression->line, OP_LESS_EQUAL);
+                            emit_op(emitter, expr->line, OP_LESS_EQUAL);
                         }
                         break;
                     case LITTOK_LESS_LESS:
                         {
-                            emit_op(emitter, expression->line, OP_LSHIFT);
+                            emit_op(emitter, expr->line, OP_LSHIFT);
                         }
                         break;
                     case LITTOK_GREATER_GREATER:
                         {
-                            emit_op(emitter, expression->line, OP_RSHIFT);
+                            emit_op(emitter, expr->line, OP_RSHIFT);
                         }
                         break;
                     case LITTOK_BAR:
                         {
-                            emit_op(emitter, expression->line, OP_BOR);
+                            emit_op(emitter, expr->line, OP_BOR);
                         }
                         break;
                     case LITTOK_AMPERSAND:
                         {
-                            emit_op(emitter, expression->line, OP_BAND);
+                            emit_op(emitter, expr->line, OP_BAND);
                         }
                         break;
                     case LITTOK_CARET:
                         {
-                            emit_op(emitter, expression->line, OP_BXOR);
+                            emit_op(emitter, expr->line, OP_BXOR);
                         }
                         break;
                     default:
@@ -775,23 +775,23 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_UNARY:
             {
-                LitUnaryExpr* expr = (LitUnaryExpr*)expression;
-                emit_expression(emitter, expr->right);
-                switch(expr->op)
+                LitUnaryExpr* unexpr = (LitUnaryExpr*)expr;
+                emit_expression(emitter, unexpr->right);
+                switch(unexpr->op)
                 {
                     case LITTOK_MINUS:
                         {
-                            emit_op(emitter, expression->line, OP_NEGATE);
+                            emit_op(emitter, expr->line, OP_NEGATE);
                         }
                         break;
                     case LITTOK_BANG:
                         {
-                            emit_op(emitter, expression->line, OP_NOT);
+                            emit_op(emitter, expr->line, OP_NOT);
                         }
                         break;
                     case LITTOK_TILDE:
                         {
-                            emit_op(emitter, expression->line, OP_BNOT);
+                            emit_op(emitter, expr->line, OP_BNOT);
                         }
                         break;
                     default:
@@ -806,91 +806,91 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_VAR:
             {
-                LitVarExpr* expr = (LitVarExpr*)expression;
+                LitVarExpr* varexpr = (LitVarExpr*)expr;
                 bool ref = emitter->emit_reference > 0;
                 if(ref)
                 {
                     emitter->emit_reference--;
                 }
-                int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+                int index = resolve_local(emitter, emitter->compiler, varexpr->name, varexpr->length, expr->line);
                 if(index == -1)
                 {
-                    index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+                    index = resolve_upvalue(emitter, emitter->compiler, varexpr->name, varexpr->length, expr->line);
                     if(index == -1)
                     {
-                        index = resolve_private(emitter, expr->name, expr->length, expression->line);
+                        index = resolve_private(emitter, varexpr->name, varexpr->length, expr->line);
                         if(index == -1)
                         {
-                            emit_op(emitter, expression->line, ref ? OP_REFERENCE_GLOBAL : OP_GET_GLOBAL);
-                            emit_short(emitter, expression->line,
-                                       add_constant(emitter, expression->line,
-                                                    OBJECT_VALUE(lit_string_copy(emitter->state, expr->name, expr->length))));
+                            emit_op(emitter, expr->line, ref ? OP_REFERENCE_GLOBAL : OP_GET_GLOBAL);
+                            emit_short(emitter, expr->line,
+                                       add_constant(emitter, expr->line,
+                                                    OBJECT_VALUE(lit_string_copy(emitter->state, varexpr->name, varexpr->length))));
                         }
                         else
                         {
                             if(ref)
                             {
-                                emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
-                                emit_short(emitter, expression->line, index);
+                                emit_op(emitter, expr->line, OP_REFERENCE_PRIVATE);
+                                emit_short(emitter, expr->line, index);
                             }
                             else
                             {
-                                emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+                                emit_byte_or_short(emitter, expr->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
                             }
                         }
                     }
                     else
                     {
-                        emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t)index);
+                        emit_arged_op(emitter, expr->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t)index);
                     }
                 }
                 else
                 {
                     if(ref)
                     {
-                        emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
-                        emit_short(emitter, expression->line, index);
+                        emit_op(emitter, expr->line, OP_REFERENCE_LOCAL);
+                        emit_short(emitter, expr->line, index);
                     }
                     else
                     {
-                        emit_byte_or_short(emitter, expression->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
+                        emit_byte_or_short(emitter, expr->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
                     }
                 }
             }
             break;
         case LITEXPR_ASSIGN:
             {
-                LitAssignExpression* expr = (LitAssignExpression*)expression;
-                if(expr->to->type == LITEXPR_VAR)
+                LitAssignExpression* assignexpr = (LitAssignExpression*)expr;
+                if(assignexpr->to->type == LITEXPR_VAR)
                 {
-                    emit_expression(emitter, expr->value);
-                    LitVarExpr* e = (LitVarExpr*)expr->to;
-                    int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+                    emit_expression(emitter, assignexpr->value);
+                    LitVarExpr* e = (LitVarExpr*)assignexpr->to;
+                    int index = resolve_local(emitter, emitter->compiler, e->name, e->length, assignexpr->to->line);
                     if(index == -1)
                     {
-                        index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+                        index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, assignexpr->to->line);
                         if(index == -1)
                         {
-                            index = resolve_private(emitter, e->name, e->length, expr->to->line);
+                            index = resolve_private(emitter, e->name, e->length, assignexpr->to->line);
                             if(index == -1)
                             {
-                                emit_op(emitter, expression->line, OP_SET_GLOBAL);
-                                emit_short(emitter, expression->line,
-                                           add_constant(emitter, expression->line,
+                                emit_op(emitter, expr->line, OP_SET_GLOBAL);
+                                emit_short(emitter, expr->line,
+                                           add_constant(emitter, expr->line,
                                                         OBJECT_VALUE(lit_string_copy(emitter->state, e->name, e->length))));
                             }
                             else
                             {
                                 if(emitter->privates.values[index].constant)
                                 {
-                                    error(emitter, expression->line, LITERROR_CONSTANT_MODIFIED, e->length, e->name);
+                                    error(emitter, expr->line, LITERROR_CONSTANT_MODIFIED, e->length, e->name);
                                 }
-                                emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+                                emit_byte_or_short(emitter, expr->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
                             }
                         }
                         else
                         {
-                            emit_arged_op(emitter, expression->line, OP_SET_UPVALUE, (uint8_t)index);
+                            emit_arged_op(emitter, expr->line, OP_SET_UPVALUE, (uint8_t)index);
                         }
                         break;
                     }
@@ -898,62 +898,62 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                     {
                         if(emitter->compiler->locals.values[index].constant)
                         {
-                            error(emitter, expression->line, LITERROR_CONSTANT_MODIFIED, e->length, e->name);
+                            error(emitter, expr->line, LITERROR_CONSTANT_MODIFIED, e->length, e->name);
                         }
 
-                        emit_byte_or_short(emitter, expression->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+                        emit_byte_or_short(emitter, expr->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
                     }
                 }
-                else if(expr->to->type == LITEXPR_GET)
+                else if(assignexpr->to->type == LITEXPR_GET)
                 {
-                    emit_expression(emitter, expr->value);
-                    LitGetExpression* e = (LitGetExpression*)expr->to;
+                    emit_expression(emitter, assignexpr->value);
+                    LitGetExpression* e = (LitGetExpression*)assignexpr->to;
                     emit_expression(emitter, e->where);
-                    emit_expression(emitter, expr->value);
+                    emit_expression(emitter, assignexpr->value);
                     emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_string_copy(emitter->state, e->name, e->length)));
                     emit_ops(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
                 }
-                else if(expr->to->type == LITEXPR_SUBSCRIPT)
+                else if(assignexpr->to->type == LITEXPR_SUBSCRIPT)
                 {
-                    LitSubscriptExpression* e = (LitSubscriptExpression*)expr->to;
+                    LitSubscriptExpression* e = (LitSubscriptExpression*)assignexpr->to;
                     emit_expression(emitter, e->array);
                     emit_expression(emitter, e->index);
-                    emit_expression(emitter, expr->value);
+                    emit_expression(emitter, assignexpr->value);
                     emit_op(emitter, emitter->last_line, OP_SUBSCRIPT_SET);
                 }
-                else if(expr->to->type == LITEXPR_REFERENCE)
+                else if(assignexpr->to->type == LITEXPR_REFERENCE)
                 {
-                    emit_expression(emitter, expr->value);
-                    emit_expression(emitter, ((LitReferenceExpression*)expr->to)->to);
-                    emit_op(emitter, expression->line, OP_SET_REFERENCE);
+                    emit_expression(emitter, assignexpr->value);
+                    emit_expression(emitter, ((LitReferenceExpression*)assignexpr->to)->to);
+                    emit_op(emitter, expr->line, OP_SET_REFERENCE);
                 }
                 else
                 {
-                    error(emitter, expression->line, LITERROR_INVALID_ASSIGMENT_TARGET);
+                    error(emitter, expr->line, LITERROR_INVALID_ASSIGMENT_TARGET);
                 }
             }
             break;
         case LITEXPR_CALL:
             {
-                LitCallExpression* expr = (LitCallExpression*)expression;
-                bool method = expr->callee->type == LITEXPR_GET;
-                bool super = expr->callee->type == LITEXPR_SUPER;
+                LitCallExpression* callexpr = (LitCallExpression*)expr;
+                bool method = callexpr->callee->type == LITEXPR_GET;
+                bool super = callexpr->callee->type == LITEXPR_SUPER;
                 if(method)
                 {
-                    ((LitGetExpression*)expr->callee)->ignore_emit = true;
+                    ((LitGetExpression*)callexpr->callee)->ignore_emit = true;
                 }
                 else if(super)
                 {
-                    ((LitSuperExpression*)expr->callee)->ignore_emit = true;
+                    ((LitSuperExpression*)callexpr->callee)->ignore_emit = true;
                 }
-                emit_expression(emitter, expr->callee);
+                emit_expression(emitter, callexpr->callee);
                 if(super)
                 {
-                    emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+                    emit_arged_op(emitter, expr->line, OP_GET_LOCAL, 0);
                 }
-                for(size_t i = 0; i < expr->args.count; i++)
+                for(size_t i = 0; i < callexpr->args.count; i++)
                 {
-                    LitExpression* e = expr->args.values[i];
+                    LitExpression* e = callexpr->args.values[i];
                     if(e->type == LITEXPR_VAR)
                     {
                         LitVarExpr* ee = (LitVarExpr*)e;
@@ -961,7 +961,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                         if(ee->length == 3 && memcmp(ee->name, "...", 3) == 0)
                         {
                             emit_arged_op(emitter, e->line, OP_VARARG,
-                                          resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
+                                          resolve_local(emitter, emitter->compiler, "...", 3, expr->line));
                             break;
                         }
                     }
@@ -971,33 +971,33 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                 {
                     if(method)
                     {
-                        LitGetExpression* e = (LitGetExpression*)expr->callee;
+                        LitGetExpression* e = (LitGetExpression*)callexpr->callee;
 
-                        emit_varying_op(emitter, expression->line,
-                                        ((LitGetExpression*)expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE,
-                                        (uint8_t)expr->args.count);
+                        emit_varying_op(emitter, expr->line,
+                                        ((LitGetExpression*)callexpr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE,
+                                        (uint8_t)callexpr->args.count);
                         emit_short(emitter, emitter->last_line,
                                    add_constant(emitter, emitter->last_line,
                                                 OBJECT_VALUE(lit_string_copy(emitter->state, e->name, e->length))));
                     }
                     else
                     {
-                        LitSuperExpression* e = (LitSuperExpression*)expr->callee;
+                        LitSuperExpression* e = (LitSuperExpression*)callexpr->callee;
                         uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
-                        emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
+                        emit_arged_op(emitter, expr->line, OP_GET_UPVALUE, index);
                         emit_varying_op(emitter, emitter->last_line,
-                                        ((LitSuperExpression*)expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER,
-                                        (uint8_t)expr->args.count);
+                                        ((LitSuperExpression*)callexpr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER,
+                                        (uint8_t)callexpr->args.count);
                         emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
                     }
                 }
                 else
                 {
-                    emit_varying_op(emitter, expression->line, OP_CALL, (uint8_t)expr->args.count);
+                    emit_varying_op(emitter, expr->line, OP_CALL, (uint8_t)callexpr->args.count);
                 }
                 if(method)
                 {
-                    LitExpression* get = expr->callee;
+                    LitExpression* get = callexpr->callee;
                     while(get != NULL)
                     {
                         if(get->type == LITEXPR_GET)
@@ -1019,11 +1019,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                         }
                     }
                 }
-                if(expr->init == NULL)
+                if(callexpr->init == NULL)
                 {
                     return;
                 }
-                LitObjectExpression* init = (LitObjectExpression*)expr->init;
+                LitObjectExpression* init = (LitObjectExpression*)callexpr->init;
                 for(size_t i = 0; i < init->values.count; i++)
                 {
                     LitExpression* e = init->values.values[i];
@@ -1036,58 +1036,58 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_GET:
             {
-                LitGetExpression* expr = (LitGetExpression*)expression;
+                LitGetExpression* getexpr = (LitGetExpression*)expr;
                 bool ref = emitter->emit_reference > 0;
                 if(ref)
                 {
                     emitter->emit_reference--;
                 }
-                emit_expression(emitter, expr->where);
-                if(expr->jump == 0)
+                emit_expression(emitter, getexpr->where);
+                if(getexpr->jump == 0)
                 {
-                    expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
-                    if(!expr->ignore_emit)
+                    getexpr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+                    if(!getexpr->ignore_emit)
                     {
                         emit_constant(emitter, emitter->last_line,
-                                      OBJECT_VALUE(lit_string_copy(emitter->state, expr->name, expr->length)));
+                                      OBJECT_VALUE(lit_string_copy(emitter->state, getexpr->name, getexpr->length)));
                         emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
                     }
-                    patch_jump(emitter, expr->jump, emitter->last_line);
+                    patch_jump(emitter, getexpr->jump, emitter->last_line);
                 }
-                else if(!expr->ignore_emit)
+                else if(!getexpr->ignore_emit)
                 {
-                    emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_string_copy(emitter->state, expr->name, expr->length)));
+                    emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_string_copy(emitter->state, getexpr->name, getexpr->length)));
                     emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
                 }
             }
             break;
         case LITEXPR_SET:
             {
-                LitSetExpression* expr = (LitSetExpression*)expression;
-                emit_expression(emitter, expr->where);
-                emit_expression(emitter, expr->value);
-                emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_string_copy(emitter->state, expr->name, expr->length)));
+                LitSetExpression* setexpr = (LitSetExpression*)expr;
+                emit_expression(emitter, setexpr->where);
+                emit_expression(emitter, setexpr->value);
+                emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_string_copy(emitter->state, setexpr->name, setexpr->length)));
                 emit_op(emitter, emitter->last_line, OP_SET_FIELD);
             }
             break;
         case LITEXPR_LAMBDA:
             {
-                LitLambdaExpression* expr = (LitLambdaExpression*)expression;
+                LitLambdaExpression* lambdaexpr = (LitLambdaExpression*)expr;
                 LitString* name = lit_as_string(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module->name),
-                                                              lit_string_number_to_string(emitter->state, expression->line)));
+                                                              lit_string_number_to_string(emitter->state, expr->line)));
                 LitCompiler compiler;
                 init_compiler(emitter, &compiler, LITFUNC_REGULAR);
                 begin_scope(emitter);
-                bool vararg = emit_parameters(emitter, &expr->parameters, expression->line);
-                if(expr->body != NULL)
+                bool vararg = emit_parameters(emitter, &lambdaexpr->parameters, expr->line);
+                if(lambdaexpr->body != NULL)
                 {
-                    bool single_expression = expr->body->type == LITSTMT_EXPRESSION;
+                    bool single_expression = lambdaexpr->body->type == LITSTMT_EXPRESSION;
                     if(single_expression)
                     {
                         compiler.skip_return = true;
-                        ((LitExpressionStatement*)expr->body)->pop = false;
+                        ((LitExpressionStatement*)lambdaexpr->body)->pop = false;
                     }
-                    emit_statement(emitter, expr->body);
+                    emit_statement(emitter, lambdaexpr->body);
                     if(single_expression)
                     {
                         emit_op(emitter, emitter->last_line, OP_RETURN);
@@ -1095,7 +1095,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                 }
                 end_scope(emitter, emitter->last_line);
                 LitFunction* function = end_compiler(emitter, name);
-                function->arg_count = expr->parameters.count;
+                function->arg_count = lambdaexpr->parameters.count;
                 function->max_slots += function->arg_count;
                 function->vararg = vararg;
                 if(function->upvalue_count > 0)
@@ -1115,33 +1115,33 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_ARRAY:
             {
-                LitArrayExpression* expr = (LitArrayExpression*)expression;
-                emit_op(emitter, expression->line, OP_ARRAY);
-                for(size_t i = 0; i < expr->values.count; i++)
+                LitArrayExpression* arrexpr = (LitArrayExpression*)expr;
+                emit_op(emitter, expr->line, OP_ARRAY);
+                for(size_t i = 0; i < arrexpr->values.count; i++)
                 {
-                    emit_expression(emitter, expr->values.values[i]);
+                    emit_expression(emitter, arrexpr->values.values[i]);
                     emit_op(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
                 }
             }
             break;
         case LITEXPR_OBJECT:
             {
-                LitObjectExpression* expr = (LitObjectExpression*)expression;
-                emit_op(emitter, expression->line, OP_OBJECT);
-                for(size_t i = 0; i < expr->values.count; i++)
+                LitObjectExpression* objexpr = (LitObjectExpression*)expr;
+                emit_op(emitter, expr->line, OP_OBJECT);
+                for(size_t i = 0; i < objexpr->values.count; i++)
                 {
-                    emit_constant(emitter, emitter->last_line, expr->keys.values[i]);
-                    emit_expression(emitter, expr->values.values[i]);
+                    emit_constant(emitter, emitter->last_line, objexpr->keys.values[i]);
+                    emit_expression(emitter, objexpr->values.values[i]);
                     emit_op(emitter, emitter->last_line, OP_PUSH_OBJECT_FIELD);
                 }
             }
             break;
         case LITEXPR_SUBSCRIPT:
             {
-                LitSubscriptExpression* expr = (LitSubscriptExpression*)expression;
-                emit_expression(emitter, expr->array);
-                emit_expression(emitter, expr->index);
-                emit_op(emitter, expression->line, OP_SUBSCRIPT_GET);
+                LitSubscriptExpression* subscrexpr = (LitSubscriptExpression*)expr;
+                emit_expression(emitter, subscrexpr->array);
+                emit_expression(emitter, subscrexpr->index);
+                emit_op(emitter, expr->line, OP_SUBSCRIPT_GET);
             }
             break;
         case LITEXPR_THIS:
@@ -1149,23 +1149,23 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
                 LitFunctionType type = emitter->compiler->type;
                 if(type == LITFUNC_STATIC_METHOD)
                 {
-                    error(emitter, expression->line, LITERROR_THIS_MISSUSE, "in static methods");
+                    error(emitter, expr->line, LITERROR_THIS_MISSUSE, "in static methods");
                 }
                 if(type == LITFUNC_CONSTRUCTOR || type == LITFUNC_METHOD)
                 {
-                    emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+                    emit_arged_op(emitter, expr->line, OP_GET_LOCAL, 0);
                 }
                 else
                 {
                     if(emitter->compiler->enclosing == NULL)
                     {
-                        error(emitter, expression->line, LITERROR_THIS_MISSUSE, "in functions outside of any class");
+                        error(emitter, expr->line, LITERROR_THIS_MISSUSE, "in functions outside of any class");
                     }
                     else
                     {
-                        int local = resolve_local(emitter, (LitCompiler*)emitter->compiler->enclosing, "this", 4, expression->line);
-                        emit_arged_op(emitter, expression->line, OP_GET_UPVALUE,
-                                      add_upvalue(emitter, emitter->compiler, local, expression->line, true));
+                        int local = resolve_local(emitter, (LitCompiler*)emitter->compiler->enclosing, "this", 4, expr->line);
+                        emit_arged_op(emitter, expr->line, OP_GET_UPVALUE,
+                                      add_upvalue(emitter, emitter->compiler, local, expr->line, true));
                     }
                 }
             }
@@ -1174,51 +1174,51 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             {
                 if(emitter->compiler->type == LITFUNC_STATIC_METHOD)
                 {
-                    error(emitter, expression->line, LITERROR_SUPER_MISSUSE, "in static methods");
+                    error(emitter, expr->line, LITERROR_SUPER_MISSUSE, "in static methods");
                 }
                 else if(!emitter->class_has_super)
                 {
-                    error(emitter, expression->line, LITERROR_NO_SUPER, emitter->class_name->chars);
+                    error(emitter, expr->line, LITERROR_NO_SUPER, emitter->class_name->chars);
                 }
-                LitSuperExpression* expr = (LitSuperExpression*)expression;
-                if(!expr->ignore_emit)
+                LitSuperExpression* superexpr = (LitSuperExpression*)expr;
+                if(!superexpr->ignore_emit)
                 {
                     uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
-                    emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
-                    emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
-                    emit_op(emitter, expression->line, OP_GET_SUPER_METHOD);
-                    emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
+                    emit_arged_op(emitter, expr->line, OP_GET_LOCAL, 0);
+                    emit_arged_op(emitter, expr->line, OP_GET_UPVALUE, index);
+                    emit_op(emitter, expr->line, OP_GET_SUPER_METHOD);
+                    emit_short(emitter, expr->line, add_constant(emitter, expr->line, OBJECT_VALUE(superexpr->method)));
                 }
             }
             break;
         case LITEXPR_RANGE:
             {
-                LitRangeExpression* expr = (LitRangeExpression*)expression;
-                emit_expression(emitter, expr->to);
-                emit_expression(emitter, expr->from);
-                emit_op(emitter, expression->line, OP_RANGE);
+                LitRangeExpression* rangeexpr = (LitRangeExpression*)expr;
+                emit_expression(emitter, rangeexpr->to);
+                emit_expression(emitter, rangeexpr->from);
+                emit_op(emitter, expr->line, OP_RANGE);
             }
             break;
         case LITEXPR_IF:
             {
-                LitIfExpression* expr = (LitIfExpression*)expression;
-                emit_expression(emitter, expr->condition);
-                uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expression->line);
-                emit_expression(emitter, expr->if_branch);
+                LitIfExpression* ifexpr = (LitIfExpression*)expr;
+                emit_expression(emitter, ifexpr->condition);
+                uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expr->line);
+                emit_expression(emitter, ifexpr->if_branch);
                 uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
-                patch_jump(emitter, else_jump, expr->else_branch->line);
-                emit_expression(emitter, expr->else_branch);
+                patch_jump(emitter, else_jump, ifexpr->else_branch->line);
+                emit_expression(emitter, ifexpr->else_branch);
 
                 patch_jump(emitter, end_jump, emitter->last_line);
             }
             break;
         case LITEXPR_INTERPOLATION:
             {
-                LitInterpolationExpression* expr = (LitInterpolationExpression*)expression;
-                emit_op(emitter, expression->line, OP_ARRAY);
-                for(size_t i = 0; i < expr->expressions.count; i++)
+                LitInterpolationExpression* ifexpr = (LitInterpolationExpression*)expr;
+                emit_op(emitter, expr->line, OP_ARRAY);
+                for(size_t i = 0; i < ifexpr->expressions.count; i++)
                 {
-                    emit_expression(emitter, expr->expressions.values[i]);
+                    emit_expression(emitter, ifexpr->expressions.values[i]);
                     emit_op(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
                 }
                 emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 0);
@@ -1228,10 +1228,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         case LITEXPR_REFERENCE:
             {
-                LitExpression* to = ((LitReferenceExpression*)expression)->to;
+                LitExpression* to = ((LitReferenceExpression*)expr)->to;
                 if(to->type != LITEXPR_VAR && to->type != LITEXPR_GET && to->type != LITEXPR_THIS && to->type != LITEXPR_SUPER)
                 {
-                    error(emitter, expression->line, LITERROR_INVALID_REFERENCE_TARGET);
+                    error(emitter, expr->line, LITERROR_INVALID_REFERENCE_TARGET);
                     break;
                 }
                 int old = emitter->emit_reference;
@@ -1242,20 +1242,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression)
             break;
         default:
             {
-                error(emitter, expression->line, LITERROR_UNKNOWN_EXPRESSION, (int)expression->type);
+                error(emitter, expr->line, LITERROR_UNKNOWN_EXPRESSION, (int)expr->type);
             }
             break;
     }
 }
 
-static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
+static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
 {
-
     LitClassStatement* clstmt;
     LitCompiler compiler;
     LitExpression* expression;
     LitExpression* e;
-    LitExpressionStatement* expr;
+    LitExpressionStatement* stmtexpr;
     LitField* field;
     LitFieldStatement* fieldstmt;
     LitFunction* function;
@@ -1265,8 +1264,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
     LitLocal* local;
     LitLocals* locals;
     LitMethodStatement* mthstmt;
-    LitStatement* blockstmt;
-    LitStatement* s;
+    LitExpression* blockstmt;
+    LitExpression* s;
     LitStmtList* statements;
     LitString* name;
     LitVarStatement* var;
@@ -1304,9 +1303,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
     {
         case LITSTMT_EXPRESSION:
             {
-                expr = (LitExpressionStatement*)statement;
-                emit_expression(emitter, expr->expression);
-                if(expr->pop)
+                stmtexpr = (LitExpressionStatement*)statement;
+                emit_expression(emitter, stmtexpr->expression);
+                if(stmtexpr->pop)
                 {
                     emit_op(emitter, statement->line, OP_POP);
                 }
@@ -1561,7 +1560,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
             {
                 error(emitter, statement->line, LITERROR_LOOP_JUMP_MISSUSE, "continue");
             }
-            lit_uints_write(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, statement->line));
+            lit_uintlist_push(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, statement->line));
             break;
         }
 
@@ -1589,7 +1588,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement)
                     }
                 }
                 emit_short(emitter, statement->line, local_count);
-                lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
+                lit_uintlist_push(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
             }
             break;
         case LITSTMT_FUNCTION:
@@ -1809,7 +1808,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     LitModule* module;
     LitPrivates* privates;
     LitCompiler compiler;
-    LitStatement* stmt;
+    LitExpression* exstmt;
     emitter->last_line = 1;
     emitter->emit_reference = 0;
     state = emitter->state;
@@ -1840,8 +1839,8 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     resolve_statements(emitter, statements);
     for(i = 0; i < statements->count; i++)
     {
-        stmt = statements->values[i];
-        if(emit_statement(emitter, stmt))
+        exstmt = statements->values[i];
+        if(emit_statement(emitter, exstmt))
         {
             break;
         }

@@ -20,7 +20,7 @@ static bool did_setup_rules;
 static void setup_rules();
 static void sync(LitParser* parser);
 
-static LitStatement *parse_block(LitParser *parser);
+static LitExpression *parse_block(LitParser *parser);
 static LitExpression *parse_precedence(LitParser *parser, LitPrecedence precedence, bool err, bool ignsemi);
 static LitExpression *parse_number(LitParser *parser, bool can_assign);
 static LitExpression *parse_lambda(LitParser *parser, LitLambdaExpression *lambda);
@@ -50,17 +50,17 @@ static LitExpression *parse_super(LitParser *parser, bool can_assign);
 static LitExpression *parse_reference(LitParser *parser, bool can_assign);
 static LitExpression *parse_expression(LitParser *parser, bool ignsemi);
 static LitExpression *parse_nothing(LitParser *parser, bool canassign);
-static LitStatement *parse_var_declaration(LitParser *parser, bool ignsemi);
-static LitStatement *parse_if(LitParser *parser);
-static LitStatement *parse_for(LitParser *parser);
-static LitStatement *parse_while(LitParser *parser);
-static LitStatement *parse_function(LitParser *parser);
-static LitStatement *parse_return(LitParser *parser);
-static LitStatement *parse_field(LitParser *parser, LitString *name, bool is_static);
-static LitStatement *parse_method(LitParser *parser, bool is_static);
-static LitStatement *parse_class(LitParser *parser);
-static LitStatement *parse_statement(LitParser *parser);
-static LitStatement *parse_declaration(LitParser *parser);
+static LitExpression *parse_var_declaration(LitParser *parser, bool ignsemi);
+static LitExpression *parse_if(LitParser *parser);
+static LitExpression *parse_for(LitParser *parser);
+static LitExpression *parse_while(LitParser *parser);
+static LitExpression *parse_function(LitParser *parser);
+static LitExpression *parse_return(LitParser *parser);
+static LitExpression *parse_field(LitParser *parser, LitString *name, bool is_static);
+static LitExpression *parse_method(LitParser *parser, bool is_static);
+static LitExpression *parse_class(LitParser *parser);
+static LitExpression *parse_statement(LitParser *parser);
+static LitExpression *parse_declaration(LitParser *parser);
 
 const char* token_name(int t)
 {
@@ -366,6 +366,15 @@ struct LitParser
 */
 static void ignore_new_lines(LitParser* parser, bool checksemi)
 {
+    /*
+    * verbosely do the wrong thing.
+    *
+    * this would have checked if $next is a semicolon *followed by* a new line;
+    * if so, shift the tokens forward.
+    * if not, and since we need to read the next token(s) to figure out whether or not
+    * the next may be ignored...
+    * actually, just ignore it. i'm keeping it as a bit of memorabilia.
+    */
     #if 0
         LitToken nowtok;
         LitToken currtok;
@@ -432,7 +441,7 @@ static void consume(LitParser* parser, LitTokenType type, const char* error)
     string_error(parser, &parser->current,fmt);
 }
 
-static LitStatement* parse_block(LitParser* parser)
+static LitExpression* parse_block(LitParser* parser)
 {
     LitBlockStatement* statement;
     prs_begin_scope(parser);
@@ -452,7 +461,7 @@ static LitStatement* parse_block(LitParser* parser)
     consume(parser, LITTOK_RIGHT_BRACE, "'}'");
     ignore_new_lines(parser, true);
     prs_end_scope(parser);
-    return (LitStatement*)statement;
+    return (LitExpression*)statement;
 }
 
 static LitExpression* parse_precedence(LitParser* parser, LitPrecedence precedence, bool err, bool ignsemi)
@@ -1172,7 +1181,7 @@ static LitExpression* parse_expression(LitParser* parser, bool ignsemi)
     return parse_precedence(parser, LITPREC_ASSIGNMENT, true, ignsemi);
 }
 
-static LitStatement* parse_var_declaration(LitParser* parser, bool ignsemi)
+static LitExpression* parse_var_declaration(LitParser* parser, bool ignsemi)
 {
     bool constant;
     size_t line;
@@ -1189,19 +1198,19 @@ static LitStatement* parse_var_declaration(LitParser* parser, bool ignsemi)
     {
         init = parse_expression(parser, ignsemi);
     }
-    return (LitStatement*)lit_create_var_statement(parser->state, line, name, length, init, constant);
+    return (LitExpression*)lit_create_var_statement(parser->state, line, name, length, init, constant);
 }
 
-static LitStatement* parse_if(LitParser* parser)
+static LitExpression* parse_if(LitParser* parser)
 {
     size_t line;
     bool invert;
     bool had_paren;
     LitExpression* condition;
-    LitStatement* if_branch;
+    LitExpression* if_branch;
     LitExprList* elseif_conditions;
     LitStmtList* elseif_branches;
-    LitStatement* else_branch;
+    LitExpression* else_branch;
     LitExpression* e;
     line = parser->previous.line;
     invert = prs_match(parser, LITTOK_BANG);
@@ -1257,10 +1266,10 @@ static LitStatement* parse_if(LitParser* parser)
         ignore_new_lines(parser, true);
         else_branch = parse_statement(parser);
     }
-    return (LitStatement*)lit_create_if_statement(parser->state, line, condition, if_branch, else_branch, elseif_conditions, elseif_branches);
+    return (LitExpression*)lit_create_if_statement(parser->state, line, condition, if_branch, else_branch, elseif_conditions, elseif_branches);
 }
 
-static LitStatement* parse_for(LitParser* parser)
+static LitExpression* parse_for(LitParser* parser)
 {
 
     bool c_style;
@@ -1268,7 +1277,7 @@ static LitStatement* parse_for(LitParser* parser)
     size_t line;
     LitExpression* condition;
     LitExpression* increment;
-    LitStatement* var;
+    LitExpression* var;
     LitExpression* init;
     line= parser->previous.line;
     had_paren = prs_match(parser, LITTOK_LEFT_PAREN);
@@ -1308,15 +1317,15 @@ static LitStatement* parse_for(LitParser* parser)
         consume(parser, LITTOK_RIGHT_PAREN, "')'");
     }
     ignore_new_lines(parser, true);
-    return (LitStatement*)lit_create_for_statement(parser->state, line, init, var, condition, increment,
+    return (LitExpression*)lit_create_for_statement(parser->state, line, init, var, condition, increment,
                                                    parse_statement(parser), c_style);
 }
 
-static LitStatement* parse_while(LitParser* parser)
+static LitExpression* parse_while(LitParser* parser)
 {
     bool had_paren;
     size_t line;
-    LitStatement* body;
+    LitExpression* body;
     line = parser->previous.line;
     had_paren = prs_match(parser, LITTOK_LEFT_PAREN);
     LitExpression* condition = parse_expression(parser, true);
@@ -1326,10 +1335,10 @@ static LitStatement* parse_while(LitParser* parser)
     }
     ignore_new_lines(parser, true);
     body = parse_statement(parser);
-    return (LitStatement*)lit_create_while_statement(parser->state, line, condition, body);
+    return (LitExpression*)lit_create_while_statement(parser->state, line, condition, body);
 }
 
-static LitStatement* parse_function(LitParser* parser)
+static LitExpression* parse_function(LitParser* parser)
 {
     size_t line;
     size_t function_length;
@@ -1368,7 +1377,7 @@ static LitStatement* parse_function(LitParser* parser)
         lambda->body = parse_statement(parser);
         prs_end_scope(parser);
         prs_end_compiler(parser, &compiler);
-        return (LitStatement*)lit_create_expression_statement(parser->state, line, (LitExpression*)to);
+        return (LitExpression*)lit_create_expression_statement(parser->state, line, (LitExpression*)to);
     }
     function = lit_create_function_statement(parser->state, line, function_name, function_length);
     function->exported = isexport;
@@ -1384,10 +1393,10 @@ static LitStatement* parse_function(LitParser* parser)
     function->body = parse_statement(parser);
     prs_end_scope(parser);
     prs_end_compiler(parser, &compiler);
-    return (LitStatement*)function;
+    return (LitExpression*)function;
 }
 
-static LitStatement* parse_return(LitParser* parser)
+static LitExpression* parse_return(LitParser* parser)
 {
     size_t line;
     LitExpression* expression;
@@ -1397,14 +1406,14 @@ static LitStatement* parse_return(LitParser* parser)
     {
         expression = parse_expression(parser, true);
     }
-    return (LitStatement*)lit_create_return_statement(parser->state, line, expression);
+    return (LitExpression*)lit_create_return_statement(parser->state, line, expression);
 }
 
-static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_static)
+static LitExpression* parse_field(LitParser* parser, LitString* name, bool is_static)
 {
     size_t line;
-    LitStatement* getter;
-    LitStatement* setter;
+    LitExpression* getter;
+    LitExpression* setter;
     line = parser->previous.line;
     getter = NULL;
     setter = NULL;
@@ -1434,10 +1443,10 @@ static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_sta
         ignore_new_lines(parser, true);
         consume(parser, LITTOK_RIGHT_BRACE, "'}' after field declaration");
     }
-    return (LitStatement*)lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
+    return (LitExpression*)lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
 }
 
-static LitStatement* parse_method(LitParser* parser, bool is_static)
+static LitExpression* parse_method(LitParser* parser, bool is_static)
 {
     size_t i;
     LitCompiler compiler;
@@ -1495,10 +1504,10 @@ static LitStatement* parse_method(LitParser* parser, bool is_static)
     method->body = parse_statement(parser);
     prs_end_scope(parser);
     prs_end_compiler(parser, &compiler);
-    return (LitStatement*)method;
+    return (LitExpression*)method;
 }
 
-static LitStatement* parse_class(LitParser* parser)
+static LitExpression* parse_class(LitParser* parser)
 {
     bool finished_parsing_fields;
     bool field_is_static;
@@ -1507,8 +1516,8 @@ static LitStatement* parse_class(LitParser* parser)
     LitString* name;
     LitString* super;
     LitClassStatement* klass;
-    LitStatement* var;
-    LitStatement* method;
+    LitExpression* var;
+    LitExpression* method;
     if(setjmp(prs_jmpbuffer))
     {
         return NULL;
@@ -1569,7 +1578,7 @@ static LitStatement* parse_class(LitParser* parser)
         ignore_new_lines(parser, true);
     }
     consume(parser, LITTOK_RIGHT_BRACE, "'}' after class body");
-    return (LitStatement*)klass;
+    return (LitExpression*)klass;
 }
 
 static void sync(LitParser* parser)
@@ -1606,7 +1615,7 @@ static void sync(LitParser* parser)
     }
 }
 
-static LitStatement* parse_statement(LitParser* parser)
+static LitExpression* parse_statement(LitParser* parser)
 {
     LitExpression* expression;
     ignore_new_lines(parser, true);
@@ -1632,11 +1641,11 @@ static LitStatement* parse_statement(LitParser* parser)
     }
     else if(prs_match(parser, LITTOK_CONTINUE))
     {
-        return (LitStatement*)lit_create_continue_statement(parser->state, parser->previous.line);
+        return (LitExpression*)lit_create_continue_statement(parser->state, parser->previous.line);
     }
     else if(prs_match(parser, LITTOK_BREAK))
     {
-        return (LitStatement*)lit_create_break_statement(parser->state, parser->previous.line);
+        return (LitExpression*)lit_create_break_statement(parser->state, parser->previous.line);
     }
     else if(prs_match(parser, LITTOK_FUNCTION) || prs_match(parser, LITTOK_EXPORT))
     {
@@ -1651,12 +1660,12 @@ static LitStatement* parse_statement(LitParser* parser)
         return parse_block(parser);
     }
     expression = parse_expression(parser, true);
-    return expression == NULL ? NULL : (LitStatement*)lit_create_expression_statement(parser->state, parser->previous.line, expression);
+    return expression == NULL ? NULL : (LitExpression*)lit_create_expression_statement(parser->state, parser->previous.line, expression);
 }
 
-static LitStatement* parse_declaration(LitParser* parser)
+static LitExpression* parse_declaration(LitParser* parser)
 {
-    LitStatement* statement;
+    LitExpression* statement;
     statement = NULL;
     if(prs_match(parser, LITTOK_CLASS) || prs_match(parser, LITTOK_STATIC))
     {
@@ -1672,7 +1681,7 @@ static LitStatement* parse_declaration(LitParser* parser)
 bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStmtList* statements)
 {
     LitCompiler compiler;
-    LitStatement* statement;
+    LitExpression* statement;
     parser->had_error = false;
     parser->panic_mode = false;
     lit_init_scanner(parser->state, parser->state->scanner, file_name, source);
