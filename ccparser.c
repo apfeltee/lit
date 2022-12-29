@@ -454,7 +454,7 @@ static LitExpression* parse_block(LitParser* parser)
             break;
         }
         ignore_new_lines(parser, true);
-        lit_stmtlist_push(parser->state, &statement->statements, parse_statement(parser));
+        lit_exprlist_push(parser->state, &statement->statements, parse_statement(parser));
         ignore_new_lines(parser, true);
     }
     ignore_new_lines(parser, true);
@@ -1209,7 +1209,7 @@ static LitExpression* parse_if(LitParser* parser)
     LitExpression* condition;
     LitExpression* if_branch;
     LitExprList* elseif_conditions;
-    LitStmtList* elseif_branches;
+    LitExprList* elseif_branches;
     LitExpression* else_branch;
     LitExpression* e;
     line = parser->previous.line;
@@ -1255,7 +1255,7 @@ static LitExpression* parse_if(LitParser* parser)
                 e = (LitExpression*)lit_create_unary_expression(parser->state, condition->line, e, LITTOK_BANG);
             }
             lit_exprlist_push(parser->state, elseif_conditions, e);
-            lit_stmtlist_push(parser->state, elseif_branches, parse_statement(parser));
+            lit_exprlist_push(parser->state, elseif_branches, parse_statement(parser));
             continue;
         }
         // else
@@ -1560,7 +1560,7 @@ static LitExpression* parse_class(LitParser* parser)
                 var = parse_var_declaration(parser, true);
                 if(var != NULL)
                 {
-                    lit_stmtlist_push(parser->state, &klass->fields, var);
+                    lit_exprlist_push(parser->state, &klass->fields, var);
                 }
                 ignore_new_lines(parser, true);
                 continue;
@@ -1573,7 +1573,7 @@ static LitExpression* parse_class(LitParser* parser)
         method = parse_method(parser, is_static || field_is_static);
         if(method != NULL)
         {
-            lit_stmtlist_push(parser->state, &klass->fields, method);
+            lit_exprlist_push(parser->state, &klass->fields, method);
         }
         ignore_new_lines(parser, true);
     }
@@ -1678,7 +1678,7 @@ static LitExpression* parse_declaration(LitParser* parser)
     return statement;
 }
 
-bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStmtList* statements)
+bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitExprList* statements)
 {
     LitCompiler compiler;
     LitExpression* statement;
@@ -1695,7 +1695,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
             statement = parse_declaration(parser);
             if(statement != NULL)
             {
-                lit_stmtlist_push(parser->state, statements, statement);
+                lit_exprlist_push(parser->state, statements, statement);
             }
             if(!match_new_line(parser))
             {

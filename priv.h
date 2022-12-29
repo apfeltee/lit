@@ -237,12 +237,6 @@ struct LitReferenceExpression
 /*
  * Statements
  */
-struct LitStmtList
-{
-    size_t capacity;
-    size_t count;
-    LitExpression** values;
-};
 
 struct LitExpressionStatement
 {
@@ -254,7 +248,7 @@ struct LitExpressionStatement
 struct LitBlockStatement
 {
     LitExpression statement;
-    LitStmtList statements;
+    LitExprList statements;
 };
 
 struct LitVarStatement
@@ -273,7 +267,7 @@ struct LitIfStatement
     LitExpression* if_branch;
     LitExpression* else_branch;
     LitExprList* elseif_conditions;
-    LitStmtList* elseif_branches;
+    LitExprList* elseif_branches;
 };
 
 struct LitWhileStatement
@@ -334,7 +328,7 @@ struct LitClassStatement
     LitExpression statement;
     LitString* name;
     LitString* parent;
-    LitStmtList fields;
+    LitExprList fields;
 };
 
 struct LitFieldStatement
@@ -353,11 +347,6 @@ void lit_exprlist_push(LitState* state, LitExprList* array, LitExpression* value
 void lit_paramlist_init(LitParamList* array);
 void lit_paramlist_destroy(LitState* state, LitParamList* array);
 void lit_paramlist_push(LitState* state, LitParamList* array, LitParameter value);
-
-void lit_stmtlist_init(LitStmtList* array);
-void lit_stmtlist_destroy(LitState* state, LitStmtList* array);
-void lit_stmtlist_push(LitState* state, LitStmtList* array, LitExpression* value);
-
 
 void lit_privlist_init(LitPrivList* array);
 void lit_privlist_destroy(LitState* state, LitPrivList* array);
@@ -408,7 +397,7 @@ LitIfStatement* lit_create_if_statement(LitState* state,
                                         LitExpression* if_branch,
                                         LitExpression* else_branch,
                                         LitExprList* elseif_conditions,
-                                        LitStmtList* elseif_branches);
+                                        LitExprList* elseif_branches);
 
 LitWhileStatement* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitExpression* body);
 
@@ -432,12 +421,12 @@ lit_create_field_statement(LitState* state, size_t line, LitString* name, LitExp
 LitExprList* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExprList* expressions);
 
-LitStmtList* lit_allocate_statements(LitState* state);
-void lit_free_allocated_statements(LitState* state, LitStmtList* statements);
+LitExprList* lit_allocate_statements(LitState* state);
+void lit_free_allocated_statements(LitState* state, LitExprList* statements);
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 
-LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* module_name);
+LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* module_name);
 
 void lit_init_parser(LitState* state, LitParser* parser);
 void lit_free_parser(LitParser* parser);

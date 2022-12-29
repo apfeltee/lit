@@ -225,28 +225,28 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
     return NULL;
 }
 
-static void free_statements(LitState* state, LitStmtList* statements)
+static void free_statements(LitState* state, LitExprList* statements)
 {
     size_t i;
     for(i = 0; i < statements->count; i++)
     {
         lit_free_statement(state, statements->values[i]);
     }
-    lit_stmtlist_destroy(state, statements);
+    lit_exprlist_destroy(state, statements);
 }
 
-LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code)
+LitInterpretResult lit_interpret_source(LitState* state, const char* module_name, const char* code, size_t len)
 {
-    return lit_internal_interpret(state, lit_string_copy(state, module_name, strlen(module_name)), code);
+    return lit_internal_interpret(state, lit_string_copy(state, module_name, strlen(module_name)), code, len);
 }
 
-LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code)
+LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code, size_t len)
 {
     clock_t t;
     clock_t total_t;
     bool allowed_gc;
     LitModule* module;
-    LitStmtList statements;
+    LitExprList statements;
     allowed_gc = state->allow_gc;
     state->allow_gc = false;
     state->had_error = false;
@@ -254,7 +254,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
     // This is a lbc format
     if((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER)
     {
-        module = lit_load_module(state, code);
+        module = lit_load_module(state, code, len);
     }
     else
     {
@@ -273,7 +273,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
             printf("-----------------------\nPreprocessing:  %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-        lit_stmtlist_init(&statements);
+        lit_exprlist_init(&statements);
         if(lit_parse(state->parser, module_name->chars, code, &statements))
         {
             free_statements(state, &statements);
@@ -313,7 +313,7 @@ LitModule* lit_get_module(LitState* state, const char* name)
     return NULL;
 }
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code)
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code, size_t len)
 {
     intptr_t istack;
     intptr_t itop;
@@ -321,7 +321,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
     LitModule* module;
     LitFiber* fiber;
     LitInterpretResult result;
-    module = lit_compile_module(state, module_name, code);
+    module = lit_compile_module(state, module_name, code, len);
     if(module == NULL)
     {
         return (LitInterpretResult){ LITRESULT_COMPILE_ERROR, NULL_VALUE };
@@ -382,6 +382,7 @@ char* copy_string(const char* string)
 bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files, const char* output_file)
 {
     size_t i;
+    size_t len;
     char* file_name;
     char* source;
     FILE* file;
@@ -393,7 +394,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     for(i = 0; i < num_files; i++)
     {
         file_name = copy_string(files[i]);
-        source = lit_read_file(file_name);
+        source = lit_util_readfile(file_name, &len);
         if(source == NULL)
         {
             lit_error(state, COMPILE_ERROR, "failed to open file '%s' for reading", file_name);
@@ -401,7 +402,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
         }
         file_name = lit_patch_file_name(file_name);
         module_name = lit_string_copy(state, file_name, strlen(file_name));
-        module = lit_compile_module(state, module_name, source);
+        module = lit_compile_module(state, module_name, source, len);
         compiled_modules[i] = module;
         free((void*)source);
         free((void*)file_name);
@@ -429,9 +430,10 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     return true;
 }
 
-static char* read_source(LitState* state, const char* file, char** patched_file_name)
+static char* read_source(LitState* state, const char* file, char** patched_file_name, size_t* dlen)
 {
     clock_t t;
+    size_t len;
     char* file_name;
     char* source;
     t = 0;
@@ -440,11 +442,12 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
         t = clock();
     }
     file_name = copy_string(file);
-    source = lit_read_file(file_name);
+    source = lit_util_readfile(file_name, &len);
     if(source == NULL)
     {
         lit_error(state, RUNTIME_ERROR, "failed to open file '%s' for reading", file_name);
     }
+    *dlen = len;
     file_name = lit_patch_file_name(file_name);
     if(measure_compilation_time)
     {
@@ -456,15 +459,16 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
 
 LitInterpretResult lit_interpret_file(LitState* state, const char* file)
 {
+    size_t len;
     char* source;
     char* patched_file_name;
     LitInterpretResult result;
-    source = read_source(state, file, &patched_file_name);
+    source = read_source(state, file, &patched_file_name, &len);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
-    result = lit_interpret(state, patched_file_name, source);
+    result = lit_interpret_source(state, patched_file_name, source, len);
     free((void*)source);
     free(patched_file_name);
     return result;
@@ -472,18 +476,19 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file)
 
 LitInterpretResult lit_dump_file(LitState* state, const char* file)
 {
+    size_t len;
     char* patched_file_name;
     char* source;
     LitInterpretResult result;
     LitString* module_name;
     LitModule* module;
-    source = read_source(state, file, &patched_file_name);
+    source = read_source(state, file, &patched_file_name, &len);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
     module_name = lit_string_copy(state, patched_file_name, strlen(patched_file_name));
-    module = lit_compile_module(state, module_name, source);
+    module = lit_compile_module(state, module_name, source, len);
     if(module == NULL)
     {
         result = INTERPRET_RUNTIME_FAIL;

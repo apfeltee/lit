@@ -27,31 +27,6 @@ void lit_exprlist_push(LitState* state, LitExprList* array, LitExpression* value
     array->count++;
 }
 
-void lit_stmtlist_init(LitStmtList* array)
-{
-    array->values = NULL;
-    array->capacity = 0;
-    array->count = 0;
-}
-
-void lit_stmtlist_destroy(LitState* state, LitStmtList* array)
-{
-    LIT_FREE_ARRAY(state, sizeof(LitExpression*), array->values, array->capacity);
-    lit_stmtlist_init(array);
-}
-
-void lit_stmtlist_push(LitState* state, LitStmtList* array, LitExpression* value)
-{
-    if(array->capacity < array->count + 1)
-    {
-        size_t old_capacity = array->capacity;
-        array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitExpression*), old_capacity, array->capacity);
-    }
-    array->values[array->count] = value;
-    array->count++;
-}
-
 void lit_paramlist_init(LitParamList* array)
 {
     array->values = NULL;
@@ -103,7 +78,7 @@ void free_expressions(LitState* state, LitExprList* expressions)
     lit_exprlist_destroy(state, expressions);
 }
 
-void internal_free_statements(LitState* state, LitStmtList* statements)
+void internal_free_statements(LitState* state, LitExprList* statements)
 {
     if(statements == NULL)
     {
@@ -115,7 +90,7 @@ void internal_free_statements(LitState* state, LitStmtList* statements)
         lit_free_statement(state, statements->values[i]);
     }
 
-    lit_stmtlist_destroy(state, statements);
+    lit_exprlist_destroy(state, statements);
 }
 
 void lit_free_expression(LitState* state, LitExpression* expression)
@@ -589,7 +564,7 @@ LitBlockStatement* lit_create_block_statement(LitState* state, size_t line)
 {
     LitBlockStatement* statement;
     statement = (LitBlockStatement*)allocate_statement(state, line, sizeof(LitBlockStatement), LITSTMT_BLOCK);
-    lit_stmtlist_init(&statement->statements);
+    lit_exprlist_init(&statement->statements);
     return statement;
 }
 
@@ -610,7 +585,7 @@ LitIfStatement* lit_create_if_statement(LitState* state,
                                         LitExpression* if_branch,
                                         LitExpression* else_branch,
                                         LitExprList* elseif_conditions,
-                                        LitStmtList* elseif_branches)
+                                        LitExprList* elseif_branches)
 {
     LitIfStatement* statement;
     statement = (LitIfStatement*)allocate_statement(state, line, sizeof(LitIfStatement), LITSTMT_IF);
@@ -697,7 +672,7 @@ LitClassStatement* lit_create_class_statement(LitState* state, size_t line, LitS
     statement = (LitClassStatement*)allocate_statement(state, line, sizeof(LitClassStatement), LITSTMT_CLASS);
     statement->name = name;
     statement->parent = parent;
-    lit_stmtlist_init(&statement->fields);
+    lit_exprlist_init(&statement->fields);
     return statement;
 }
 
@@ -735,15 +710,15 @@ void lit_free_allocated_expressions(LitState* state, LitExprList* expressions)
     lit_reallocate(state, expressions, sizeof(LitExprList), 0);
 }
 
-LitStmtList* lit_allocate_statements(LitState* state)
+LitExprList* lit_allocate_statements(LitState* state)
 {
-    LitStmtList* statements;
-    statements = (LitStmtList*)lit_reallocate(state, NULL, 0, sizeof(LitStmtList));
-    lit_stmtlist_init(statements);
+    LitExprList* statements;
+    statements = (LitExprList*)lit_reallocate(state, NULL, 0, sizeof(LitExprList));
+    lit_exprlist_init(statements);
     return statements;
 }
 
-void lit_free_allocated_statements(LitState* state, LitStmtList* statements)
+void lit_free_allocated_statements(LitState* state, LitExprList* statements)
 {
     size_t i;
     if(statements == NULL)
@@ -754,6 +729,6 @@ void lit_free_allocated_statements(LitState* state, LitStmtList* statements)
     {
         lit_free_statement(state, statements->values[i]);
     }
-    lit_stmtlist_destroy(state, statements);
-    lit_reallocate(state, statements, sizeof(LitStmtList), 0);
+    lit_exprlist_destroy(state, statements);
+    lit_reallocate(state, statements, sizeof(LitExprList), 0);
 }

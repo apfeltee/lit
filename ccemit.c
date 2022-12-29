@@ -32,7 +32,7 @@ static inline size_t lit_uintlist_count(LitUintList* array)
     return lit_datalist_count(&array->list);
 }
 
-static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
+static void resolve_statements(LitEmitter* emitter, LitExprList* statements)
 {
     size_t i;
     for(i = 0; i < statements->count; i++)
@@ -1291,7 +1291,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
     LitMethodStatement* mthstmt;
     LitExpression* blockstmt;
     LitExpression* s;
-    LitStmtList* statements;
+    LitExprList* statements;
     LitString* name;
     LitVarStatement* var;
     LitVarStatement* varstmt;
@@ -1823,7 +1823,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
     return false;
 }
 
-LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* module_name)
+LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* module_name)
 {
     size_t i;
     size_t total;

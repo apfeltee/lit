@@ -222,10 +222,10 @@ bool util_interpret(LitVM* vm, LitModule* module)
     return true;
 }
 
-static bool compile_and_interpret(LitVM* vm, LitString* modname, char* source)
+static bool compile_and_interpret(LitVM* vm, LitString* modname, char* source, size_t len)
 {
     LitModule* module;
-    module = lit_compile_module(vm->state, modname, source);
+    module = lit_compile_module(vm->state, modname, source, len);
     if(module == NULL)
     {
         return false;
@@ -246,6 +246,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
     bool rt;
     bool found;
     size_t i;
+    size_t flen;
     size_t length;
     char c;
     char* source;
@@ -382,12 +383,12 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
             return false;
         }
     }
-    source = lit_read_file(modname);
+    source = lit_util_readfile(modname, &flen);
     if(source == NULL)
     {
         return false;
     }
-    if(compile_and_interpret(vm, name, source))
+    if(compile_and_interpret(vm, name, source, flen))
     {
         should_update_locals = true;
     }
@@ -505,11 +506,11 @@ static LitValue cfn_println(LitVM* vm, size_t argc, LitValue* argv)
 
 static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
 {
-    char* code;
+    LitString* sc;
     (void)argc;
     (void)argv;
-    code = (char*)lit_check_string(vm, argv, argc, 0);
-    return compile_and_interpret(vm, vm->fiber->module->name, code);
+    sc = lit_check_object_string(vm, argv, argc, 0);
+    return compile_and_interpret(vm, vm->fiber->module->name, sc->chars, lit_string_length(sc));
 }
 
 #if 0

@@ -67,8 +67,11 @@ static uint16_t stmp;
 static uint32_t itmp;
 static double dtmp;
 
-char* lit_read_file(const char* path)
+char* lit_util_readfile(const char* path, size_t* dlen)
 {
+    size_t fileSize;
+    char* buffer;
+    size_t bytes_read;
     FILE* file;
     file = fopen(path, "rb");
     if(file == NULL)
@@ -76,12 +79,13 @@ char* lit_read_file(const char* path)
         return NULL;
     }
     fseek(file, 0L, SEEK_END);
-    size_t fileSize = ftell(file);
+    fileSize = ftell(file);
     rewind(file);
-    char* buffer = (char*)malloc(fileSize + 1);
-    size_t bytes_read = fread(buffer, sizeof(char), fileSize, file);
+    buffer = (char*)malloc(fileSize + 1);
+    bytes_read = fread(buffer, sizeof(char), fileSize, file);
     buffer[bytes_read] = '\0';
     fclose(file);
+    *dlen = bytes_read;
     return buffer;
 }
 
@@ -183,9 +187,10 @@ LitString* lit_read_string(LitState* state, FILE* file)
     return lit_string_take(state, line, length, false);
 }
 
-void lit_init_emulated_file(LitEmulatedFile* file, const char* source)
+void lit_init_emulated_file(LitEmulatedFile* file, const char* source, size_t len)
 {
     file->source = source;
+    file->length = len;
     file->position = 0;
 }
 
@@ -432,7 +437,7 @@ void lit_save_module(LitModule* module, FILE* file)
     save_function(file, module->main_function);
 }
 
-LitModule* lit_load_module(LitState* state, const char* input)
+LitModule* lit_load_module(LitState* state, const char* input, size_t len)
 {
     bool enabled;
     uint16_t i;
@@ -444,7 +449,7 @@ LitModule* lit_load_module(LitState* state, const char* input)
     LitTable* privates;
     LitModule* module;
     LitEmulatedFile file;
-    lit_init_emulated_file(&file, input);
+    lit_init_emulated_file(&file, input, len);
     if(lit_read_euint16_t(&file) != LIT_BYTECODE_MAGIC_NUMBER)
     {
         lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown magic number");

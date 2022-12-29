@@ -714,7 +714,6 @@ typedef struct /**/LitUintList LitUintList;
 typedef struct /**/LitValueList LitValueList;
 typedef struct /**/LitExprList LitExprList;
 typedef struct /**/LitParamList LitParamList;
-typedef struct /**/LitStmtList LitStmtList;
 typedef struct /**/LitPrivList LitPrivList;
 typedef struct /**/LitLocList LitLocList;
 typedef struct /**/LitDataList LitDataList;
@@ -1177,6 +1176,7 @@ struct LitParser
 struct LitEmulatedFile
 {
     const char* source;
+    size_t length;
     size_t position;
 };
 
@@ -1634,11 +1634,11 @@ void lit_array_push(LitState* state, LitArray* array, LitValue val);
  * Please, do not provide a const string source to the compiler, because it will
  * get modified, if it has any macros in it!
  */
-LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code);
+LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code, size_t len);
 LitModule* lit_get_module(LitState* state, const char* name);
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code);
-LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code);
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code, size_t len);
+LitInterpretResult lit_interpret_source(LitState* state, const char* module_name, const char* code, size_t len);
 LitInterpretResult lit_interpret_file(LitState* state, const char* file);
 LitInterpretResult lit_dump_file(LitState* state, const char* file);
 bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files, const char* output_file);
@@ -1729,8 +1729,8 @@ void lit_trace_frame(LitFiber* fiber, LitWriter* wr);
 
 
 
-bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStmtList* statements);
-char* lit_read_file(const char* path);
+bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitExprList* statements);
+char* lit_util_readfile(const char* path, size_t* dlen);
 bool lit_file_exists(const char* path);
 bool lit_dir_exists(const char* path);
 
@@ -1746,7 +1746,7 @@ uint32_t lit_read_uint32_t(FILE* file);
 double lit_read_double(FILE* file);
 LitString* lit_read_string(LitState* state, FILE* file);
 
-void lit_init_emulated_file(LitEmulatedFile* file, const char* source);
+void lit_init_emulated_file(LitEmulatedFile* file, const char* source, size_t len);
 
 uint8_t lit_read_euint8_t(LitEmulatedFile* file);
 uint16_t lit_read_euint16_t(LitEmulatedFile* file);
@@ -1755,7 +1755,7 @@ double lit_read_edouble(LitEmulatedFile* file);
 LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
 
 void lit_save_module(LitModule* module, FILE* file);
-LitModule* lit_load_module(LitState* state, const char* input);
+LitModule* lit_load_module(LitState* state, const char* input, size_t len);
 bool lit_generate_source_file(const char* file, const char* output);
 void lit_build_native_runner(const char* bytecode_file);
 
@@ -1799,7 +1799,7 @@ void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_nam
 LitToken lit_scan_token(LitScanner* scanner);
 LitToken lit_scan_rollback(LitScanner* scanner);
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
-void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements);
+void lit_optimize(LitOptimizer* optimizer, LitExprList* statements);
 const char* lit_get_optimization_level_description(LitOptimizationLevel level);
 
 bool lit_is_optimization_enabled(LitOptimization optimization);

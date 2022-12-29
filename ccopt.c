@@ -32,7 +32,7 @@
 
 static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
 static void optimize_expressions(LitOptimizer* optimizer, LitExprList* expressions);
-static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements);
+static void optimize_statements(LitOptimizer* optimizer, LitExprList* statements);
 static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot);
 
 static const char* optimization_level_descriptions[LITOPTLEVEL_TOTAL]
@@ -882,7 +882,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
     }
 }
 
-static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements)
+static void optimize_statements(LitOptimizer* optimizer, LitExprList* statements)
 {
     size_t i;
     for(i = 0; i < statements->count; i++)
@@ -891,7 +891,7 @@ static void optimize_statements(LitOptimizer* optimizer, LitStmtList* statements
     }
 }
 
-void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements)
+void lit_optimize(LitOptimizer* optimizer, LitExprList* statements)
 {
     return;
     if(!optimization_states_setup)

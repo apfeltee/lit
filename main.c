@@ -256,7 +256,7 @@ static int run_repl(LitState* state)
             return 0;
         }
         add_history(line);
-        LitInterpretResult result = lit_interpret(state, "repl", line);
+        LitInterpretResult result = lit_interpret_source(state, "repl", line, strlen(line));
         if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
         {
             printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
             lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
             if(opts.codeline)
             {
-                result = lit_interpret(state, "<-e>", opts.codeline).type;
+                result = lit_interpret_source(state, "<-e>", opts.codeline, strlen(opts.codeline)).type;
             }
             else
             {
@@ -475,7 +475,7 @@ int oldmain(int argc, const char* argv[])
             module_name = num_files_to_run == 0 ? "repl" : files_to_run[0];
             if(dump)
             {
-                module = lit_compile_module(state, CONST_STRING(state, module_name), source);
+                module = lit_compile_module(state, CONST_STRING(state, module_name), source, length);
                 if(module == NULL)
                 {
                     break;
@@ -485,7 +485,7 @@ int oldmain(int argc, const char* argv[])
             }
             else
             {
-                result = lit_interpret(state, module_name, source).type;
+                result = lit_interpret_source(state, module_name, source, length).type;
                 free(source);
                 if(result != LITRESULT_OK)
                 {
