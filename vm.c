@@ -41,6 +41,17 @@ struct LitExecState
 
 // the following macros cannot be turned into a function without
 // breaking everything
+#define vm_returnerror() \
+    vm_popgc(state); \
+    return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
+
+
+
+/*
+* ===========
+*/
+
+
 static inline uint16_t vm_readshort(LitExecState* est)
 {
     est->ip += 2u;
@@ -73,10 +84,6 @@ static inline LitString* vm_readstringlong(LitExecState* est)
     return lit_as_string(vm_readconstantlong(est));
 }
 
-/*
-* ===========
-*/
-
 #ifdef LIT_USE_COMPUTEDGOTO
     #define vm_default()
     #define op_case(name) \
@@ -98,7 +105,6 @@ static inline void vm_push(LitFiber* fiber, LitValue v)
 {
     *fiber->stack_top++ = v;
 }
-
 
 static inline LitValue vm_pop(LitFiber* fiber)
 {
@@ -136,24 +142,26 @@ static inline void vm_writeframe(LitExecState* est, uint8_t* ip)
 {
     est->frame->ip = ip;
 }
+enum
+{
+    RECOVER_RETURNOK,
+    RECOVER_RETURNFAIL,
+    RECOVER_NOTHING
+};
 
-#define vm_returnerror() \
-    vm_popgc(state); \
-    return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
-
-#define vm_recoverstate(fiber, est) \
-    vm_writeframe(&est, est.ip); \
-    fiber = vm->fiber; \
-    if(fiber == NULL) \
-    { \
-        return (LitInterpretResult){ LITRESULT_OK, vm_pop(fiber) }; \
-    } \
-    if(fiber->abort) \
-    { \
-        vm_returnerror(); \
-    } \
-    vm_readframe(fiber, &est); \
-    vm_traceframe(fiber);
+    #define vm_recoverstate(fiber, est) \
+        vm_writeframe(&est, est.ip); \
+        fiber = vm->fiber; \
+        if(fiber == NULL) \
+        { \
+            return (LitInterpretResult){ LITRESULT_OK, vm_pop(fiber) }; \
+        } \
+        if(fiber->abort) \
+        { \
+            vm_returnerror(); \
+        } \
+        vm_readframe(fiber, &est); \
+        vm_traceframe(fiber);
 
 #define vm_callvalue(callee, arg_count) \
     if(call_value(vm, callee, arg_count)) \

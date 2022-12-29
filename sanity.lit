@@ -7,6 +7,61 @@ function check(msg, b)
     }
 }
 
+function testfiber()
+{
+    print("expect: attempt to call null value: ", new Fiber(() => {
+      null()
+    }).try()) // Expected: Attempt to call a null value
+
+    println("expect null: ", new Fiber(() => {
+      Fiber.yield()
+    }).run()) // Expected: null
+
+    println("expect Hello World: ", new Fiber(() => {
+      Fiber.yield("Hello, World!")
+    }).run()) // Expected: Hello, World!
+
+    var fiber = new Fiber(() => {
+      Fiber.yield(0)
+    })
+
+    println("expect 0:", fiber.run()) // Expected: 0
+    println("expect false:", fiber.done) // Expected: false
+    println("expect null:", fiber.run()) // Expected: null
+    println("expect true: ", fiber.done) // Expected: true
+
+    println("expect false:", Fiber.current.done) // Expected: false
+
+    fiber = new Fiber(() => {
+      Fiber.abort("ono")
+    })
+
+    println("expect ono: ", fiber.try()) // Expected: ono
+    println("expect ono: ", fiber.error) // Expected: ono
+
+    var failFiber = new Fiber(() => {
+      null()
+    })
+
+    fiber = new Fiber(() => {
+      Fiber.run()
+      println("help")
+    })
+
+    print("expect attempt to call null value :", fiber.try()) // Expected: Attempt to call a null value
+
+    function shout(a, ...) {
+        var f = new Fiber((...) => {
+            var a = ...
+            println(a) // Expected: [ coffee, sugar ]
+        })
+
+        f.run(...)
+    }
+
+    shout("tea", "coffee", "sugar")
+}
+
 {
     println("testing basic vars")
     {
@@ -19,6 +74,7 @@ function check(msg, b)
         a = [1, 2, 3]
         check("basic array assignment", (a == [1, 2, 3]) && (a.length == 3))
     }
+    testfiber();
 }
 
 println("all is well!")
