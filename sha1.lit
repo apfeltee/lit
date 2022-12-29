@@ -269,7 +269,7 @@ var demo = [
     ["bar", "62cdb7020ff920e5aa642c3d4066950dd1f01f4d"],
     ["hello world", "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed"],
     ["abcdx", "a96e144dfdc6380c8a4ae43bea1c81cb01215020"],
-    ["long text, some spaces, blah blah", "fc0aa2379ecce86eac0dc50d921ab2cef7030d12"]
+    ["long text, some spaces, blah blah", "fc0aa2379ecce86eac0dc50d921ab2cef7030d12"],
 ];
 
 for(var idx=0; idx<demo.length; idx++)

@@ -1076,19 +1076,38 @@ static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression
 static LitExpression* parse_array(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
+    LitExpression* expr;
     LitArrayExpression* array;
     array = lit_create_array_expression(parser->state, parser->previous.line);
     ignore_new_lines(parser, true);
     while(!check(parser, LITTOK_RIGHT_BRACKET))
     {
+        expr = NULL;
         ignore_new_lines(parser, true);
-        lit_exprlist_push(parser->state, &array->values, parse_expression(parser, true));
+        #if 1
+            expr = parse_expression(parser, true);
+        #else
+            if(check(parser, LITTOK_COMMA))
+            {
+                //parse_null_filter(LitParser *parser, LitExpression *prev, _Bool can_assign)
+                expr = parse_null_filter(parser, NULL, false);
+            }
+            else
+            {
+                expr = parse_expression(parser, true);
+            }
+        #endif
+        lit_exprlist_push(parser->state, &array->values, expr);
         if(!prs_match(parser, LITTOK_COMMA))
         {
             break;
         }
+        ignore_new_lines(parser, true);
     }
     ignore_new_lines(parser, true);
+
+    
+
     consume(parser, LITTOK_RIGHT_BRACKET, "']' after array");
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {

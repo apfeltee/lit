@@ -1,6 +1,8 @@
 
-var max = 5;
-for(i=0; i<max; i++)
-{
-    println("i=", i, "")
-}
+var arr = [
+    1, 2,
+    3, 4,
+    5,
+];
+
+println(arr);

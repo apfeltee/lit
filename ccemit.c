@@ -650,6 +650,13 @@ static void resolve_statement(LitEmitter* emitter, LitExpression* statement)
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expr)
 {
+    /*
+    if(expr == NULL)
+    {
+        emit_op(emitter, 0, OP_NULL);
+        return;
+    }
+    */
     switch(expr->type)
     {
         case LITEXPR_LITERAL:
