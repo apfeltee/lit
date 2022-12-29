@@ -261,55 +261,7 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
     lit_table_set(state, &map->values, CONST_STRING(state, name), value);
 }
 
-void lit_uintlist_init(LitUInts* array)
-{
-    array->values = NULL;
-    array->capacity = 0;
-    array->count = 0;
-}
 
-void lit_uintlist_destroy(LitState* state, LitUInts* array)
-{
-    LIT_FREE_ARRAY(state, sizeof(size_t), array->values, array->capacity);
-    lit_uintlist_init(array);
-}
-
-void lit_uintlist_push(LitState* state, LitUInts* array, size_t value)
-{
-    if(array->capacity < array->count + 1)
-    {
-        size_t old_capacity = array->capacity;
-        array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(size_t), old_capacity, array->capacity);
-    }
-    array->values[array->count] = value;
-    array->count++;
-}
-
-void lit_init_bytes(LitBytes* array)
-{
-    array->values = NULL;
-    array->capacity = 0;
-    array->count = 0;
-}
-
-void lit_free_bytes(LitState* state, LitBytes* array)
-{
-    LIT_FREE_ARRAY(state, sizeof(uint8_t), array->values, array->capacity);
-    lit_init_bytes(array);
-}
-
-void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value)
-{
-    if(array->capacity < array->count + 1)
-    {
-        size_t old_capacity = array->capacity;
-        array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, sizeof(uint8_t), old_capacity, array->capacity);
-    }
-    array->values[array->count] = value;
-    array->count++;
-}
 
 static bool ensure_fiber(LitVM* vm, LitFiber* fiber)
 {

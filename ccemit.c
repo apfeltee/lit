@@ -7,6 +7,31 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitExpression* statement);
 static void resolve_statement(LitEmitter* emitter, LitExpression* statement);
 
+static inline void lit_uintlist_init(LitUintList* array)
+{
+    lit_datalist_init(&array->list, sizeof(size_t));
+}
+
+static inline void lit_uintlist_destroy(LitState* state, LitUintList* array)
+{
+    lit_datalist_destroy(state, &array->list);
+}
+
+static inline void lit_uintlist_push(LitState* state, LitUintList* array, size_t value)
+{
+    lit_datalist_push(state, &array->list, value);
+}
+
+static inline size_t lit_uintlist_get(LitUintList* array, size_t idx)
+{
+    return (size_t)lit_datalist_get(&array->list, idx);
+}
+
+static inline size_t lit_uintlist_count(LitUintList* array)
+{
+    return lit_datalist_count(&array->list);
+}
+
 static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
 {
     size_t i;
@@ -16,20 +41,20 @@ static void resolve_statements(LitEmitter* emitter, LitStmtList* statements)
     }
 }
 
-void lit_init_privates(LitPrivates* array)
+void lit_privlist_init(LitPrivList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void lit_free_privates(LitState* state, LitPrivates* array)
+void lit_privlist_destroy(LitState* state, LitPrivList* array)
 {
     LIT_FREE_ARRAY(state, sizeof(LitPrivate), array->values, array->capacity);
-    lit_init_privates(array);
+    lit_privlist_init(array);
 }
 
-void lit_privates_write(LitState* state, LitPrivates* array, LitPrivate value)
+void lit_privlist_push(LitState* state, LitPrivList* array, LitPrivate value)
 {
     if(array->capacity < array->count + 1)
     {
@@ -40,20 +65,20 @@ void lit_privates_write(LitState* state, LitPrivates* array, LitPrivate value)
     array->values[array->count] = value;
     array->count++;
 }
-void lit_init_locals(LitLocals* array)
+void lit_loclist_init(LitLocList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void lit_free_locals(LitState* state, LitLocals* array)
+void lit_loclist_destroy(LitState* state, LitLocList* array)
 {
     LIT_FREE_ARRAY(state, sizeof(LitLocal), array->values, array->capacity);
-    lit_init_locals(array);
+    lit_loclist_init(array);
 }
 
-void lit_locals_write(LitState* state, LitLocals* array, LitLocal value)
+void lit_loclist_push(LitState* state, LitLocList* array, LitLocal value)
 {
     if(array->capacity < array->count + 1)
     {
@@ -78,7 +103,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter)
     emitter->previous_was_expression_statement = false;
     emitter->class_has_super = false;
 
-    lit_init_privates(&emitter->privates);
+    lit_privlist_init(&emitter->privates);
     lit_uintlist_init(&emitter->breaks);
     lit_uintlist_init(&emitter->continues);
 }
@@ -193,7 +218,7 @@ static void emit_byte_or_short(LitEmitter* emitter, uint16_t line, uint8_t a, ui
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type)
 {
-    lit_init_locals(&compiler->locals);
+    lit_loclist_init(&compiler->locals);
 
     compiler->type = type;
     compiler->scope_depth = 0;
@@ -220,11 +245,11 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
     if(type == LITFUNC_METHOD || type == LITFUNC_STATIC_METHOD || type == LITFUNC_CONSTRUCTOR)
     {
-        lit_locals_write(emitter->state, &compiler->locals, (LitLocal){ "this", 4, -1, false, false });
+        lit_loclist_push(emitter->state, &compiler->locals, (LitLocal){ "this", 4, -1, false, false });
     }
     else
     {
-        lit_locals_write(emitter->state, &compiler->locals, (LitLocal){ "", 0, -1, false, false });
+        lit_loclist_push(emitter->state, &compiler->locals, (LitLocal){ "", 0, -1, false, false });
     }
 
     compiler->slots = 1;
@@ -259,7 +284,7 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name)
 
     LitFunction* function = emitter->compiler->function;
 
-    lit_free_locals(emitter->state, &emitter->compiler->locals);
+    lit_loclist_destroy(emitter->state, &emitter->compiler->locals);
 
     emitter->compiler = (LitCompiler*)emitter->compiler->enclosing;
     emitter->chunk = emitter->compiler == NULL ? NULL : &emitter->compiler->function->chunk;
@@ -286,7 +311,7 @@ static void end_scope(LitEmitter* emitter, uint16_t line)
     emitter->compiler->scope_depth--;
 
     LitCompiler* compiler = emitter->compiler;
-    LitLocals* locals = &compiler->locals;
+    LitLocList* locals = &compiler->locals;
 
     while(locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth)
     {
@@ -346,7 +371,7 @@ static size_t emit_constant(LitEmitter* emitter, size_t line, LitValue value)
 
 static int add_private(LitEmitter* emitter, const char* name, size_t length, size_t line, bool constant)
 {
-    LitPrivates* privates = &emitter->privates;
+    LitPrivList* privates = &emitter->privates;
 
     if(privates->count == UINT16_MAX)
     {
@@ -369,7 +394,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
     LitState* state = emitter->state;
     int index = (int)privates->count;
 
-    lit_privates_write(state, privates, (LitPrivate){ false, constant });
+    lit_privlist_push(state, privates, (LitPrivate){ false, constant });
 
     lit_table_set(state, private_names, lit_string_copy(state, name, length), lit_number_to_value(index));
     emitter->module->private_count++;
@@ -403,7 +428,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, size_t length,
 static int add_local(LitEmitter* emitter, const char* name, size_t length, size_t line, bool constant)
 {
     LitCompiler* compiler = emitter->compiler;
-    LitLocals* locals = &compiler->locals;
+    LitLocList* locals = &compiler->locals;
 
     if(locals->count == UINT16_MAX)
     {
@@ -425,14 +450,14 @@ static int add_local(LitEmitter* emitter, const char* name, size_t length, size_
         }
     }
 
-    lit_locals_write(emitter->state, locals, (LitLocal){ name, length, UINT16_MAX, false, constant });
+    lit_loclist_push(emitter->state, locals, (LitLocal){ name, length, UINT16_MAX, false, constant });
 
     return (int)locals->count - 1;
 }
 
 static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char* name, size_t length, size_t line)
 {
-    LitLocals* locals = &compiler->locals;
+    LitLocList* locals = &compiler->locals;
 
     for(int i = (int)locals->count - 1; i >= 0; i--)
     {
@@ -547,17 +572,17 @@ static void emit_loop(LitEmitter* emitter, size_t start, size_t line)
     emit_short(emitter, line, offset);
 }
 
-static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks, size_t line)
+static void patch_loop_jumps(LitEmitter* emitter, LitUintList* breaks, size_t line)
 {
-    for(size_t i = 0; i < breaks->count; i++)
+    for(size_t i = 0; i < lit_uintlist_count(breaks); i++)
     {
-        patch_jump(emitter, breaks->values[i], line);
+        patch_jump(emitter, lit_uintlist_get(breaks, i), line);
     }
 
     lit_uintlist_destroy(emitter->state, breaks);
 }
 
-static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, size_t line)
+static bool emit_parameters(LitEmitter* emitter, LitParamList* parameters, size_t line)
 {
     for(size_t i = 0; i < parameters->count; i++)
     {
@@ -1262,7 +1287,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
     LitFunction* setter;
     LitFunctionStatement* funcstmt;
     LitLocal* local;
-    LitLocals* locals;
+    LitLocList* locals;
     LitMethodStatement* mthstmt;
     LitExpression* blockstmt;
     LitExpression* s;
@@ -1377,6 +1402,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     emit_statement(emitter, ifstmt->if_branch);
                     end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
                 }
+                /* important: end_jumps must be N*sizeof(uint64_t) - merely allocating N isn't enough! */
                 //uint64_t end_jumps[ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count];
                 end_jumps = (uint64_t*)malloc(sizeof(uint64_t) * (ifstmt->elseif_branches == NULL ? 1 : ifstmt->elseif_branches->count));
                 if(ifstmt->elseif_branches != NULL)
@@ -1806,7 +1832,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     LitState* state;        
     LitValue module_value;
     LitModule* module;
-    LitPrivates* privates;
+    LitPrivList* privates;
     LitCompiler compiler;
     LitExpression* exstmt;
     emitter->last_line = 1;
@@ -1828,7 +1854,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
     {
         privates = &emitter->privates;
         privates->count = old_privates_count - 1;
-        lit_privates_write(state, privates, (LitPrivate){ true, false });
+        lit_privlist_push(state, privates, (LitPrivate){ true, false });
         for(i = 0; i < old_privates_count; i++)
         {
             privates->values[i].initialized = true;
@@ -1864,7 +1890,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStmtList* statements, LitString* mod
             module->privates[i] = NULL_VALUE;
         }
     }
-    lit_free_privates(emitter->state, &emitter->privates);
+    lit_privlist_destroy(emitter->state, &emitter->privates);
     if(lit_is_optimization_enabled(LITOPTSTATE_PRIVATE_NAMES))
     {
         lit_free_table(emitter->state, &emitter->module->private_names->values);

@@ -706,18 +706,17 @@ typedef struct /**/LitParseRule LitParseRule;
 typedef struct /**/LitEmulatedFile LitEmulatedFile;
 typedef struct /**/LitVariable LitVariable;
 typedef struct /**/LitWriter LitWriter;
+typedef struct /**/LitLocal LitLocal;
 
 /* ARRAYTYPES */
 typedef struct /**/LitVarList LitVarList;
-typedef struct /**/LitBytes LitBytes;
-typedef struct /**/LitUInts LitUInts;
+typedef struct /**/LitUintList LitUintList;
 typedef struct /**/LitValueList LitValueList;
 typedef struct /**/LitExprList LitExprList;
-typedef struct /**/LitParameters LitParameters;
+typedef struct /**/LitParamList LitParamList;
 typedef struct /**/LitStmtList LitStmtList;
-typedef struct /**/LitPrivates LitPrivates;
-typedef struct /**/LitLocal LitLocal;
-typedef struct /**/LitLocals LitLocals;
+typedef struct /**/LitPrivList LitPrivList;
+typedef struct /**/LitLocList LitLocList;
 typedef struct /**/LitDataList LitDataList;
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM*, size_t, LitValue*);
@@ -741,10 +740,11 @@ struct LitDataList
     /* actual amount of values in this list */
     size_t count;
 
+    size_t rawelemsz;
     size_t elemsz;
 
     /* the actual values */
-    uintptr_t* values;
+    intptr_t* values;
 };
 
 struct LitWriter
@@ -794,19 +794,11 @@ struct LitExpression
     size_t line;
 };
 
-struct LitUInts
+struct LitUintList
 {
-    size_t capacity;
-    size_t count;
-    size_t* values;
+    LitDataList list;
 };
 
-struct LitBytes
-{
-    size_t capacity;
-    size_t count;
-    uint8_t* values;
-};
 
 
 #define USE_DATALIST 1
@@ -1143,7 +1135,7 @@ struct LitLocal
     bool constant;
 };
 
-struct LitLocals
+struct LitLocList
 {
     size_t capacity;
     size_t count;
@@ -1158,7 +1150,7 @@ struct LitCompilerUpvalue
 
 struct LitCompiler
 {
-    LitLocals locals;
+    LitLocList locals;
     int scope_depth;
     LitFunction* function;
     LitFunctionType type;
@@ -1462,9 +1454,9 @@ size_t lit_datalist_capacity(LitDataList *arr);
 void lit_datalist_clear(LitDataList *arr);
 void lit_datalist_setcount(LitDataList *arr, size_t nc);
 void lit_datalist_deccount(LitDataList *arr);
-uintptr_t lit_datalist_get(LitDataList *arr, size_t idx);
-uintptr_t lit_datalist_set(LitDataList *arr, size_t idx, uintptr_t val);
-void lit_datalist_push(LitState *state, LitDataList *array, uintptr_t value);
+intptr_t lit_datalist_get(LitDataList *arr, size_t idx);
+intptr_t lit_datalist_set(LitDataList *arr, size_t idx, intptr_t val);
+void lit_datalist_push(LitState *state, LitDataList *array, intptr_t value);
 void lit_datalist_ensuresize(LitState *state, LitDataList *array, size_t size);
 
 void lit_vallist_init(LitValueList *array);
@@ -1484,19 +1476,8 @@ void lit_vallist_ensuresize(LitState *state, LitValueList *values, size_t size);
 
 /* ------ */
 
-/*
-LitUInts -> LitUintList
-*/
-void lit_uintlist_init(LitUInts* array);
-void lit_uintlist_destroy(LitState* state, LitUInts* array);
-void lit_uintlist_push(LitState* state, LitUInts* array, size_t value);
 
-/*
-LitBytes -> LitByteList
-*/
-void lit_init_bytes(LitBytes* array);
-void lit_free_bytes(LitState* state, LitBytes* array);
-void lit_bytes_write(LitState* state, LitBytes* array, uint8_t value);
+
 
 
 void lit_init_chunk(LitChunk* chunk);
@@ -1828,8 +1809,8 @@ void lit_set_optimization_level(LitOptimizationLevel level);
 
 const char* lit_get_optimization_name(LitOptimization optimization);
 const char* lit_get_optimization_description(LitOptimization optimization);
-void lit_init_preprocessor(LitState* state, LitPreprocessor* preprocessor);
-void lit_free_preprocessor(LitPreprocessor* preprocessor);
-void lit_add_definition(LitState* state, const char* name);
+void lit_preproc_init(LitState* state, LitPreprocessor* preprocessor);
+void lit_preproc_destroy(LitPreprocessor* preprocessor);
+void lit_preproc_setdef(LitState* state, const char* name);
 
-bool lit_preprocess(LitPreprocessor* preprocessor, char* source);
+bool lit_preproc_run(LitPreprocessor* preprocessor, char* source);

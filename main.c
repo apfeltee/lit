@@ -19,122 +19,93 @@
 
 #include "lit.h"
 
+enum
+{
+    MAX_RESTARGS = 1024,
+    MAX_OPTS = 1024,
+};
+
+typedef struct Flag_t Flag_t;
+typedef struct FlagContext_t FlagContext_t;
+
+struct Flag_t
+{
+    char flag;
+    char* value;
+};
+
+struct FlagContext_t
+{
+    int nargc;
+    int fcnt;
+    int poscnt;
+    char* positional[MAX_RESTARGS + 1];
+    Flag_t flags[MAX_OPTS + 1];
+};
+
+typedef struct Options_t Options_t;
+
 // Used for clean up on Ctrl+C / Ctrl+Z
 static LitState* repl_state;
 
-void interupt_handler(int signal_id)
+static bool populate_flags(int argc, int begin, char** argv, const char* expectvalue, FlagContext_t* fx)
 {
-    (void)signal_id;
-    lit_free_state(repl_state);
-    printf("\nExiting.\n");
-    exit(0);
-}
-
-static int run_repl(LitState* state)
-{
-    fprintf(stderr, "in repl...\n");
-    #if defined(LIT_HAVE_READLINE)
-    char* line;
-    repl_state = state;
-    signal(SIGINT, interupt_handler);
-    //signal(SIGTSTP, interupt_handler);
-    lit_set_optimization_level(LITOPTLEVEL_REPL);
-    printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
-    while(true)
+    int i;
+    int nextch;
+    int psidx;
+    int flidx;
+    char* arg;
+    char* nextarg;
+    psidx = 0;
+    flidx = 0;
+    fx->fcnt = 0;
+    fx->poscnt = 0;
+    for(i=begin; i<argc; i++)
     {
-        line = readline("> ");
-        if(line == NULL)
+        arg = argv[i];
+        nextarg = NULL;
+        if((i+1) < argc)
         {
-            return 0;
+            nextarg = argv[i+1];
         }
-        add_history(line);
-        LitInterpretResult result = lit_interpret(state, "repl", line);
-        if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
+        if(arg[0] == '-')
         {
-            printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
-        }
-    }
-    #endif
-    return 0;
-}
-
-static void run_tests(LitState* state)
-{
-    #if defined(__unix__) || defined(__linux__)
-    DIR* dir = opendir(LIT_TESTS_DIRECTORY);
-
-    if(dir == NULL)
-    {
-        fprintf(stderr, "Could not find '%s' directory\n", LIT_TESTS_DIRECTORY);
-        return;
-    }
-
-    struct dirent* ep;
-    struct dirent* node;
-
-    size_t tests_dir_length = strlen(LIT_TESTS_DIRECTORY);
-
-    while((ep = readdir(dir)))
-    {
-        if(ep->d_type == DT_DIR)
-        {
-            const char* dir_name = ep->d_name;
-
-            if(strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0)
+            fx->flags[flidx].flag = arg[1];
+            fx->flags[flidx].value = NULL;
+            if(strchr(expectvalue, arg[1]) != NULL)
             {
-                continue;
-            }
-
-            size_t dir_name_length = strlen(dir_name);
-            size_t total_length = dir_name_length + tests_dir_length + 2;
-
-            char subdir_name[total_length];
-
-            memcpy(subdir_name, LIT_TESTS_DIRECTORY, tests_dir_length);
-            memcpy(subdir_name + tests_dir_length + 1, dir_name, dir_name_length);
-
-            subdir_name[tests_dir_length] = '/';
-            subdir_name[total_length - 1] = '\0';
-
-            DIR* subdir = opendir(subdir_name);
-
-            if(subdir == NULL)
-            {
-                fprintf(stderr, "Failed to open tests subdirectory '%s'\n", subdir_name);
-                continue;
-            }
-
-            while((node = readdir(subdir)))
-            {
-                if(node->d_type == DT_REG)
+                nextch = arg[2];
+                /* -e "somecode(...)" */
+                /* -e is followed by text: -e"somecode(...)" */
+                if(nextch != 0)
                 {
-                    const char* file_name = node->d_name;
-                    size_t name_length = strlen(file_name);
-
-                    if(name_length < 4 || memcmp(".lit", file_name + name_length - 4, 4) != 0)
+                    fx->flags[flidx].value = arg + 2;
+                }
+                else if(nextarg != NULL)
+                {
+                    if(nextarg[0] != '-')
                     {
-                        continue;
+                        fx->flags[flidx].value = nextarg;
+                        i++;
                     }
-
-                    char file_path[total_length + name_length + 1];
-
-                    memcpy(file_path, subdir_name, total_length - 1);
-                    memcpy(file_path + total_length, file_name, name_length);
-
-                    file_path[total_length - 1] = '/';
-                    file_path[total_length + name_length] = '\0';
-
-                    printf("Testing %s...\n", file_path);
-                    lit_interpret_file(state, file_path);
+                }
+                else
+                {
+                    fx->flags[flidx].value = NULL;
                 }
             }
-
-            closedir(subdir);
+            flidx++;
+        }
+        else
+        {
+            fx->positional[psidx] = arg;
+            psidx++;
         }
     }
-
-    closedir(dir);
-    #endif
+    fx->fcnt = flidx;
+    fx->poscnt = psidx;
+    fx->nargc = i;
+    return true;
 }
 
 static void show_help()
@@ -148,7 +119,6 @@ static void show_help()
     printf(" -i --interactive Starts an interactive shell.\n");
     printf(" -d --dump  Dumps all the bytecode chunks from the given file.\n");
     printf(" -t --time  Measures and prints the compilation timings.\n");
-    printf(" -c --test  Runs all tests (useful for code coverage testing).\n");
     printf(" -h --help  I wonder, what this option does.\n");
     printf(" If no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
@@ -187,26 +157,185 @@ static bool match_arg(const char* arg, const char* a, const char* b)
 int exitstate(LitState* state, LitInterpretResultType result)
 {
     int64_t amount;
-
     amount = lit_free_state(state);
-    if(result != LITRESULT_COMPILE_ERROR && amount != 0)
+    if((result != LITRESULT_COMPILE_ERROR) && amount != 0)
     {
         fprintf(stderr, "gc: freed residual %i bytes\n", (int)amount);
-        return LIT_EXIT_CODE_MEM_LEAK;
+        //return LIT_EXIT_CODE_MEM_LEAK;
+        return 0;
     }
     if(result != LITRESULT_OK)
     {
-        return result == LITRESULT_RUNTIME_ERROR ? LIT_EXIT_CODE_RUNTIME_ERROR : LIT_EXIT_CODE_COMPILE_ERROR;
+        /*
+        if(result == LITRESULT_RUNTIME_ERROR)
+        {
+            return LIT_EXIT_CODE_RUNTIME_ERROR;
+        }
+        else
+        {
+            return LIT_EXIT_CODE_COMPILE_ERROR;
+        }
+        */
+        return 1;
     }
     return 0;
 }
 
+struct Options_t
+{
+    char* debugmode;
+    char* codeline;
+};
 
 
-
-int main(int argc, const char* argv[])
+static bool parse_options(Options_t* opts, Flag_t* flags, int fcnt)
 {
     int i;
+    opts->codeline = NULL;
+    opts->debugmode = NULL;
+    for(i=0; i<fcnt; i++)
+    {
+        switch(flags[i].flag)
+        {
+            case 'h':
+                {
+                    show_help();
+                    return false;
+                }
+                break;
+            case 'e':
+                {
+                    if(flags[i].value == NULL)
+                    {
+                        fprintf(stderr, "flag '-e' expects a string\n");
+                        return false;
+                    }
+                    opts->codeline = flags[i].value;
+                }
+                break;
+            case 'd':
+                {
+                    if(flags[i].value == NULL)
+                    {
+                        fprintf(stderr, "flag '-d' expects a value. run '-h' for possible values\n");
+                        return false;
+                    }
+                    opts->debugmode = flags[i].value;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    return true;
+}
+
+void interupt_handler(int signal_id)
+{
+    (void)signal_id;
+    lit_free_state(repl_state);
+    printf("\nExiting.\n");
+    exit(0);
+}
+
+#if defined(LIT_HAVE_READLINE)
+static int run_repl(LitState* state)
+{
+    fprintf(stderr, "in repl...\n");
+    char* line;
+    repl_state = state;
+    signal(SIGINT, interupt_handler);
+    //signal(SIGTSTP, interupt_handler);
+    lit_set_optimization_level(LITOPTLEVEL_REPL);
+    printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
+    while(true)
+    {
+        line = readline("> ");
+        if(line == NULL)
+        {
+            return 0;
+        }
+        add_history(line);
+        LitInterpretResult result = lit_interpret(state, "repl", line);
+        if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
+        {
+            printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
+        }
+    }
+    return 0;
+}
+#endif
+
+int main(int argc, char* argv[])
+{
+    int i;
+    bool cmdfailed;
+    bool replexit;
+    const char* dm;
+    const char* filename;
+    LitArray* arg_array;
+    LitState* state;
+    FlagContext_t fx;
+    Options_t opts;
+    LitInterpretResultType result;
+    replexit = false;
+    cmdfailed = false;
+    result = LITRESULT_OK;
+    populate_flags(argc, 1, argv, "ed", &fx);
+    state = lit_new_state();
+    lit_open_libraries(state);
+
+    if(!parse_options(&opts, fx.flags, fx.fcnt))
+    {
+        cmdfailed = true;
+    }
+    else
+    {
+        if(opts.debugmode != NULL)
+        {
+            dm = opts.debugmode;
+            {
+                fprintf(stderr, "unrecognized dump mode '%s'\n", dm);
+                cmdfailed = true;
+            }
+        }
+    }
+    if(!cmdfailed)
+    {
+        if((fx.poscnt > 0) || (opts.codeline != NULL))
+        {
+            arg_array = lit_create_array(state);
+            for(i=0; i<fx.poscnt; i++)
+            {
+                lit_vallist_push(state, &arg_array->list, OBJECT_CONST_STRING(state, fx.positional[i]));
+            }
+            lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
+            if(opts.codeline)
+            {
+                result = lit_interpret(state, "<-e>", opts.codeline).type;
+            }
+            else
+            {
+                filename = fx.positional[0];
+                result = lit_interpret_file(state, filename).type;
+            }
+        }
+        else
+        {
+            #if defined(LIT_HAVE_READLINE)
+                run_repl(state);
+            #else
+                fprintf(stderr, "no repl support compiled in\n");
+            #endif
+        }
+    }
+    return exitstate(state, result);
+}
+
+int oldmain(int argc, const char* argv[])
+{
+    int i;
+    int ec;
     int args_left;
     int num_files_to_run;
     char c;
@@ -215,7 +344,6 @@ int main(int argc, const char* argv[])
     bool show_repl;
     bool evaled;
     bool showed_help;
-    bool perform_tests;
     bool enable_optimization;
     size_t j;
     size_t length;
@@ -228,10 +356,12 @@ int main(int argc, const char* argv[])
     const char* arg;
     const char* module_name;
     char* files_to_run[128];
+    LitState* state;
     LitModule* module;
     LitInterpretResultType result;
     LitArray* arg_array;
-    LitState* state;
+
+    ec = 0;
     state = lit_new_state();
     lit_open_libraries(state);
     num_files_to_run = 0;
@@ -265,7 +395,6 @@ int main(int argc, const char* argv[])
     show_repl = false;
     evaled = false;
     showed_help = false;
-    perform_tests = false;
     bytecode_file = NULL;
     for(i = 1; i < argc; i++)
     {
@@ -273,7 +402,7 @@ int main(int argc, const char* argv[])
         arg = argv[i];
         if(arg[0] == '-' && arg[1] == 'D')
         {
-            lit_add_definition(state, arg + 2);
+            lit_preproc_setdef(state, arg + 2);
         }
         else if(arg[0] == '-' && arg[1] == 'O')
         {
@@ -327,7 +456,7 @@ int main(int argc, const char* argv[])
                 if(!found)
                 {
                     fprintf(stderr, "Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
-                    return LIT_EXIT_CODE_ARGUMENT_ERROR;
+                    return 1;
                 }
             }
         }
@@ -337,7 +466,6 @@ int main(int argc, const char* argv[])
             if(args_left == 0)
             {
                 fprintf(stderr, "Expected code to run for the eval argument.\n");
-                //return LIT_EXIT_CODE_ARGUMENT_ERROR;
                 return exitstate(state, result);
             }
             string = argv[++i];
@@ -377,10 +505,6 @@ int main(int argc, const char* argv[])
         else if(match_arg(arg, "-i", "--interactive"))
         {
             show_repl = true;
-        }
-        else if(match_arg(arg, "-c", "--test"))
-        {
-            perform_tests = true;
         }
         else if(match_arg(arg, "-d", "--dump"))
         {
@@ -438,18 +562,21 @@ int main(int argc, const char* argv[])
             for(i = 0; i < num_files_to_run; i++)
             {
                 file = files_to_run[i];
-                result = (dump ? lit_dump_file(state, file) : lit_interpret_file(state, file)).type;
+                result = LITRESULT_OK;
+                if(dump)
+                {
+                    result = lit_dump_file(state, file).type;
+                }
+                else
+                {
+                    result = lit_interpret_file(state, file).type;
+                }
                 if(result != LITRESULT_OK)
                 {
                     return exitstate(state, result);
                 }
             }
         }
-    }
-    if(perform_tests)
-    {
-        run_tests(state);
-        return exitstate(state, result);
     }
     if(show_repl)
     {

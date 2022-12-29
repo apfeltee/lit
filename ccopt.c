@@ -75,20 +75,20 @@ void optdbg(const char* fmt, ...)
     #define optdbg(msg, ...)
 #endif
 
-void lit_init_variables(LitVarList* array)
+void lit_varlist_init(LitVarList* array)
 {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void lit_free_variables(LitState* state, LitVarList* array)
+void lit_varlist_destroy(LitState* state, LitVarList* array)
 {
     LIT_FREE_ARRAY(state, sizeof(LitVariable), array->values, array->capacity);
-    lit_init_variables(array);
+    lit_varlist_init(array);
 }
 
-void lit_variables_write(LitState* state, LitVarList* array, LitVariable value)
+void lit_varlist_push(LitState* state, LitVarList* array, LitVariable value)
 {
     size_t old_capacity;
     if(array->capacity < array->count + 1)
@@ -106,7 +106,7 @@ void lit_init_optimizer(LitState* state, LitOptimizer* optimizer)
     optimizer->state = state;
     optimizer->depth = -1;
     optimizer->mark_used = false;
-    lit_init_variables(&optimizer->variables);
+    lit_varlist_init(&optimizer->variables);
 }
 
 static void opt_begin_scope(LitOptimizer* optimizer)
@@ -136,7 +136,7 @@ static void opt_end_scope(LitOptimizer* optimizer)
 
 static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, size_t length, bool constant, LitExpression** declaration)
 {
-    lit_variables_write(optimizer->state, &optimizer->variables,
+    lit_varlist_push(optimizer->state, &optimizer->variables,
                         (LitVariable){ name, length, optimizer->depth, constant, optimizer->mark_used, NULL_VALUE, declaration });
 
     return &optimizer->variables.values[optimizer->variables.count - 1];
@@ -905,7 +905,7 @@ void lit_optimize(LitOptimizer* optimizer, LitStmtList* statements)
     opt_begin_scope(optimizer);
     optimize_statements(optimizer, statements);
     opt_end_scope(optimizer);
-    lit_free_variables(optimizer->state, &optimizer->variables);
+    lit_varlist_destroy(optimizer->state, &optimizer->variables);
 }
 
 static void setup_optimization_states()

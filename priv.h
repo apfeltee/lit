@@ -47,7 +47,7 @@ struct LitPrivate
     bool constant;
 };
 
-struct LitPrivates
+struct LitPrivList
 {
     size_t capacity;
     size_t count;
@@ -61,9 +61,9 @@ struct LitEmitter
     LitCompiler* compiler;
     size_t last_line;
     size_t loop_start;
-    LitPrivates privates;
-    LitUInts breaks;
-    LitUInts continues;
+    LitPrivList privates;
+    LitUintList breaks;
+    LitUintList continues;
     LitModule* module;
     LitString* class_name;
     bool class_has_super;
@@ -159,7 +159,7 @@ struct LitParameter
     LitExpression* default_value;
 };
 
-struct LitParameters
+struct LitParamList
 {
     size_t capacity;
     size_t count;
@@ -170,7 +170,7 @@ struct LitParameters
 struct LitLambdaExpression
 {
     LitExpression expression;
-    LitParameters parameters;
+    LitParamList parameters;
     LitExpression* body;
 };
 
@@ -309,7 +309,7 @@ struct LitFunctionStatement
     LitExpression statement;
     const char* name;
     size_t length;
-    LitParameters parameters;
+    LitParamList parameters;
     LitExpression* body;
     bool exported;
 };
@@ -324,7 +324,7 @@ struct LitMethodStatement
 {
     LitExpression statement;
     LitString* name;
-    LitParameters parameters;
+    LitParamList parameters;
     LitExpression* body;
     bool is_static;
 };
@@ -346,30 +346,30 @@ struct LitFieldStatement
     bool is_static;
 };
 
-void lit_init_expressions(LitExprList* array);
-void lit_free_expressions(LitState* state, LitExprList* array);
-void lit_expressions_write(LitState* state, LitExprList* array, LitExpression* value);
+void lit_exprlist_init(LitExprList* array);
+void lit_exprlist_destroy(LitState* state, LitExprList* array);
+void lit_exprlist_push(LitState* state, LitExprList* array, LitExpression* value);
 
-void lit_init_parameters(LitParameters* array);
-void lit_free_parameters(LitState* state, LitParameters* array);
-void lit_parameters_write(LitState* state, LitParameters* array, LitParameter value);
+void lit_paramlist_init(LitParamList* array);
+void lit_paramlist_destroy(LitState* state, LitParamList* array);
+void lit_paramlist_push(LitState* state, LitParamList* array, LitParameter value);
 
-void lit_init_statements(LitStmtList* array);
-void lit_free_statements(LitState* state, LitStmtList* array);
-void lit_statements_write(LitState* state, LitStmtList* array, LitExpression* value);
+void lit_stmtlist_init(LitStmtList* array);
+void lit_stmtlist_destroy(LitState* state, LitStmtList* array);
+void lit_stmtlist_push(LitState* state, LitStmtList* array, LitExpression* value);
 
 
-void lit_init_privates(LitPrivates* array);
-void lit_free_privates(LitState* state, LitPrivates* array);
-void lit_privates_write(LitState* state, LitPrivates* array, LitPrivate value);
+void lit_privlist_init(LitPrivList* array);
+void lit_privlist_destroy(LitState* state, LitPrivList* array);
+void lit_privlist_push(LitState* state, LitPrivList* array, LitPrivate value);
 
-void lit_init_locals(LitLocals* array);
-void lit_free_locals(LitState* state, LitLocals* array);
-void lit_locals_write(LitState* state, LitLocals* array, LitLocal value);
+void lit_loclist_init(LitLocList* array);
+void lit_loclist_destroy(LitState* state, LitLocList* array);
+void lit_loclist_push(LitState* state, LitLocList* array, LitLocal value);
 
-void lit_init_variables(LitVarList* array);
-void lit_free_variables(LitState* state, LitVarList* array);
-void lit_variables_write(LitState* state, LitVarList* array, LitVariable value);
+void lit_varlist_init(LitVarList* array);
+void lit_varlist_destroy(LitState* state, LitVarList* array);
+void lit_varlist_push(LitState* state, LitVarList* array, LitVariable value);
 
 void lit_free_expression(LitState* state, LitExpression* expression);
 LitLiteralExpr* lit_create_literal_expression(LitState* state, size_t line, LitValue value);

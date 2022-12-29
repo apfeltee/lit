@@ -1,0 +1,19 @@
+
+const files = [
+  "mandel1.lit",
+  "mandel2.lit",
+  "mandel3.lit",
+  "examples/bf.lit",
+  "sanity.lit"
+]
+
+for(var file in files)
+{
+    var data = (new File(file, "rb")).readAll()
+    eval(data)
+}
+
+println("all is well!")
+
+
+

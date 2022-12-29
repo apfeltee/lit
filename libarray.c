@@ -3,230 +3,157 @@
 #include "sds.h"
 
 
-void lit_datalist_init(LitDataList* array, size_t typsz)
+void lit_datalist_init(LitDataList* dl, size_t typsz)
 {
-    array->values = NULL;
-    array->capacity = 0;
-    array->count = 0;
-    array->elemsz = typsz;
+    dl->values = NULL;
+    dl->capacity = 0;
+    dl->count = 0;
+    dl->rawelemsz = typsz;
+    dl->elemsz = dl->rawelemsz + sizeof(intptr_t);
 }
 
-void lit_datalist_destroy(LitState* state, LitDataList* array)
+void lit_datalist_destroy(LitState* state, LitDataList* dl)
 {
-    LIT_FREE_ARRAY(state, array->elemsz, array->values, array->capacity);
-    lit_datalist_init(array, array->elemsz);
+    LIT_FREE_ARRAY(state, dl->elemsz, dl->values, dl->capacity);
+    lit_datalist_init(dl, dl->rawelemsz);
 }
 
-size_t lit_datalist_count(LitDataList* arr)
+size_t lit_datalist_count(LitDataList* dl)
 {
-    return arr->count;
+    return dl->count;
 }
 
-size_t lit_datalist_size(LitDataList* arr)
+size_t lit_datalist_size(LitDataList* dl)
 {
-    return arr->count;
+    return dl->count;
 }
 
-size_t lit_datalist_capacity(LitDataList* arr)
+size_t lit_datalist_capacity(LitDataList* dl)
 {
-    return arr->capacity;
+    return dl->capacity;
 }
 
-void lit_datalist_clear(LitDataList* arr)
+void lit_datalist_clear(LitDataList* dl)
 {
-    arr->count = 0;
+    dl->count = 0;
 }
 
-void lit_datalist_setcount(LitDataList* arr, size_t nc)
+void lit_datalist_setcount(LitDataList* dl, size_t nc)
 {
-    arr->count = nc;
+    dl->count = nc;
 }
 
-void lit_datalist_deccount(LitDataList* arr)
+void lit_datalist_deccount(LitDataList* dl)
 {
-    arr->count--;
+    dl->count--;
 }
 
-uintptr_t lit_datalist_get(LitDataList* arr, size_t idx)
+intptr_t lit_datalist_get(LitDataList* dl, size_t idx)
 {
-    return arr->values[idx];
+    return dl->values[idx];
 }
 
-uintptr_t lit_datalist_set(LitDataList* arr, size_t idx, uintptr_t val)
+intptr_t lit_datalist_set(LitDataList* dl, size_t idx, intptr_t val)
 {
-    arr->values[idx] = val;
+    dl->values[idx] = val;
     return val;
 }
 
-void lit_datalist_push(LitState* state, LitDataList* array, uintptr_t value)
+void lit_datalist_push(LitState* state, LitDataList* dl, intptr_t value)
 {
     size_t old_capacity;
-    if(array->capacity < array->count + 1)
+    if(dl->capacity < (dl->count + 1))
     {
-        old_capacity = array->capacity;
-        array->capacity = LIT_GROW_CAPACITY(old_capacity);
-        array->values = LIT_GROW_ARRAY(state, array->values, array->elemsz, old_capacity, array->capacity);
+        old_capacity = dl->capacity;
+        dl->capacity = LIT_GROW_CAPACITY(old_capacity);
+        dl->values = LIT_GROW_ARRAY(state, dl->values, dl->elemsz, old_capacity, dl->capacity);
     }
-    array->values[array->count] = value;
-    array->count++;
+    dl->values[dl->count] = value;
+    dl->count++;
 }
 
-void lit_datalist_ensuresize(LitState* state, LitDataList* array, size_t size)
+void lit_datalist_ensuresize(LitState* state, LitDataList* dl, size_t size)
 {
     size_t i;
     size_t old_capacity;
-    if(array->capacity < size)
+    if(dl->capacity < size)
     {
-        old_capacity = array->capacity;
-        array->capacity = size;
-        array->values = LIT_GROW_ARRAY(state, array->values, array->elemsz, old_capacity, size);
+        old_capacity = dl->capacity;
+        dl->capacity = size;
+        dl->values = LIT_GROW_ARRAY(state, dl->values, dl->elemsz, old_capacity, size);
         for(i = old_capacity; i < size; i++)
         {
-            array->values[i] = NULL_VALUE;
+            dl->values[i] = NULL_VALUE;
         }
     }
-    if(array->count < size)
+    if(dl->count < size)
     {
-        array->count = size;
+        dl->count = size;
     }
 }
 
 /* -------------------------*/
 
-void lit_vallist_init(LitValueList* array)
+void lit_vallist_init(LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_init(&array->list, sizeof(LitValue));
-    #else
-        array->values = NULL;
-        array->capacity = 0;
-        array->count = 0;
-    #endif
+    lit_datalist_init(&vl->list, sizeof(LitValue));
 }
 
-void lit_vallist_destroy(LitState* state, LitValueList* array)
+void lit_vallist_destroy(LitState* state, LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_destroy(state, &array->list);
-    #else
-        LIT_FREE_ARRAY(state, sizeof(LitValue), array->values, array->capacity);
-        lit_vallist_init(array);
-    #endif
+    lit_datalist_destroy(state, &vl->list);
 }
 
-size_t lit_vallist_size(LitValueList* arr)
+size_t lit_vallist_size(LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        return lit_datalist_count(&arr->list);
-    #else
-        return arr->count;
-    #endif
+    return lit_datalist_count(&vl->list);
 }
 
-size_t lit_vallist_count(LitValueList* arr)
+size_t lit_vallist_count(LitValueList* vl)
 {
-    return lit_vallist_size(arr);
+    return lit_vallist_size(vl);
 }
 
-size_t lit_vallist_capacity(LitValueList* arr)
+size_t lit_vallist_capacity(LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        return lit_datalist_capacity(&arr->list);
-    #else
-        return arr->capacity;
-    #endif
+    return lit_datalist_capacity(&vl->list);
 }
 
-void lit_vallist_setcount(LitValueList* arr, size_t nc)
+void lit_vallist_setcount(LitValueList* vl, size_t nc)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_setcount(&arr->list, nc);
-    #else
-        arr->count = nc;
-    #endif
+    lit_datalist_setcount(&vl->list, nc);
 }
 
-
-void lit_vallist_clear(LitValueList* arr)
+void lit_vallist_clear(LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_setcount(&arr->list, 0);
-    #else
-        arr->count = 0;
-    #endif
+    lit_datalist_setcount(&vl->list, 0);
 }
 
-
-void lit_vallist_deccount(LitValueList* arr)
+void lit_vallist_deccount(LitValueList* vl)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_deccount(&arr->list);
-    #else
-        arr->count--;
-    #endif
+    lit_datalist_deccount(&vl->list);
 }
 
-LitValue lit_vallist_set(LitValueList* arr, size_t idx, LitValue val)
+LitValue lit_vallist_set(LitValueList* vl, size_t idx, LitValue val)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_set(&arr->list, idx, val);
-    #else
-        arr->values[idx] = val;
-    #endif
+    lit_datalist_set(&vl->list, idx, val);
     return val;
 }
 
-
-LitValue lit_vallist_get(LitValueList* arr, size_t idx)
+LitValue lit_vallist_get(LitValueList* vl, size_t idx)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        return (LitValue)lit_datalist_get(&arr->list, idx);
-    #else
-        return arr->values[idx];
-    #endif
+    return (LitValue)lit_datalist_get(&vl->list, idx);
 }
 
-void lit_vallist_push(LitState* state, LitValueList* array, LitValue value)
+void lit_vallist_push(LitState* state, LitValueList* vl, LitValue value)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_push(state, &array->list, (uintptr_t)value);
-    #else
-        size_t old_capacity;
-        if(array->capacity < array->count + 1)
-        {
-            old_capacity = array->capacity;
-            array->capacity = LIT_GROW_CAPACITY(old_capacity);
-            array->values = LIT_GROW_ARRAY(state, array->values, sizeof(LitValue), old_capacity, array->capacity);
-        }
-        array->values[array->count] = value;
-        array->count++;
-    #endif
+    lit_datalist_push(state, &vl->list, (intptr_t)value);
 }
 
 
 void lit_vallist_ensuresize(LitState* state, LitValueList* values, size_t size)
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        lit_datalist_ensuresize(state, &values->list, size);
-    #else
-        size_t i;
-        size_t old_capacity;
-        if(values->capacity < size)
-        {
-            old_capacity = values->capacity;
-            values->capacity = size;
-            values->values = LIT_GROW_ARRAY(state, values->values, sizeof(LitValue), old_capacity, size);
-            for(i = old_capacity; i < size; i++)
-            {
-                values->values[i] = NULL_VALUE;
-            }
-        }
-        if(values->count < size)
-        {
-            values->count = size;
-        }
-    #endif
-
+    lit_datalist_ensuresize(state, &values->list, size);
 }
 
 int lit_array_indexof(LitArray* array, LitValue value)
@@ -241,7 +168,6 @@ int lit_array_indexof(LitArray* array, LitValue value)
     }
     return -1;
 }
-
 
 LitValue lit_array_removeat(LitArray* array, size_t index)
 {

@@ -24,7 +24,7 @@ static LitExpression *parse_block(LitParser *parser);
 static LitExpression *parse_precedence(LitParser *parser, LitPrecedence precedence, bool err, bool ignsemi);
 static LitExpression *parse_number(LitParser *parser, bool can_assign);
 static LitExpression *parse_lambda(LitParser *parser, LitLambdaExpression *lambda);
-static void parse_parameters(LitParser *parser, LitParameters *parameters);
+static void parse_parameters(LitParser *parser, LitParamList *parameters);
 static LitExpression *parse_grouping_or_lambda(LitParser *parser, bool can_assign);
 static LitExpression *parse_call(LitParser *parser, LitExpression *prev, bool can_assign);
 static LitExpression *parse_unary(LitParser *parser, bool can_assign);
@@ -454,7 +454,7 @@ static LitExpression* parse_block(LitParser* parser)
             break;
         }
         ignore_new_lines(parser, true);
-        lit_statements_write(parser->state, &statement->statements, parse_statement(parser));
+        lit_stmtlist_push(parser->state, &statement->statements, parse_statement(parser));
         ignore_new_lines(parser, true);
     }
     ignore_new_lines(parser, true);
@@ -534,7 +534,7 @@ static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambd
     return (LitExpression*)lambda;
 }
 
-static void parse_parameters(LitParser* parser, LitParameters* parameters)
+static void parse_parameters(LitParser* parser, LitParamList* parameters)
 {
     bool had_default;
     size_t arg_length;
@@ -546,7 +546,7 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters)
         // Vararg ...
         if(prs_match(parser, LITTOK_DOT_DOT_DOT))
         {
-            lit_parameters_write(parser->state, parameters, (LitParameter){ "...", 3, NULL });
+            lit_paramlist_push(parser->state, parameters, (LitParameter){ "...", 3, NULL });
             return;
         }
         consume(parser, LITTOK_IDENTIFIER, "argument name");
@@ -562,7 +562,7 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters)
         {
             prs_error(parser, LITERROR_DEFAULT_ARG_CENTRED);
         }
-        lit_parameters_write(parser->state, parameters, (LitParameter){ arg_name, arg_length, default_value });
+        lit_paramlist_push(parser->state, parameters, (LitParameter){ arg_name, arg_length, default_value });
         if(!prs_match(parser, LITTOK_COMMA))
         {
             break;
@@ -614,7 +614,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
             {
                 def_value = parse_expression(parser, true);
             }
-            lit_parameters_write(state, &lambda->parameters, (LitParameter){ first_arg_start, first_arg_length, def_value });
+            lit_paramlist_push(state, &lambda->parameters, (LitParameter){ first_arg_start, first_arg_length, def_value });
             if(!had_vararg && parser->previous.type == LITTOK_COMMA)
             {
                 do
@@ -641,7 +641,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
                     {
                         prs_error(parser, LITERROR_DEFAULT_ARG_CENTRED);
                     }
-                    lit_parameters_write(state, &lambda->parameters, (LitParameter){ arg_name, arg_length, default_value });
+                    lit_paramlist_push(state, &lambda->parameters, (LitParameter){ arg_name, arg_length, default_value });
                     if(stop)
                     {
                         break;
@@ -682,7 +682,7 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
     while(!check(parser, LITTOK_RIGHT_PAREN))
     {
         e = parse_expression(parser, true);
-        lit_expressions_write(parser->state, &expression->args, e);
+        lit_exprlist_push(parser->state, &expression->args, e);
         if(!prs_match(parser, LITTOK_COMMA))
         {
             break;
@@ -916,16 +916,16 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
     {
         if(lit_string_length(lit_as_string(parser->previous.value)) > 0)
         {
-            lit_expressions_write(
+            lit_exprlist_push(
             parser->state, &expression->expressions,
             (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
         }
-        lit_expressions_write(parser->state, &expression->expressions, parse_expression(parser, true));
+        lit_exprlist_push(parser->state, &expression->expressions, parse_expression(parser, true));
     } while(prs_match(parser, LITTOK_INTERPOLATION));
     consume(parser, LITTOK_STRING, "end of interpolation");
     if(lit_string_length(lit_as_string(parser->previous.value)) > 0)
     {
-        lit_expressions_write(
+        lit_exprlist_push(
         parser->state, &expression->expressions,
         (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
     }
@@ -950,7 +950,7 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign)
         ignore_new_lines(parser, true);
         consume(parser, LITTOK_EQUAL, "'=' after key string");
         ignore_new_lines(parser, true);
-        lit_expressions_write(parser->state, &object->values, parse_expression(parser, true));
+        lit_exprlist_push(parser->state, &object->values, parse_expression(parser, true));
         if(!prs_match(parser, LITTOK_COMMA))
         {
             break;
@@ -1082,7 +1082,7 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign)
     while(!check(parser, LITTOK_RIGHT_BRACKET))
     {
         ignore_new_lines(parser, true);
-        lit_expressions_write(parser->state, &array->values, parse_expression(parser, true));
+        lit_exprlist_push(parser->state, &array->values, parse_expression(parser, true));
         if(!prs_match(parser, LITTOK_COMMA))
         {
             break;
@@ -1254,8 +1254,8 @@ static LitExpression* parse_if(LitParser* parser)
             {
                 e = (LitExpression*)lit_create_unary_expression(parser->state, condition->line, e, LITTOK_BANG);
             }
-            lit_expressions_write(parser->state, elseif_conditions, e);
-            lit_statements_write(parser->state, elseif_branches, parse_statement(parser));
+            lit_exprlist_push(parser->state, elseif_conditions, e);
+            lit_stmtlist_push(parser->state, elseif_branches, parse_statement(parser));
             continue;
         }
         // else
@@ -1560,7 +1560,7 @@ static LitExpression* parse_class(LitParser* parser)
                 var = parse_var_declaration(parser, true);
                 if(var != NULL)
                 {
-                    lit_statements_write(parser->state, &klass->fields, var);
+                    lit_stmtlist_push(parser->state, &klass->fields, var);
                 }
                 ignore_new_lines(parser, true);
                 continue;
@@ -1573,7 +1573,7 @@ static LitExpression* parse_class(LitParser* parser)
         method = parse_method(parser, is_static || field_is_static);
         if(method != NULL)
         {
-            lit_statements_write(parser->state, &klass->fields, method);
+            lit_stmtlist_push(parser->state, &klass->fields, method);
         }
         ignore_new_lines(parser, true);
     }
@@ -1695,7 +1695,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
             statement = parse_declaration(parser);
             if(statement != NULL)
             {
-                lit_statements_write(parser->state, statements, statement);
+                lit_stmtlist_push(parser->state, statements, statement);
             }
             if(!match_new_line(parser))
             {

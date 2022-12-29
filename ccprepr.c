@@ -3,7 +3,7 @@
 #include "lit.h"
 #include "priv.h"
 
-void lit_init_preprocessor(LitState* state, LitPreprocessor* preprocessor)
+void lit_preproc_init(LitState* state, LitPreprocessor* preprocessor)
 {
     preprocessor->state = state;
 
@@ -11,18 +11,18 @@ void lit_init_preprocessor(LitState* state, LitPreprocessor* preprocessor)
     lit_vallist_init(&preprocessor->open_ifs);
 }
 
-void lit_free_preprocessor(LitPreprocessor* preprocessor)
+void lit_preproc_destroy(LitPreprocessor* preprocessor)
 {
     lit_free_table(preprocessor->state, &preprocessor->defined);
     lit_vallist_destroy(preprocessor->state, &preprocessor->open_ifs);
 }
 
-void lit_add_definition(LitState* state, const char* name)
+void lit_preproc_setdef(LitState* state, const char* name)
 {
     lit_table_set(state, &state->preprocessor->defined, CONST_STRING(state, name), TRUE_VALUE);
 }
 
-static void override(char* source, int length)
+void lit_preproc_override(char* source, int length)
 {
     while(length-- > 0)
     {
@@ -34,7 +34,7 @@ static void override(char* source, int length)
     }
 }
 
-bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
+bool lit_preproc_run(LitPreprocessor* preprocessor, char* source)
 {
     bool close;
     bool in_macro;
@@ -127,7 +127,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                         }
                     }
                     // Remove the macro from code
-                    override(macro_start - 1, (int)(current - macro_start));
+                    lit_preproc_override(macro_start - 1, (int)(current - macro_start));
                     in_macro = false;
                     in_arg = false;
                 }
@@ -150,7 +150,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                             {
                                 // Remove the whole if branch from code
                                 branch_start = (char*)lit_vallist_get(&preprocessor->open_ifs, lit_vallist_count(&preprocessor->open_ifs) - 1);
-                                override(branch_start - 1, (int)(current - branch_start));
+                                lit_preproc_override(branch_start - 1, (int)(current - branch_start));
                                 if(ignore_depth == depth + 1)
                                 {
                                     ignore_depth = -1;
@@ -161,7 +161,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                             {
                                 lit_vallist_deccount(&preprocessor->open_ifs);
                                 // Remove #endif
-                                override(macro_start - 1, (int)(current - macro_start));
+                                lit_preproc_override(macro_start - 1, (int)(current - macro_start));
                             }
                         }
                         else if(ignore_depth < 0 || depth <= ignore_depth)
@@ -171,7 +171,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source)
                             {
                                 // Remove the macro from code
                                 branch_start = (char*)lit_vallist_get(&preprocessor->open_ifs, lit_vallist_count(&preprocessor->open_ifs) - 1);
-                                override(branch_start - 1, (int)(current - branch_start));
+                                lit_preproc_override(branch_start - 1, (int)(current - branch_start));
                                 ignore_depth = -1;
                             }
                             else

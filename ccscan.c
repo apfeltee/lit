@@ -6,6 +6,42 @@
 #include "lit.h"
 #include "priv.h"
 
+
+/* TODO: using DataList messes with the string its supposed to collect. no clue why, though. */
+typedef struct LitByteList LitByteList;
+struct LitByteList
+{
+    size_t capacity;
+    size_t count;
+    uint8_t* values;
+};
+
+void lit_init_bytes(LitByteList* bl)
+{
+    bl->values = NULL;
+    bl->capacity = 0;
+    bl->count = 0;
+}
+
+void lit_free_bytes(LitState* state, LitByteList* bl)
+{
+    LIT_FREE_ARRAY(state, sizeof(uint8_t), bl->values, bl->capacity);
+    lit_init_bytes(bl);
+}
+
+void lit_bytes_write(LitState* state, LitByteList* bl, uint8_t value)
+{
+    size_t oldcap;
+    if(bl->capacity < bl->count + 1)
+    {
+        oldcap = bl->capacity;
+        bl->capacity = LIT_GROW_CAPACITY(oldcap);
+        bl->values = LIT_GROW_ARRAY(state, bl->values, sizeof(uint8_t), oldcap, bl->capacity);
+    }
+    bl->values[bl->count] = value;
+    bl->count++;
+}
+
 void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source)
 {
     scanner->line = 1;
@@ -162,7 +198,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
 {
     char c;
     LitState* state;
-    LitBytes bytes;
+    LitByteList bytes;
     LitToken token;
     LitTokenType string_type;
     state = scanner->state;

@@ -95,8 +95,15 @@ static inline LitValue vm_peek(LitFiber* fiber, short distance)
     privates = fiber->module->privates; \
     upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
-#define vm_writeframe(frame, ip) \
-    frame->ip = ip;
+#if 0
+    #define vm_writeframe(frame, ip) \
+        frame->ip = ip;
+#else
+    static inline void vm_writeframe(LitCallFrame* frame, uint8_t* ip)
+    {
+        frame->ip = ip;
+    }
+#endif
 
 #define vm_returnerror() \
     vm_popgc(state); \

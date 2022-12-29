@@ -54,7 +54,7 @@ LitState* lit_new_state()
     state->last_module = NULL;
     lit_writer_init_file(state, &state->debugwriter, stdout, true);
     state->preprocessor = (LitPreprocessor*)malloc(sizeof(LitPreprocessor));
-    lit_init_preprocessor(state, state->preprocessor);
+    lit_preproc_init(state, state->preprocessor);
     state->scanner = (LitScanner*)malloc(sizeof(LitScanner));
     state->parser = (LitParser*)malloc(sizeof(LitParser));
     lit_init_parser(state, (LitParser*)state->parser);
@@ -78,7 +78,7 @@ int64_t lit_free_state(LitState* state)
         state->roots = NULL;
     }
     lit_free_api(state);
-    lit_free_preprocessor(state->preprocessor);
+    lit_preproc_destroy(state->preprocessor);
     free(state->preprocessor);
     free(state->scanner);
     lit_free_parser(state->parser);
@@ -232,7 +232,7 @@ static void free_statements(LitState* state, LitStmtList* statements)
     {
         lit_free_statement(state, statements->values[i]);
     }
-    lit_free_statements(state, statements);
+    lit_stmtlist_destroy(state, statements);
 }
 
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code)
@@ -264,7 +264,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
         {
             total_t = t = clock();
         }
-        if(!lit_preprocess(state->preprocessor, code))
+        if(!lit_preproc_run(state->preprocessor, code))
         {
             return NULL;
         }
@@ -273,7 +273,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
             printf("-----------------------\nPreprocessing:  %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-        lit_init_statements(&statements);
+        lit_stmtlist_init(&statements);
         if(lit_parse(state->parser, module_name->chars, code, &statements))
         {
             free_statements(state, &statements);
