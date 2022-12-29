@@ -13,7 +13,7 @@ void lit_enable_compilation_time_measurement()
     measure_compilation_time = true;
 }
 
-static void default_error(LitState* state, const char* message)
+static void lit_util_default_error(LitState* state, const char* message)
 {
     (void)state;
     fflush(stdout);
@@ -21,13 +21,13 @@ static void default_error(LitState* state, const char* message)
     fflush(stderr);
 }
 
-static void default_printf(LitState* state, const char* message)
+static void lit_util_default_printf(LitState* state, const char* message)
 {
     (void)state;
     printf("%s", message);
 }
 
-LitState* lit_new_state()
+LitState* lit_make_state()
 {
     LitState* state;
     state = (LitState*)malloc(sizeof(LitState));
@@ -45,8 +45,8 @@ LitState* lit_new_state()
     state->bytes_allocated = 0;
     state->next_gc = 256 * 1024;
     state->allow_gc = false;
-    state->error_fn = default_error;
-    state->print_fn = default_printf;
+    state->error_fn = lit_util_default_error;
+    state->print_fn = lit_util_default_printf;
     state->had_error = false;
     state->roots = NULL;
     state->root_count = 0;
@@ -69,7 +69,7 @@ LitState* lit_new_state()
     return state;
 }
 
-int64_t lit_free_state(LitState* state)
+int64_t lit_destroy_state(LitState* state)
 {
     int64_t amount;
     if(state->roots != NULL)
@@ -93,12 +93,12 @@ int64_t lit_free_state(LitState* state)
     return amount;
 }
 
-void lit_push_root(LitState* state, LitObject* object)
+void lit_state_pushroot(LitState* state, LitObject* object)
 {
-    lit_push_value_root(state, OBJECT_VALUE(object));
+    lit_state_pushvalueroot(state, OBJECT_VALUE(object));
 }
 
-void lit_push_value_root(LitState* state, LitValue value)
+void lit_state_pushvalueroot(LitState* state, LitValue value)
 {
     if(state->root_count + 1 >= state->root_capacity)
     {
@@ -108,23 +108,23 @@ void lit_push_value_root(LitState* state, LitValue value)
     state->roots[state->root_count++] = value;
 }
 
-LitValue lit_peek_root(LitState* state, uint8_t distance)
+LitValue lit_state_peekroot(LitState* state, uint8_t distance)
 {
     assert(state->root_count - distance + 1 > 0);
     return state->roots[state->root_count - distance - 1];
 }
 
-void lit_pop_root(LitState* state)
+void lit_state_poproot(LitState* state)
 {
     state->root_count--;
 }
 
-void lit_pop_roots(LitState* state, uint8_t amount)
+void lit_state_poproots(LitState* state, uint8_t amount)
 {
     state->root_count -= amount;
 }
 
-LitClass* lit_get_class_for(LitState* state, LitValue value)
+LitClass* lit_state_getclassfor(LitState* state, LitValue value)
 {
     LitValue* slot;
     LitUpvalue* upvalue;
@@ -170,9 +170,9 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
                     upvalue = AS_UPVALUE(value);
                     if(upvalue->location == NULL)
                     {
-                        return lit_get_class_for(state, upvalue->closed);
+                        return lit_state_getclassfor(state, upvalue->closed);
                     }
-                    return lit_get_class_for(state, *upvalue->location);
+                    return lit_state_getclassfor(state, *upvalue->location);
                 }
                 break;
             case LITTYPE_INSTANCE:
@@ -205,7 +205,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value)
                     slot = AS_REFERENCE(value)->slot;
                     if(slot != NULL)
                     {
-                        return lit_get_class_for(state, *slot);
+                        return lit_state_getclassfor(state, *slot);
                     }
 
                     return state->objectvalue_class;
@@ -235,12 +235,12 @@ static void free_statements(LitState* state, LitExprList* statements)
     lit_exprlist_destroy(state, statements);
 }
 
-LitInterpretResult lit_interpret_source(LitState* state, const char* module_name, const char* code, size_t len)
+LitInterpretResult lit_state_execsource(LitState* state, const char* module_name, const char* code, size_t len)
 {
-    return lit_internal_interpret(state, lit_string_copy(state, module_name, strlen(module_name)), code, len);
+    return lit_state_internexecsource(state, lit_string_copy(state, module_name, strlen(module_name)), code, len);
 }
 
-LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code, size_t len)
+LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, const char* code, size_t len)
 {
     clock_t t;
     clock_t total_t;
@@ -303,7 +303,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
     return state->had_error ? NULL : module;
 }
 
-LitModule* lit_get_module(LitState* state, const char* name)
+LitModule* lit_state_getmodule(LitState* state, const char* name)
 {
     LitValue value;
     if(lit_table_get(&state->vm->modules->values, CONST_STRING(state, name), &value))
@@ -313,7 +313,7 @@ LitModule* lit_get_module(LitState* state, const char* name)
     return NULL;
 }
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code, size_t len)
+LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module_name, const char* code, size_t len)
 {
     intptr_t istack;
     intptr_t itop;
@@ -321,7 +321,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
     LitModule* module;
     LitFiber* fiber;
     LitInterpretResult result;
-    module = lit_compile_module(state, module_name, code, len);
+    module = lit_state_compilemodule(state, module_name, code, len);
     if(module == NULL)
     {
         return (LitInterpretResult){ LITRESULT_COMPILE_ERROR, NULL_VALUE };
@@ -334,13 +334,13 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
         itop = (intptr_t)(fiber->stack_top);
         idif = (intptr_t)(fiber->stack - fiber->stack_top);
         /* me fail english. how do i put this better? */
-        lit_error(state, RUNTIME_ERROR, "stack should be same as stack top", idif, istack, istack, itop, itop);
+        lit_state_raiseerror(state, RUNTIME_ERROR, "stack should be same as stack top", idif, istack, istack, itop, itop);
     }
     state->last_module = module;
     return result;
 }
 
-char* lit_patch_file_name(char* file_name)
+char* lit_util_patchfilename(char* file_name)
 {
     int i;
     int name_length;
@@ -369,7 +369,7 @@ char* lit_patch_file_name(char* file_name)
     return file_name;
 }
 
-char* copy_string(const char* string)
+char* lit_util_copystring(const char* string)
 {
     size_t length;
     char* new_string;
@@ -379,7 +379,7 @@ char* copy_string(const char* string)
     return new_string;
 }
 
-bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files, const char* output_file)
+bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, const char* output_file)
 {
     size_t i;
     size_t len;
@@ -393,16 +393,16 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     lit_set_optimization_level(LITOPTLEVEL_EXTREME);
     for(i = 0; i < num_files; i++)
     {
-        file_name = copy_string(files[i]);
+        file_name = lit_util_copystring(files[i]);
         source = lit_util_readfile(file_name, &len);
         if(source == NULL)
         {
-            lit_error(state, COMPILE_ERROR, "failed to open file '%s' for reading", file_name);
+            lit_state_raiseerror(state, COMPILE_ERROR, "failed to open file '%s' for reading", file_name);
             return false;
         }
-        file_name = lit_patch_file_name(file_name);
+        file_name = lit_util_patchfilename(file_name);
         module_name = lit_string_copy(state, file_name, strlen(file_name));
-        module = lit_compile_module(state, module_name, source, len);
+        module = lit_state_compilemodule(state, module_name, source, len);
         compiled_modules[i] = module;
         free((void*)source);
         free((void*)file_name);
@@ -414,7 +414,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     file = fopen(output_file, "w+b");
     if(file == NULL)
     {
-        lit_error(state, COMPILE_ERROR, "failed to open file '%s' for writing", output_file);
+        lit_state_raiseerror(state, COMPILE_ERROR, "failed to open file '%s' for writing", output_file);
         return false;
     }
     lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
@@ -430,7 +430,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files
     return true;
 }
 
-static char* read_source(LitState* state, const char* file, char** patched_file_name, size_t* dlen)
+static char* lit_util_readsource(LitState* state, const char* file, char** patched_file_name, size_t* dlen)
 {
     clock_t t;
     size_t len;
@@ -441,14 +441,14 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
     {
         t = clock();
     }
-    file_name = copy_string(file);
+    file_name = lit_util_copystring(file);
     source = lit_util_readfile(file_name, &len);
     if(source == NULL)
     {
-        lit_error(state, RUNTIME_ERROR, "failed to open file '%s' for reading", file_name);
+        lit_state_raiseerror(state, RUNTIME_ERROR, "failed to open file '%s' for reading", file_name);
     }
     *dlen = len;
-    file_name = lit_patch_file_name(file_name);
+    file_name = lit_util_patchfilename(file_name);
     if(measure_compilation_time)
     {
         printf("reading source: %gms\n", last_source_time = (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
@@ -457,24 +457,24 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
     return source;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, const char* file)
+LitInterpretResult lit_state_execfile(LitState* state, const char* file)
 {
     size_t len;
     char* source;
     char* patched_file_name;
     LitInterpretResult result;
-    source = read_source(state, file, &patched_file_name, &len);
+    source = lit_util_readsource(state, file, &patched_file_name, &len);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
-    result = lit_interpret_source(state, patched_file_name, source, len);
+    result = lit_state_execsource(state, patched_file_name, source, len);
     free((void*)source);
     free(patched_file_name);
     return result;
 }
 
-LitInterpretResult lit_dump_file(LitState* state, const char* file)
+LitInterpretResult lit_state_dumpfile(LitState* state, const char* file)
 {
     size_t len;
     char* patched_file_name;
@@ -482,13 +482,13 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
     LitInterpretResult result;
     LitString* module_name;
     LitModule* module;
-    source = read_source(state, file, &patched_file_name, &len);
+    source = lit_util_readsource(state, file, &patched_file_name, &len);
     if(source == NULL)
     {
         return INTERPRET_RUNTIME_FAIL;
     }
     module_name = lit_string_copy(state, patched_file_name, strlen(patched_file_name));
-    module = lit_compile_module(state, module_name, source, len);
+    module = lit_state_compilemodule(state, module_name, source, len);
     if(module == NULL)
     {
         result = INTERPRET_RUNTIME_FAIL;
@@ -503,7 +503,7 @@ LitInterpretResult lit_dump_file(LitState* state, const char* file)
     return result;
 }
 
-void lit_error(LitState* state, LitErrorType type, const char* message, ...)
+void lit_state_raiseerror(LitState* state, LitErrorType type, const char* message, ...)
 {
     size_t buffer_size;
     char* buffer;
@@ -523,7 +523,7 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...)
     free(buffer);
 }
 
-void lit_printf(LitState* state, const char* message, ...)
+void lit_state_printf(LitState* state, const char* message, ...)
 {
     size_t buffer_size;
     char* buffer;

@@ -83,9 +83,9 @@ size_t lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constan
         }
     }
 
-    lit_push_value_root(state, constant);
+    lit_state_pushvalueroot(state, constant);
     lit_vallist_push(*cst, &chunk->constants, constant);
-    lit_pop_root(state);
+    lit_state_poproot(state);
 
     return lit_vallist_count(&chunk->constants) - 1;
 }

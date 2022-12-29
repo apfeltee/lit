@@ -126,7 +126,7 @@ size_t lit_write_string(FILE* file, LitString* string)
     uint16_t i;
     uint16_t c;
     size_t rt;
-    c = lit_string_length(string);
+    c = lit_string_getlength(string);
     rt = fwrite(&c, 2, 1, file);
     for(i = 0; i < c; i++)
     {
@@ -452,13 +452,13 @@ LitModule* lit_load_module(LitState* state, const char* input, size_t len)
     lit_init_emulated_file(&file, input, len);
     if(lit_read_euint16_t(&file) != LIT_BYTECODE_MAGIC_NUMBER)
     {
-        lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown magic number");
+        lit_state_raiseerror(state, COMPILE_ERROR, "Failed to read compiled code, unknown magic number");
         return NULL;
     }
     bytecode_version = lit_read_euint8_t(&file);
     if(bytecode_version > LIT_BYTECODE_VERSION)
     {
-        lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown bytecode version '%i'", (int)bytecode_version);
+        lit_state_raiseerror(state, COMPILE_ERROR, "Failed to read compiled code, unknown bytecode version '%i'", (int)bytecode_version);
         return NULL;
     }
     module_count = lit_read_euint16_t(&file);
@@ -489,7 +489,7 @@ LitModule* lit_load_module(LitState* state, const char* input, size_t len)
     }
     if(lit_read_euint16_t(&file) != LIT_BYTECODE_END_NUMBER)
     {
-        lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown end number");
+        lit_state_raiseerror(state, COMPILE_ERROR, "Failed to read compiled code, unknown end number");
         return NULL;
     }
     return first;
@@ -607,7 +607,7 @@ static LitValue objmethod_file_write(LitVM* vm, LitValue instance, size_t argc, 
     size_t rt;
     LitString* value;
     value = lit_to_string(vm->state, argv[0]);
-    rt = fwrite(value->chars, lit_string_length(value), 1, ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle);
+    rt = fwrite(value->chars, lit_string_getlength(value), 1, ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle);
     return lit_number_to_value(rt);
 }
 
@@ -682,7 +682,7 @@ static LitValue objmethod_file_readall(LitVM* vm, LitValue instance, size_t argc
         /*
         * cannot seek, must read each byte.
         */
-        result = lit_string_alloc_empty(vm->state, 0, false);
+        result = lit_string_makeempty(vm->state, 0, false);
         actuallength = 0;
         while((c = fgetc(data->handle)) != EOF)
         {
@@ -694,7 +694,7 @@ static LitValue objmethod_file_readall(LitVM* vm, LitValue instance, size_t argc
     {
         length = ftell(data->handle);
         fseek(data->handle, 0, SEEK_SET);
-        result = lit_string_alloc_empty(vm->state, length, false);
+        result = lit_string_makeempty(vm->state, length, false);
         actuallength = fread(result->chars, sizeof(char), length, data->handle);
         /*
         * after reading, THIS actually sets the correct length.
@@ -702,8 +702,8 @@ static LitValue objmethod_file_readall(LitVM* vm, LitValue instance, size_t argc
         */
         sdsIncrLen(result->chars, actuallength);
     }
-    result->hash = lit_hash_string(result->chars, actuallength);
-    lit_register_string(vm->state, result);
+    result->hash = lit_util_hashstring(result->chars, actuallength);
+    lit_state_regstring(vm->state, result);
     return OBJECT_VALUE(result);
 }
 

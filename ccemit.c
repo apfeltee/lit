@@ -332,7 +332,7 @@ static void error(LitEmitter* emitter, size_t line, LitError error, ...)
 {
     va_list args;
     va_start(args, error);
-    lit_error(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
+    lit_state_raiseerror(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
     va_end(args);
 }
 
@@ -379,7 +379,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
     }
 
     LitTable* private_names = &emitter->module->private_names->values;
-    LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
+    LitString* key = lit_table_find_string(private_names, name, length, lit_util_hashstring(name, length));
 
     if(key != NULL)
     {
@@ -405,7 +405,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
 static int resolve_private(LitEmitter* emitter, const char* name, size_t length, size_t line)
 {
     LitTable* private_names = &emitter->module->private_names->values;
-    LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
+    LitString* key = lit_table_find_string(private_names, name, length, lit_util_hashstring(name, length));
 
     if(key != NULL)
     {
@@ -1099,7 +1099,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
             {
                 LitLambdaExpression* lambdaexpr = (LitLambdaExpression*)expr;
                 LitString* name = lit_as_string(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module->name),
-                                                              lit_string_number_to_string(emitter->state, expr->line)));
+                                                              lit_string_numbertostring(emitter->state, expr->line)));
                 LitCompiler compiler;
                 init_compiler(emitter, &compiler, LITFUNC_REGULAR);
                 begin_scope(emitter);
@@ -1702,7 +1702,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
         case LITSTMT_METHOD:
             {
                 mthstmt = (LitMethodStatement*)statement;
-                constructor = lit_string_length(mthstmt->name) == 11 && memcmp(mthstmt->name->chars, "constructor", 11) == 0;
+                constructor = lit_string_getlength(mthstmt->name) == 11 && memcmp(mthstmt->name->chars, "constructor", 11) == 0;
                 if(constructor && mthstmt->is_static)
                 {
                     error(emitter, statement->line, LITERROR_STATIC_CONSTRUCTOR);

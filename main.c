@@ -157,7 +157,7 @@ static bool match_arg(const char* arg, const char* a, const char* b)
 int exitstate(LitState* state, LitInterpretResultType result)
 {
     int64_t amount;
-    amount = lit_free_state(state);
+    amount = lit_destroy_state(state);
     if((result != LITRESULT_COMPILE_ERROR) && amount != 0)
     {
         fprintf(stderr, "gc: freed residual %i bytes\n", (int)amount);
@@ -233,7 +233,7 @@ static bool parse_options(Options_t* opts, Flag_t* flags, int fcnt)
 void interupt_handler(int signal_id)
 {
     (void)signal_id;
-    lit_free_state(repl_state);
+    lit_destroy_state(repl_state);
     printf("\nExiting.\n");
     exit(0);
 }
@@ -256,10 +256,10 @@ static int run_repl(LitState* state)
             return 0;
         }
         add_history(line);
-        LitInterpretResult result = lit_interpret_source(state, "repl", line, strlen(line));
+        LitInterpretResult result = lit_state_execsource(state, "repl", line, strlen(line));
         if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
         {
-            printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
+            printf("%s%s%s\n", COLOR_GREEN, lit_string_getdata(lit_to_string(state, result.result)), COLOR_RESET);
         }
     }
     return 0;
@@ -282,7 +282,7 @@ int main(int argc, char* argv[])
     cmdfailed = false;
     result = LITRESULT_OK;
     populate_flags(argc, 1, argv, "ed", &fx);
-    state = lit_new_state();
+    state = lit_make_state();
     lit_open_libraries(state);
 
     if(!parse_options(&opts, fx.flags, fx.fcnt))
@@ -312,12 +312,12 @@ int main(int argc, char* argv[])
             lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
             if(opts.codeline)
             {
-                result = lit_interpret_source(state, "<-e>", opts.codeline, strlen(opts.codeline)).type;
+                result = lit_state_execsource(state, "<-e>", opts.codeline, strlen(opts.codeline)).type;
             }
             else
             {
                 filename = fx.positional[0];
-                result = lit_interpret_file(state, filename).type;
+                result = lit_state_execfile(state, filename).type;
             }
         }
         else
@@ -362,7 +362,7 @@ int oldmain(int argc, const char* argv[])
     LitArray* arg_array;
 
     ec = 0;
-    state = lit_new_state();
+    state = lit_make_state();
     lit_open_libraries(state);
     num_files_to_run = 0;
     result = LITRESULT_OK;
@@ -475,7 +475,7 @@ int oldmain(int argc, const char* argv[])
             module_name = num_files_to_run == 0 ? "repl" : files_to_run[0];
             if(dump)
             {
-                module = lit_compile_module(state, CONST_STRING(state, module_name), source, length);
+                module = lit_state_compilemodule(state, CONST_STRING(state, module_name), source, length);
                 if(module == NULL)
                 {
                     break;
@@ -485,7 +485,7 @@ int oldmain(int argc, const char* argv[])
             }
             else
             {
-                result = lit_interpret_source(state, module_name, source, length).type;
+                result = lit_state_execsource(state, module_name, source, length).type;
                 free(source);
                 if(result != LITRESULT_OK)
                 {
@@ -547,7 +547,7 @@ int oldmain(int argc, const char* argv[])
     {
         if(bytecode_file != NULL)
         {
-            if(!lit_compile_and_save_files(state, files_to_run, num_files_to_run, bytecode_file))
+            if(!lit_state_compileandsave(state, files_to_run, num_files_to_run, bytecode_file))
             {
                 result = LITRESULT_COMPILE_ERROR;
             }
@@ -565,11 +565,11 @@ int oldmain(int argc, const char* argv[])
                 result = LITRESULT_OK;
                 if(dump)
                 {
-                    result = lit_dump_file(state, file).type;
+                    result = lit_state_dumpfile(state, file).type;
                 }
                 else
                 {
-                    result = lit_interpret_file(state, file).type;
+                    result = lit_state_execfile(state, file).type;
                 }
                 if(result != LITRESULT_OK)
                 {

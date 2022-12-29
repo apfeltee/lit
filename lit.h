@@ -865,7 +865,7 @@ struct LitString
     LitObject object;
     /* the hash of this string - note that it is only unique to the context! */
     uint32_t hash;
-    /* this is handled by sds - use lit_string_length to get the length! */
+    /* this is handled by sds - use lit_string_getlength to get the length! */
     char* chars;
 };
 
@@ -1472,13 +1472,7 @@ LitValue lit_vallist_get(LitValueList *arr, size_t idx);
 void lit_vallist_push(LitState *state, LitValueList *array, LitValue value);
 void lit_vallist_ensuresize(LitState *state, LitValueList *values, size_t size);
 
-
-
 /* ------ */
-
-
-
-
 
 void lit_init_chunk(LitChunk* chunk);
 void lit_free_chunk(LitState* state, LitChunk* chunk);
@@ -1494,20 +1488,20 @@ void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value);
 * state functions
 */
 /* creates a new state. */
-LitState* lit_new_state();
+LitState* lit_make_state();
 
 /* frees a state, releasing associated memory. */
-int64_t lit_free_state(LitState* state);
+int64_t lit_destroy_state(LitState* state);
 
-void lit_push_root(LitState* state, LitObject* object);
-void lit_push_value_root(LitState* state, LitValue value);
-LitValue lit_peek_root(LitState* state, uint8_t distance);
-void lit_pop_root(LitState* state);
-void lit_pop_roots(LitState* state, uint8_t amount);
+void lit_state_pushroot(LitState* state, LitObject* object);
+void lit_state_pushvalueroot(LitState* state, LitValue value);
+LitValue lit_state_peekroot(LitState* state, uint8_t distance);
+void lit_state_poproot(LitState* state);
+void lit_state_poproots(LitState* state, uint8_t amount);
 
-LitClass* lit_get_class_for(LitState* state, LitValue value);
+LitClass* lit_state_getclassfor(LitState* state, LitValue value);
 
-char* lit_patch_file_name(char* file_name);
+char* lit_util_patchfilename(char* file_name);
 
 /* call a function in an instance */
 LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
@@ -1579,26 +1573,27 @@ LitString* lit_string_take(LitState* state, char* chars, size_t length, bool was
 LitValue lit_string_format(LitState* state, const char* format, ...);
 
 /* turn a given number to LitValue'd LitString. */
-LitValue lit_string_number_to_string(LitState* state, double value);
+LitValue lit_string_numbertostring(LitState* state, double value);
 
 /* registers a string in the string table. */
-void lit_register_string(LitState* state, LitString* string);
+void lit_state_regstring(LitState* state, LitString* string);
 
 /* get hash sum of given string */
-uint32_t lit_hash_string(const char* key, size_t length);
+uint32_t lit_util_hashstring(const char* key, size_t length);
 
 /*
 * create a new string instance.
 * if $reuse is false, then a new sds-string is created, otherwise $chars is set to NULL.
 * this is to avoid double-allocating, which would create a sds-instance that cannot be freed.
 */
-LitString* lit_string_alloc_empty(LitState* state, size_t length, bool reuse);
+LitString* lit_string_makeempty(LitState* state, size_t length, bool reuse);
 
 /* get length of this string */
-size_t lit_string_length(LitString* ls);
-void lit_string_append_string(LitString* ls, const char* s, size_t len);
-void lit_string_append_strobj(LitString* ls, LitString* other);
-void lit_string_append_char(LitString* ls, char ch);
+size_t lit_string_getlength(LitString* ls);
+const char* lit_string_getdata(LitString* ls);
+void lit_string_appendlen(LitString* ls, const char* s, size_t len);
+void lit_string_appendobj(LitString* ls, LitString* other);
+void lit_string_appendchar(LitString* ls, char ch);
 bool lit_string_equal(LitState* state, LitString* a, LitString* b);
 
 
@@ -1634,17 +1629,17 @@ void lit_array_push(LitState* state, LitArray* array, LitValue val);
  * Please, do not provide a const string source to the compiler, because it will
  * get modified, if it has any macros in it!
  */
-LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code, size_t len);
-LitModule* lit_get_module(LitState* state, const char* name);
+LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, const char* code, size_t len);
+LitModule* lit_state_getmodule(LitState* state, const char* name);
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code, size_t len);
-LitInterpretResult lit_interpret_source(LitState* state, const char* module_name, const char* code, size_t len);
-LitInterpretResult lit_interpret_file(LitState* state, const char* file);
-LitInterpretResult lit_dump_file(LitState* state, const char* file);
-bool lit_compile_and_save_files(LitState* state, char* files[], size_t num_files, const char* output_file);
+LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module_name, const char* code, size_t len);
+LitInterpretResult lit_state_execsource(LitState* state, const char* module_name, const char* code, size_t len);
+LitInterpretResult lit_state_execfile(LitState* state, const char* file);
+LitInterpretResult lit_state_dumpfile(LitState* state, const char* file);
+bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, const char* output_file);
 
-void lit_error(LitState* state, LitErrorType type, const char* message, ...);
-void lit_printf(LitState* state, const char* message, ...);
+void lit_state_raiseerror(LitState* state, LitErrorType type, const char* message, ...);
+void lit_state_printf(LitState* state, const char* message, ...);
 void lit_enable_compilation_time_measurement();
 
 void lit_init_vm(LitState* state, LitVM* vm);
@@ -1769,17 +1764,17 @@ void lit_open_file_library(LitState* state);
 void lit_open_gc_library(LitState* state);
 
 
-int lit_decode_num_bytes(uint8_t byte);
+int lit_util_decodenumbytes(uint8_t byte);
 int lit_ustring_length(LitString* string);
-int lit_encode_num_bytes(int value);
+int lit_util_encodenumbytes(int value);
 int lit_ustring_decode(const uint8_t* bytes, uint32_t length);
 int lit_ustring_encode(int value, uint8_t* bytes);
 
-LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_t index);
-LitString* lit_ustring_from_code_point(LitState* state, int value);
-LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count);
+LitString* lit_ustring_codepointat(LitState* state, LitString* string, uint32_t index);
+LitString* lit_ustring_fromcodepoint(LitState* state, int value);
+LitString* lit_ustring_fromrange(LitState* state, LitString* source, int start, uint32_t count);
 
-int lit_uchar_offset(char* str, int index);
+int lit_util_ucharoffset(char* str, int index);
 
 static inline bool lit_is_digit(char c)
 {

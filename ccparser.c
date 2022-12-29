@@ -274,7 +274,7 @@ static void string_error(LitParser* parser, LitToken* token, const char* message
     {
         return;
     }
-    lit_error(parser->state, COMPILE_ERROR, message);
+    lit_state_raiseerror(parser->state, COMPILE_ERROR, message);
     parser->had_error = true;
     sync(parser);
 }
@@ -914,7 +914,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
     expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
     do
     {
-        if(lit_string_length(lit_as_string(parser->previous.value)) > 0)
+        if(lit_string_getlength(lit_as_string(parser->previous.value)) > 0)
         {
             lit_exprlist_push(
             parser->state, &expression->expressions,
@@ -923,7 +923,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
         lit_exprlist_push(parser->state, &expression->expressions, parse_expression(parser, true));
     } while(prs_match(parser, LITTOK_INTERPOLATION));
     consume(parser, LITTOK_STRING, "end of interpolation");
-    if(lit_string_length(lit_as_string(parser->previous.value)) > 0)
+    if(lit_string_getlength(lit_as_string(parser->previous.value)) > 0)
     {
         lit_exprlist_push(
         parser->state, &expression->expressions,

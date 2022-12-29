@@ -182,7 +182,7 @@ static void litwr_cb_writebyte(LitWriter* wr, int byte)
     if(wr->stringmode)
     {
         ds = (LitString*)wr->uptr;
-        lit_string_append_char(ds, byte);        
+        lit_string_appendchar(ds, byte);        
     }
     else
     {
@@ -196,7 +196,7 @@ static void litwr_cb_writestring(LitWriter* wr, const char* string, size_t len)
     if(wr->stringmode)
     {
         ds = (LitString*)wr->uptr;
-        lit_string_append_string(ds, string, len);
+        lit_string_appendlen(ds, string, len);
     }
     else
     {
@@ -239,7 +239,7 @@ void lit_writer_init_string(LitState* state, LitWriter* wr)
 {
     lit_writer_init_default(state, wr);
     wr->stringmode = true;
-    wr->uptr = lit_string_alloc_empty(state, 0, false);
+    wr->uptr = lit_string_makeempty(state, 0, false);
 }
 
 void lit_writer_writebyte(LitWriter* wr, int byte)
@@ -566,7 +566,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
                 {
                     fprintf(stderr, "lit_print_value: toString() returned a string! so that's what we'll use.\n");
                     tstring = lit_as_string(tstrval);
-                    printf("%.*s", (int)lit_string_length(tstring), tstring->chars);
+                    printf("%.*s", (int)lit_string_getlength(tstring), tstring->chars);
                     return;
                 }
             }

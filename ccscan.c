@@ -74,7 +74,7 @@ static LitToken make_error_token(LitScanner* scanner, LitError error, ...)
     va_end(args);
     token.type = LITTOK_ERROR;
     token.start = result->chars;
-    token.length = lit_string_length(result);
+    token.length = lit_string_getlength(result);
     token.line = scanner->line;
     return token;
 }

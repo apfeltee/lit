@@ -131,9 +131,9 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function)
     LitClosure* closure;
     LitUpvalue** upvalues;
     closure = (LitClosure*)lit_allocate_object(state, sizeof(LitClosure), LITTYPE_CLOSURE);
-    lit_push_root(state, (LitObject*)closure);
+    lit_state_pushroot(state, (LitObject*)closure);
     upvalues = LIT_ALLOCATE(state, sizeof(LitUpvalue*), function->upvalue_count);
-    lit_pop_root(state);
+    lit_state_poproot(state);
     for(i = 0; i < function->upvalue_count; i++)
     {
         upvalues[i] = NULL;
@@ -400,7 +400,7 @@ static LitValue objfn_object_class(LitVM* vm, LitValue instance, size_t argc, Li
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_get_class_for(vm->state, instance));
+    return OBJECT_VALUE(lit_state_getclassfor(vm->state, instance));
 }
 
 static LitValue objfn_object_super(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -408,7 +408,7 @@ static LitValue objfn_object_super(LitVM* vm, LitValue instance, size_t argc, Li
     (void)argc;
     (void)argv;
     LitClass* cl;
-    cl = lit_get_class_for(vm->state, instance)->super;
+    cl = lit_state_getclassfor(vm->state, instance)->super;
     if(cl == NULL)
     {
         return NULL_VALUE;
@@ -420,7 +420,7 @@ static LitValue objfn_object_tostring(LitVM* vm, LitValue instance, size_t argc,
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
+    return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_state_getclassfor(vm->state, instance)->name)));
 }
 
 static void fillmap(LitState* state, LitMap* destmap, LitTable* fromtbl, bool includenullkeys)

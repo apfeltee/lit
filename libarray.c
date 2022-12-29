@@ -510,10 +510,10 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     {
         string = lit_to_string(vm->state, lit_vallist_get(values, i));
         strings[i] = string;
-        length += lit_string_length(string);
+        length += lit_string_getlength(string);
         if(joinee != NULL)
         {
-            length += lit_string_length(joinee);
+            length += lit_string_getlength(joinee);
         }
     }
     jlen = 0;
@@ -522,14 +522,14 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     chars = sdsMakeRoomFor(chars, length + 1);
     if(joinee != NULL)
     {
-        jlen = lit_string_length(joinee);
+        jlen = lit_string_getlength(joinee);
     }
     for(i = 0; i < lit_vallist_count(values); i++)
     {
         string = strings[i];
-        memcpy(chars + index, string->chars, lit_string_length(string));
-        chars = sdscatlen(chars, string->chars, lit_string_length(string));
-        index += lit_string_length(string);
+        memcpy(chars + index, string->chars, lit_string_getlength(string));
+        chars = sdscatlen(chars, string->chars, lit_string_getlength(string));
+        index += lit_string_getlength(string);
         if(joinee != NULL)
         {
             
@@ -633,7 +633,7 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
             stringified = lit_to_string(state, val);
         }
         part = stringified;
-        buffer = sdscatlen(buffer, part->chars, lit_string_length(part));
+        buffer = sdscatlen(buffer, part->chars, lit_string_getlength(part));
         if(has_more && i == value_amount - 2)
         {
             buffer = sdscat(buffer, " ... ");

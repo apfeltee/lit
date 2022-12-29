@@ -47,10 +47,10 @@ LitFunction* lit_get_global_function(LitState* state, LitString* name)
 
 void lit_set_global(LitState* state, LitString* name, LitValue value)
 {
-    lit_push_root(state, (LitObject*)name);
-    lit_push_value_root(state, value);
+    lit_state_pushroot(state, (LitObject*)name);
+    lit_state_pushvalueroot(state, value);
     lit_table_set(state, &state->vm->globals->values, name, value);
-    lit_pop_roots(state, 2);
+    lit_state_poproots(state, 2);
 }
 
 bool lit_global_exists(LitState* state, LitString* name)
@@ -61,25 +61,25 @@ bool lit_global_exists(LitState* state, LitString* name)
 
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native)
 {
-    lit_push_root(state, (LitObject*)CONST_STRING(state, name));
-    lit_push_root(state, (LitObject*)lit_create_native_function(state, native, lit_as_string(lit_peek_root(state, 0))));
-    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_peek_root(state, 1)), lit_peek_root(state, 0));
-    lit_pop_roots(state, 2);
+    lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_function(state, native, lit_as_string(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_poproots(state, 2);
 }
 
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native)
 {
-    lit_push_root(state, (LitObject*)CONST_STRING(state, name));
-    lit_push_root(state, (LitObject*)lit_create_native_primitive(state, native, lit_as_string(lit_peek_root(state, 0))));
-    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_peek_root(state, 1)), lit_peek_root(state, 0));
-    lit_pop_roots(state, 2);
+    lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_primitive(state, native, lit_as_string(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_poproots(state, 2);
 }
 
 LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname)
 {
     LitValue mthval;
     LitClass* klass;
-    klass = lit_get_class_for(state, callee);
+    klass = lit_state_getclassfor(state, callee);
     if((IS_INSTANCE(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
     {
         return mthval;
@@ -582,7 +582,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
             RETURN_RUNTIME_ERROR();
         }
     }
-    klass = lit_get_class_for(state, callee);
+    klass = lit_state_getclassfor(state, callee);
     if((IS_INSTANCE(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
     {
         return lit_call_method(state, callee, mthval, argv, argc, ignfiber);
@@ -611,7 +611,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
         }
         else if(IS_NUMBER(object))
         {
-            return lit_as_string(lit_string_number_to_string(state, lit_value_to_number(object)));
+            return lit_as_string(lit_string_numbertostring(state, lit_value_to_number(object)));
         }
         else if(IS_BOOL(object))
         {

@@ -165,7 +165,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, size_t leng
                 return NULL;
             }
         }
-        else if(lit_string_length(entry->key) == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length) == 0)
+        else if(lit_string_getlength(entry->key) == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length) == 0)
         {
             return entry->key;
         }
@@ -387,11 +387,11 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
             // This check is required to prevent infinite loops when playing with Module.privates and such
             strobval = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
-            lit_push_root(state, (LitObject*)strobval);
+            lit_state_pushroot(state, (LitObject*)strobval);
             values_converted[i] = strobval;
             keys[i] = entry->key;
             olength += (
-                lit_string_length(entry->key) + 3 + lit_string_length(strobval) +
+                lit_string_getlength(entry->key) + 3 + lit_string_getlength(strobval) +
                 #ifdef SINGLE_LINE_MAPS
                     (i == value_amount - 1 ? 1 : 2)
                 #else
@@ -415,12 +415,12 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
         #ifndef SINGLE_LINE_MAPS
         buffer[buffer_index++] = '\t';
         #endif
-        memcpy(&buffer[buffer_index], key->chars, lit_string_length(key));
-        buffer_index += lit_string_length(key);
+        memcpy(&buffer[buffer_index], key->chars, lit_string_getlength(key));
+        buffer_index += lit_string_getlength(key);
         memcpy(&buffer[buffer_index], " = ", 3);
         buffer_index += 3;
-        memcpy(&buffer[buffer_index], value->chars, lit_string_length(value));
-        buffer_index += lit_string_length(value);
+        memcpy(&buffer[buffer_index], value->chars, lit_string_getlength(value));
+        buffer_index += lit_string_getlength(value);
         if(has_more && i == value_amount - 1)
         {
             #ifdef SINGLE_LINE_MAPS
@@ -439,7 +439,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             #endif
             buffer_index += 2;
         }
-        lit_pop_root(state);
+        lit_state_poproot(state);
     }
     buffer[olength] = '\0';
     LIT_FREE(vm->state, sizeof(LitString*), keys);

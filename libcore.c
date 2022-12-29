@@ -225,7 +225,7 @@ bool util_interpret(LitVM* vm, LitModule* module)
 static bool compile_and_interpret(LitVM* vm, LitString* modname, char* source, size_t len)
 {
     LitModule* module;
-    module = lit_compile_module(vm->state, modname, source, len);
+    module = lit_state_compilemodule(vm->state, modname, source, len);
     if(module == NULL)
     {
         return false;
@@ -430,7 +430,7 @@ static LitValue objfn_number_tostring(LitVM* vm, LitValue instance, size_t argc,
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_number_to_string(vm->state, lit_value_to_number(instance)));
+    return OBJECT_VALUE(lit_string_numbertostring(vm->state, lit_value_to_number(instance)));
 }
 
 static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -491,7 +491,7 @@ static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
     for(i = 0; i < argc; i++)
     {
         sv = lit_to_string(vm->state, argv[i]);
-        written += fwrite(sv->chars, sizeof(char), lit_string_length(sv), stdout);
+        written += fwrite(sv->chars, sizeof(char), lit_string_getlength(sv), stdout);
     }
     return lit_number_to_value(written);
 }
@@ -510,7 +510,7 @@ static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
     (void)argc;
     (void)argv;
     sc = lit_check_object_string(vm, argv, argc, 0);
-    return compile_and_interpret(vm, vm->fiber->module->name, sc->chars, lit_string_length(sc));
+    return compile_and_interpret(vm, vm->fiber->module->name, sc->chars, lit_string_getlength(sc));
 }
 
 #if 0
