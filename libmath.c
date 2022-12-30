@@ -153,7 +153,7 @@ static size_t static_random_data;
 
 static size_t* extract_random_data(LitState* state, LitValue instance)
 {
-    if(IS_CLASS(instance))
+    if(lit_value_isclass(instance))
     {
         return &static_random_data;
     }
@@ -171,7 +171,7 @@ static size_t* extract_random_data(LitState* state, LitValue instance)
 static LitValue random_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(size_t), false);
-    lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
+    lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), lit_value_objectvalue(userdata));
 
     size_t* data = (size_t*)userdata->data;
 
@@ -185,7 +185,7 @@ static LitValue random_constructor(LitVM* vm, LitValue instance, size_t argc, Li
         *data = time(NULL);
     }
 
-    return OBJECT_VALUE(instance);
+    return lit_value_objectvalue(instance);
 }
 
 static LitValue random_setSeed(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -261,7 +261,7 @@ static LitValue random_bool(LitVM* vm, LitValue instance, size_t argc, LitValue*
     (void)instance;
     (void)argc;
     (void)argv;
-    return BOOL_VALUE(rand_r((unsigned int*)extract_random_data(vm->state, instance)) % 2);
+    return lit_value_boolvalue(rand_r((unsigned int*)extract_random_data(vm->state, instance)) % 2);
 }
 
 static LitValue random_chance(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -281,7 +281,7 @@ static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue*
 
     if(argc == 1)
     {
-        if(IS_ARRAY(argv[0]))
+        if(lit_value_isarray(argv[0]))
         {
             LitArray* array = AS_ARRAY(argv[0]);
 
@@ -292,7 +292,7 @@ static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue*
 
             return lit_vallist_get(&array->list, value % lit_vallist_count(&array->list));
         }
-        else if(IS_MAP(argv[0]))
+        else if(lit_value_ismap(argv[0]))
         {
             LitMap* map = AS_MAP(argv[0]);
             size_t length = map->values.count;

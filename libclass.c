@@ -1,11 +1,120 @@
 
 #include "lit.h"
 
+LitClass* lit_create_classobject(LitState* state, const char* name)
+{
+    LitString* nm;
+    LitClass* cl;
+    nm = lit_string_copy(state, name, strlen(name));
+    cl = lit_create_class(state, nm);
+    cl->name = nm;
+    return cl;
+}
+
+void lit_class_bindconstructor(LitState* state, LitClass* cl, LitNativeMethodFn fn)
+{
+    LitNativeMethod* mth;
+    mth = lit_class_bindmethod(state, cl, "constructor", fn);
+    cl->init_method = mth;
+}
+
+LitNativeMethod* lit_class_bindmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn)
+{
+    LitString* nm;
+    LitNativeMethod* mth;
+    nm = lit_string_copy(state, name, strlen(name));
+    mth = lit_create_native_method(state, fn, nm);
+    lit_table_set(state, &cl->methods, nm, lit_value_objectvalue(mth));
+    return mth;
+}
+
+LitPrimitiveMethod* lit_class_bindprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn)
+{
+    LitString* nm;
+    LitPrimitiveMethod* mth;
+    nm = lit_string_copy(state, name, strlen(name));
+    mth = lit_create_primitive_method(state, fn, nm);
+    lit_table_set(state, &cl->methods, nm, lit_value_objectvalue(mth));
+    return mth;
+}
+
+LitNativeMethod* lit_class_bindstaticmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn)
+{
+    LitString* nm;
+    LitNativeMethod* mth;
+    nm = lit_string_copy(state, name, strlen(name));
+    mth = lit_create_native_method(state, fn, nm);
+    lit_table_set(state, &cl->static_fields, nm, lit_value_objectvalue(mth));
+    return mth;
+}
+
+LitPrimitiveMethod* lit_class_bindstaticprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn)
+{
+    LitString* nm;
+    LitPrimitiveMethod* mth;
+    nm = lit_string_copy(state, name, strlen(name));
+    mth = lit_create_primitive_method(state, fn, nm);
+    lit_table_set(state, &cl->static_fields, nm, lit_value_objectvalue(mth));
+    return mth;
+}
+
+
+void lit_class_setstaticfield(LitState* state, LitClass* cl, const char* name, LitValue val)
+{
+    LitString* nm;
+    nm = lit_string_copy(state, name, strlen(name));
+    lit_table_set(state, &cl->static_fields, nm, val);
+}
+
+LitNativeFunction* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn)
+{
+    LitString* nm;
+    LitNativeFunction* mthset;
+    LitNativeFunction* mthget;
+    mthset = NULL;
+    mthget = NULL;
+    nm = lit_string_copy(state, name, strlen(name));
+    if(getfn != NULL)
+    {
+        mthget = lit_create_native_method(state, getfn, nm);
+    }
+    if(setfn != NULL)
+    {
+        mthset = lit_create_native_method(state, setfn, nm);
+    }
+    lit_table_set(state, &cl->methods, nm, lit_value_objectvalue(lit_create_field(state, (LitObject*)mthget, (LitObject*)mthset))); 
+
+}
+
+
+/*
+
+    #define LIT_INHERIT_CLASS(super_klass)                                \
+        klass->super = (LitClass*)super_klass;                            \
+        if(klass->init_method == NULL)                                    \
+        {                                                                 \
+            klass->init_method = super_klass->init_method;                \
+        }                                                                 \
+        lit_table_add_all(state, &super_klass->methods, &klass->methods); \
+        lit_table_add_all(state, &super_klass->static_fields, &klass->static_fields);
+*/
+
+void lit_class_inheritfrom(LitState* state, LitClass* current, LitClass* other)
+{
+    current->super = (LitClass*)other;
+    if(current->init_method == NULL)
+    {
+        current->init_method = other->init_method;
+    }
+    lit_table_add_all(state, &other->methods, &current->methods); \
+    lit_table_add_all(state, &other->static_fields, &current->static_fields);
+}
+
 static LitValue objfn_class_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "class @", OBJECT_VALUE(AS_CLASS(instance)->name)));
+    return lit_value_objectvalue(lit_string_format(vm->state, "class @", lit_value_objectvalue(AS_CLASS(instance)->name)));
 }
 
 static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -62,7 +171,7 @@ static LitValue objfn_class_super(LitVM* vm, LitValue instance, size_t argc, Lit
     (void)argc;
     (void)argv;
     super = NULL;
-    if(IS_INSTANCE(instance))
+    if(lit_value_isinstance(instance))
     {
         super = AS_INSTANCE(instance)->klass->super;
     }
@@ -74,7 +183,7 @@ static LitValue objfn_class_super(LitVM* vm, LitValue instance, size_t argc, Lit
     {
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(super);
+    return lit_value_objectvalue(super);
 }
 
 static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -85,7 +194,7 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
     klass = AS_CLASS(instance);
     if(argc == 2)
     {
-        if(!IS_STRING(argv[0]))
+        if(!lit_value_isstring(argv[0]))
         {
             lit_runtime_error_exiting(vm, "class index must be a string");
         }
@@ -93,7 +202,7 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
         lit_table_set(vm->state, &klass->static_fields, lit_as_string(argv[0]), argv[1]);
         return argv[1];
     }
-    if(!IS_STRING(argv[0]))
+    if(!lit_value_isstring(argv[0]))
     {
         lit_runtime_error_exiting(vm, "class index must be a string");
     }
@@ -114,7 +223,7 @@ static LitValue objfn_class_compare(LitVM* vm, LitValue instance, size_t argc, L
     LitClass* otherclass;
     (void)vm;
     (void)argc;
-    if(IS_CLASS(argv[0]))
+    if(lit_value_isclass(argv[0]))
     {
         selfclass = AS_CLASS(instance);
         otherclass = AS_CLASS(argv[0]);
@@ -134,7 +243,7 @@ static LitValue objfn_class_name(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(AS_CLASS(instance)->name);
+    return lit_value_objectvalue(AS_CLASS(instance)->name);
 }
 
 void lit_open_class_library(LitState* state)

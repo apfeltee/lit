@@ -946,7 +946,7 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign)
     {
         ignore_new_lines(parser, true);
         consume(parser, LITTOK_IDENTIFIER, "key string after '{'");
-        lit_vallist_push(parser->state, &object->keys, OBJECT_VALUE(lit_string_copy(parser->state, parser->previous.start, parser->previous.length)));
+        lit_vallist_push(parser->state, &object->keys, lit_value_objectvalue(lit_string_copy(parser->state, parser->previous.start, parser->previous.length)));
         ignore_new_lines(parser, true);
         consume(parser, LITTOK_EQUAL, "'=' after key string");
         ignore_new_lines(parser, true);

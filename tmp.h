@@ -135,7 +135,7 @@
     #define COLOR_WHITE ""
 #endif
 
-#define lit_value_boolvalue(boolean) \
+#define BOOL_VALUE(boolean) \
     ((boolean) ? TRUE_VALUE : FALSE_VALUE)
 
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
@@ -161,133 +161,180 @@
 
 
 
-#define lit_value_isnull(v) \
+#define IS_NULL(v) \
     ((v) == NULL_VALUE)
 
-#define lit_value_isnumber(v) \
+#define IS_NUMBER(v) \
     (((v)&QNAN) != QNAN)
 
-#define lit_value_isobject(v) \
+#define IS_OBJECT(v) \
     (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
-#define lit_value_istype(value, t) \
-    (lit_value_isobject(value) && (lit_as_object(value) != NULL) && (lit_as_object(value)->type == t))
+#define IS_OBJECTS_TYPE(value, t) \
+    (IS_OBJECT(value) && (lit_as_object(value) != NULL) && (lit_as_object(value)->type == t))
 
-#define lit_value_isstring(value) \
-    lit_value_istype(value, LITTYPE_STRING)
+#define IS_STRING(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_STRING)
 
-#define lit_value_isfunction(value) \
-    lit_value_istype(value, LITTYPE_FUNCTION)
+#define IS_FUNCTION(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_FUNCTION)
 
-#define lit_value_isnatfunction(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_FUNCTION)
+#define IS_NATIVE_FUNCTION(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_FUNCTION)
 
-#define lit_value_isnatprim(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_PRIMITIVE)
+#define IS_NATIVE_PRIMITIVE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_PRIMITIVE)
 
-#define lit_value_isnatmethod(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_METHOD)
+#define IS_NATIVE_METHOD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_NATIVE_METHOD)
 
-#define lit_value_isprimmethod(value) \
-    lit_value_istype(value, LITTYPE_PRIMITIVE_METHOD)
+#define IS_PRIMITIVE_METHOD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_PRIMITIVE_METHOD)
 
-#define lit_value_ismodule(value) \
-    lit_value_istype(value, LITTYPE_MODULE)
+#define IS_MODULE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_MODULE)
 
-#define lit_value_isclosure(value) \
-    lit_value_istype(value, LITTYPE_CLOSURE)
+#define IS_CLOSURE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_CLOSURE)
 
-#define lit_value_isupvalue(value) \
-    lit_value_istype(value, LITTYPE_UPVALUE)
+#define IS_UPVALUE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_UPVALUE)
 
-#define lit_value_isclass(value) \
-    lit_value_istype(value, LITTYPE_CLASS)
+#define IS_CLASS(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_CLASS)
 
-#define lit_value_isinstance(value) \
-    lit_value_istype(value, LITTYPE_INSTANCE)
+#define IS_INSTANCE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_INSTANCE)
 
-#define lit_value_isarray(value) \
-    lit_value_istype(value, LITTYPE_ARRAY)
+#define IS_ARRAY(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_ARRAY)
 
-#define lit_value_ismap(value) \
-    lit_value_istype(value, LITTYPE_MAP)
+#define IS_MAP(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_MAP)
 
-#define lit_value_isboundmethod(value) \
-    lit_value_istype(value, LITTYPE_BOUND_METHOD)
+#define IS_BOUND_METHOD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_BOUND_METHOD)
 
-#define lit_value_isuserdata(value) \
-    lit_value_istype(value, LITTYPE_USERDATA)
+#define IS_USERDATA(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_USERDATA)
 
-#define lit_value_isrange(value) \
-    lit_value_istype(value, LITTYPE_RANGE)
+#define IS_RANGE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_RANGE)
 
-#define lit_value_isfield(value) \
-    lit_value_istype(value, LITTYPE_FIELD)
+#define IS_FIELD(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_FIELD)
 
-#define lit_value_isreference(value) \
-    lit_value_istype(value, LITTYPE_REFERENCE)
+#define IS_REFERENCE(value) \
+    IS_OBJECTS_TYPE(value, LITTYPE_REFERENCE)
+
+
+
+
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
 
+#define LIT_BEGIN_CLASS(name)                                               \
+    {                                                                       \
+        LitString* klass_name = lit_string_copy(state, name, strlen(name)); \
+        LitClass* klass = lit_create_class(state, klass_name);
 
-    #define LIT_BEGIN_CLASS(name) \
-        LitClass* klass = lit_create_classobject(state, name);
+#define LIT_INHERIT_CLASS(super_klass)                                \
+    klass->super = (LitClass*)super_klass;                            \
+    if(klass->init_method == NULL)                                    \
+    {                                                                 \
+        klass->init_method = super_klass->init_method;                \
+    }                                                                 \
+    lit_table_add_all(state, &super_klass->methods, &klass->methods); \
+    lit_table_add_all(state, &super_klass->static_fields, &klass->static_fields);
 
-    #define LIT_INHERIT_CLASS(super_klass) \
-        lit_class_inheritfrom(state, klass, super_klass);
-
-    #define LIT_END_CLASS_IGNORING()                            \
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
-
-    #define LIT_END_CLASS() \
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass)); \
-        if(klass->super == NULL) \
-        { \
-            LIT_INHERIT_CLASS(state->objectvalue_class); \
-        }
-
-    #define LIT_BIND_METHOD(name, method) \
-        lit_class_bindmethod(state, klass, name, method);
-
-    #define LIT_BIND_PRIMITIVE(name, method) \
-        lit_class_bindprimitive(state, klass, name, method);
-
-    #define LIT_BIND_CONSTRUCTOR(method) \
-        lit_class_bindconstructor(state, klass, method);
-
-    #define LIT_BIND_STATIC_METHOD(name, method) \
-        lit_class_bindstaticmethod(state, klass, name, method);
-
-    #define LIT_BIND_STATIC_PRIMITIVE(name, method) \
-        lit_class_bindstaticprimitive(state, klass, name, method);
+#define LIT_END_CLASS_IGNORING()                            \
+    lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
+    }
 
 
-#define LIT_SET_STATIC_FIELD(name, field) \
-    lit_class_setstaticfield(state, klass, name, field);
+#define LIT_END_CLASS()                                     \
+    lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
+    if(klass->super == NULL) \
+    {                                                       \
+        LIT_INHERIT_CLASS(state->objectvalue_class);             \
+    }                                                       \
+    }
 
-#define LIT_BIND_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter);
+#define LIT_BIND_METHOD(name, method)                                                                         \
+    {                                                                                                         \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                           \
+        lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_native_method(state, method, nm))); \
+    }
 
-#define LIT_BIND_GETTER(name, getter) \
-    lit_class_bindgetset(state, klass, name, getter, NULL);
+#define LIT_BIND_PRIMITIVE(name, method)                                                                         \
+    {                                                                                                            \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                              \
+        lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_primitive_method(state, method, nm))); \
+    }
 
-#define LIT_BIND_FIELD(name, getter, setter) \
-    lit_class_bindgetset(state, klass, name, getter, setter);
+#define LIT_BIND_CONSTRUCTOR(method)                                      \
+    {                                                                     \
+        LitString* nm = lit_string_copy(state, "constructor", 11);        \
+        LitNativeMethod* m = lit_create_native_method(state, method, nm); \
+        klass->init_method = (LitObject*)m;                               \
+        lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(m));       \
+    }
 
-#define LIT_BIND_STATIC_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter);
+#define LIT_BIND_STATIC_METHOD(name, method)                                                                        \
+    {                                                                                                               \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                 \
+        lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_native_method(state, method, nm))); \
+    }
 
+#define LIT_BIND_STATIC_PRIMITIVE(name, method)                                                                        \
+    {                                                                                                                  \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                    \
+        lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_primitive_method(state, method, nm))); \
+    }
+
+#define LIT_SET_STATIC_FIELD(name, field)                           \
+    {                                                               \
+        LitString* nm = lit_string_copy(state, name, strlen(name)); \
+        lit_table_set(state, &klass->static_fields, nm, field);     \
+    }
+
+#define LIT_BIND_SETTER(name, setter)                                                                                        \
+    {                                                                                                                        \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                          \
+        lit_table_set(state, &klass->methods, nm,                                                                            \
+                      OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*)lit_create_native_method(state, setter, nm)))); \
+    }
+#define LIT_BIND_GETTER(name, getter)                                                                                        \
+    {                                                                                                                        \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                          \
+        lit_table_set(state, &klass->methods, nm,                                                                            \
+                      OBJECT_VALUE(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), NULL))); \
+    }
+#define LIT_BIND_FIELD(name, getter, setter)                                                                        \
+    {                                                                                                               \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                 \
+        lit_table_set(state, &klass->methods, nm,                                                                   \
+                      OBJECT_VALUE(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), \
+                                                    (LitObject*)lit_create_native_method(state, setter, nm))));     \
+    }
+
+#define LIT_BIND_STATIC_SETTER(name, setter)                                                                                 \
+    {                                                                                                                        \
+        LitString* nm = lit_string_copy(state, name, strlen(name));                                                          \
+        lit_table_set(state, &klass->static_fields, nm,                                                                      \
+                      OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*)lit_create_native_method(state, setter, nm)))); \
+    }
 #define LIT_BIND_STATIC_GETTER(name, getter)                                                                                 \
     {                                                                                                                        \
         LitString* nm = lit_string_copy(state, name, strlen(name));                                                          \
         lit_table_set(state, &klass->static_fields, nm,                                                                      \
-                      lit_value_objectvalue(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), NULL))); \
+                      OBJECT_VALUE(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), NULL))); \
     }
 #define LIT_BIND_STATIC_FIELD(name, getter, setter)                                                                 \
     {                                                                                                               \
         LitString* nm = lit_string_copy(state, name, strlen(name));                                                 \
         lit_table_set(state, &klass->static_fields, nm,                                                             \
-                      lit_value_objectvalue(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), \
+                      OBJECT_VALUE(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), \
                                                     (LitObject*)lit_create_native_method(state, setter, nm))));     \
     }
 
@@ -318,6 +365,9 @@
         lit_runtime_error(vm, "expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
+
+
+
 
 
 typedef uint64_t LitValue;
@@ -1166,18 +1216,6 @@ struct LitPreprocessor
 };
 
 
-
-LitClass* lit_create_classobject(LitState* state, const char* name);
-void lit_class_inheritfrom(LitState* state, LitClass* current, LitClass* other);
-void lit_class_bindconstructor(LitState* state, LitClass* cl, LitNativeMethodFn fn);
-LitNativeMethod* lit_class_bindmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn);
-LitPrimitiveMethod* lit_class_bindprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn);
-LitNativeMethod* lit_class_bindstaticmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn);
-LitPrimitiveMethod* lit_class_bindstaticprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn);
-void lit_class_setstaticfield(LitState* state, LitClass* cl, const char* name, LitValue val);
-LitNativeFunction* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn);
-
-
 /**
 * LitWriter stuff
 */
@@ -1212,12 +1250,6 @@ LitString* lit_writer_get_string(LitWriter* wr);
 /**
 * utility functions
 */
-double lit_util_uinttofloat(unsigned int val);
-unsigned int lit_util_floattouint(double val);
-int lit_util_numbertoint32(double n);
-int lit_util_doubletoint(double n);
-unsigned int lit_util_numbertouint32(double n);
-
 void util_custom_quick_sort(LitVM *vm, LitValue *l, int length, LitValue callee);
 int util_table_iterator(LitTable *table, int number);
 LitValue util_table_iterator_key(LitTable *table, int index);
@@ -1265,7 +1297,7 @@ static inline bool IS_BOOL(LitValue v)
 /* is this value falsey? */
 static inline bool lit_is_falsey(LitValue v)
 {
-    return (IS_BOOL(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_to_number(v) == 0);
+    return (IS_BOOL(v) && (v == FALSE_VALUE)) || IS_NULL(v) || (IS_NUMBER(v) && lit_value_to_number(v) == 0);
 }
 
 static inline LitObjectType OBJECT_TYPE(LitValue v)
@@ -1388,7 +1420,7 @@ static inline LitReference* AS_REFERENCE(LitValue v)
     return (LitReference*)lit_as_object(v);
 }
 
-#define lit_value_objectvalue(obj) lit_object_to_value_actual((uintptr_t)obj)
+#define OBJECT_VALUE(obj) lit_object_to_value_actual((uintptr_t)obj)
 
 static inline LitValue lit_object_to_value_actual(uintptr_t obj)
 {
@@ -1401,7 +1433,7 @@ LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
 
 static inline LitValue OBJECT_CONST_STRING(LitState* state, const char* text)
 {
-    return lit_value_objectvalue(lit_string_copy((state), (text), strlen(text)));
+    return OBJECT_VALUE(lit_string_copy((state), (text), strlen(text)));
 }
 
 static inline LitString* CONST_STRING(LitState* state, const char* text)

@@ -309,7 +309,7 @@ int main(int argc, char* argv[])
             {
                 lit_vallist_push(state, &arg_array->list, OBJECT_CONST_STRING(state, fx.positional[i]));
             }
-            lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
+            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             if(opts.codeline)
             {
                 result = lit_state_execsource(state, "<-e>", opts.codeline, strlen(opts.codeline)).type;
@@ -532,7 +532,7 @@ int oldmain(int argc, const char* argv[])
                 lit_vallist_push(state, &arg_array->list, OBJECT_CONST_STRING(state, arg_string));
             }
 
-            lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
+            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             break;
         }
         else if(arg[0] == '-')
@@ -558,7 +558,7 @@ int oldmain(int argc, const char* argv[])
             {
                 arg_array = lit_create_array(state);
             }
-            lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
+            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             for(i = 0; i < num_files_to_run; i++)
             {
                 file = files_to_run[i];

@@ -10,7 +10,7 @@ static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, 
     number = range->from;
     (void)vm;
     (void)argc;
-    if(IS_NUMBER(argv[0]))
+    if(lit_value_isnumber(argv[0]))
     {
         number = lit_value_to_number(argv[0]);
         if((range->to > range->from) ? (number >= range->to) : (number >= range->from))
@@ -36,7 +36,7 @@ static LitValue objfn_range_tostring(LitVM* vm, LitValue instance, size_t argc, 
     (void)argv;
     LitRange* range;
     range = AS_RANGE(instance);
-    return OBJECT_VALUE(lit_string_format(vm->state, "Range(#, #)", range->from, range->to));
+    return lit_value_objectvalue(lit_string_format(vm->state, "Range(#, #)", range->from, range->to));
 }
 
 static LitValue objfn_range_from(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

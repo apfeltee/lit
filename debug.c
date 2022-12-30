@@ -19,7 +19,7 @@ void lit_disassemble_chunk(LitState* state, LitChunk* chunk, const char* name, c
     for(i = 0; i < lit_vallist_count(values); i++)
     {
         value = lit_vallist_get(values, i);
-        if(IS_FUNCTION(value))
+        if(lit_value_isfunction(value))
         {
             function = AS_FUNCTION(value);
             lit_disassemble_chunk(state, &function->chunk, function->name->chars, source);

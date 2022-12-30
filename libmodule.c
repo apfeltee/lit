@@ -8,7 +8,7 @@ static LitValue access_private(LitVM* vm, LitMap* map, LitString* name, LitValue
     LitString* id;
     LitModule* module;
     id = CONST_STRING(vm->state, "_module");
-    if(!lit_table_get(&map->values, id, &value) || !IS_MODULE(value))
+    if(!lit_table_get(&map->values, id, &value) || !lit_value_ismodule(value))
     {
         return NULL_VALUE;
     }
@@ -16,7 +16,7 @@ static LitValue access_private(LitVM* vm, LitMap* map, LitString* name, LitValue
 
     if(id == name)
     {
-        return OBJECT_VALUE(module);
+        return lit_value_objectvalue(module);
     }
 
     if(lit_table_get(&module->private_names->values, name, &value))
@@ -42,14 +42,14 @@ static LitValue objfn_module_privates(LitVM* vm, LitValue instance, size_t argc,
     LitMap* map;
     (void)argc;
     (void)argv;
-    module = IS_MODULE(instance) ? AS_MODULE(instance) : vm->fiber->module;
+    module = lit_value_ismodule(instance) ? AS_MODULE(instance) : vm->fiber->module;
     map = module->private_names;
     if(map->index_fn == NULL)
     {
         map->index_fn = access_private;
-        lit_table_set(vm->state, &map->values, CONST_STRING(vm->state, "_module"), OBJECT_VALUE(module));
+        lit_table_set(vm->state, &map->values, CONST_STRING(vm->state, "_module"), lit_value_objectvalue(module));
     }
-    return OBJECT_VALUE(map);
+    return lit_value_objectvalue(map);
 }
 
 static LitValue objfn_module_current(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -57,14 +57,14 @@ static LitValue objfn_module_current(LitVM* vm, LitValue instance, size_t argc, 
     (void)instance;
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(vm->fiber->module);
+    return lit_value_objectvalue(vm->fiber->module);
 }
 
 static LitValue objfn_module_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "Module @", OBJECT_VALUE(AS_MODULE(instance)->name)));
+    return lit_value_objectvalue(lit_string_format(vm->state, "Module @", lit_value_objectvalue(AS_MODULE(instance)->name)));
 }
 
 static LitValue objfn_module_name(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -72,7 +72,7 @@ static LitValue objfn_module_name(LitVM* vm, LitValue instance, size_t argc, Lit
     (void)vm;
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(AS_MODULE(instance)->name);
+    return lit_value_objectvalue(AS_MODULE(instance)->name);
 }
 
 void lit_open_module_library(LitState* state)
@@ -81,7 +81,7 @@ void lit_open_module_library(LitState* state)
     {
         LIT_INHERIT_CLASS(state->objectvalue_class);
         LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-        LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules));
+        LIT_SET_STATIC_FIELD("loaded", lit_value_objectvalue(state->vm->modules));
         LIT_BIND_STATIC_GETTER("privates", objfn_module_privates);
         LIT_BIND_STATIC_GETTER("current", objfn_module_current);
         LIT_BIND_METHOD("toString", objfn_module_tostring);

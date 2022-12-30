@@ -95,7 +95,7 @@ int64_t lit_destroy_state(LitState* state)
 
 void lit_state_pushroot(LitState* state, LitObject* object)
 {
-    lit_state_pushvalueroot(state, OBJECT_VALUE(object));
+    lit_state_pushvalueroot(state, lit_value_objectvalue(object));
 }
 
 void lit_state_pushvalueroot(LitState* state, LitValue value)
@@ -128,7 +128,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
 {
     LitValue* slot;
     LitUpvalue* upvalue;
-    if(IS_OBJECT(value))
+    if(lit_value_isobject(value))
     {
         switch(OBJECT_TYPE(value))
         {
@@ -213,7 +213,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
                 break;
         }
     }
-    else if(IS_NUMBER(value))
+    else if(lit_value_isnumber(value))
     {
         return state->numbervalue_class;
     }

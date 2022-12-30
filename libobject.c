@@ -5,7 +5,7 @@
 
 bool lit_is_callable_function(LitValue value)
 {
-    if(IS_OBJECT(value))
+    if(lit_value_isobject(value))
     {
         LitObjectType type = OBJECT_TYPE(value);
         return (
@@ -72,9 +72,9 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
                 field = AS_FIELD(instance);
                 if(field->getter != NULL)
                 {
-                    return lit_get_function_name(vm, OBJECT_VALUE(field->getter));
+                    return lit_get_function_name(vm, lit_value_objectvalue(field->getter));
                 }
-                return lit_get_function_name(vm, OBJECT_VALUE(field->setter));
+                return lit_get_function_name(vm, lit_value_objectvalue(field->setter));
             }
             break;
         case LITTYPE_NATIVE_PRIMITIVE:
@@ -109,10 +109,10 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
     }
     if(name == NULL)
     {
-        return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double*)lit_as_object(instance))));
+        return lit_value_objectvalue(lit_string_format(vm->state, "function #", *((double*)lit_as_object(instance))));
     }
 
-    return OBJECT_VALUE(lit_string_format(vm->state, "function @", OBJECT_VALUE(name)));
+    return lit_value_objectvalue(lit_string_format(vm->state, "function @", lit_value_objectvalue(name)));
 }
 
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot)
@@ -400,7 +400,7 @@ static LitValue objfn_object_class(LitVM* vm, LitValue instance, size_t argc, Li
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_state_getclassfor(vm->state, instance));
+    return lit_value_objectvalue(lit_state_getclassfor(vm->state, instance));
 }
 
 static LitValue objfn_object_super(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -413,14 +413,14 @@ static LitValue objfn_object_super(LitVM* vm, LitValue instance, size_t argc, Li
     {
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(cl);
+    return lit_value_objectvalue(cl);
 }
 
 static LitValue objfn_object_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_state_getclassfor(vm->state, instance)->name)));
+    return lit_value_objectvalue(lit_string_format(vm->state, "@ instance", lit_value_objectvalue(lit_state_getclassfor(vm->state, instance)->name)));
 }
 
 static void fillmap(LitState* state, LitMap* destmap, LitTable* fromtbl, bool includenullkeys)
@@ -435,7 +435,7 @@ static void fillmap(LitState* state, LitMap* destmap, LitTable* fromtbl, bool in
         if(key != NULL)
         {
             val = fromtbl->entries[i].value;
-            lit_map_set(state, destmap, key, OBJECT_VALUE(val));
+            lit_map_set(state, destmap, key, lit_value_objectvalue(val));
         }
     }
 }
@@ -451,7 +451,7 @@ static LitValue objfn_object_tomap(LitVM* vm, LitValue instance, size_t argc, Li
     LitMap* mclmethods;
     LitInstance* inst;
     mclass = NULL;
-    if(!IS_INSTANCE(instance))
+    if(!lit_value_isinstance(instance))
     {
         lit_runtime_error_exiting(vm, "toMap() can only be used on instances");
     }
@@ -471,12 +471,12 @@ static LitValue objfn_object_tomap(LitVM* vm, LitValue instance, size_t argc, Li
             mclmethods = lit_create_map(vm->state);
             fillmap(vm->state, mclmethods, &(inst->klass->methods), false);
         }
-        lit_map_set(vm->state, mclass, CONST_STRING(vm->state, "statics"), OBJECT_VALUE(mclstatics));
-        lit_map_set(vm->state, mclass, CONST_STRING(vm->state, "methods"), OBJECT_VALUE(mclmethods));
+        lit_map_set(vm->state, mclass, CONST_STRING(vm->state, "statics"), lit_value_objectvalue(mclstatics));
+        lit_map_set(vm->state, mclass, CONST_STRING(vm->state, "methods"), lit_value_objectvalue(mclmethods));
     }
-    lit_map_set(vm->state, map, CONST_STRING(vm->state, "instance"), OBJECT_VALUE(minst));
-    lit_map_set(vm->state, map, CONST_STRING(vm->state, "class"), OBJECT_VALUE(mclass));
-    return OBJECT_VALUE(map);
+    lit_map_set(vm->state, map, CONST_STRING(vm->state, "instance"), lit_value_objectvalue(minst));
+    lit_map_set(vm->state, map, CONST_STRING(vm->state, "class"), lit_value_objectvalue(mclass));
+    return lit_value_objectvalue(map);
 }
 
 static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -485,14 +485,14 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
     (void)argv;
     LitValue value;
     LitInstance* inst;
-    if(!IS_INSTANCE(instance))
+    if(!lit_value_isinstance(instance))
     {
         lit_runtime_error_exiting(vm, "cannot modify built-in types");
     }
     inst = AS_INSTANCE(instance);
     if(argc == 2)
     {
-        if(!IS_STRING(argv[0]))
+        if(!lit_value_isstring(argv[0]))
         {
             lit_runtime_error_exiting(vm, "object index must be a string");
         }
@@ -500,7 +500,7 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
         lit_table_set(vm->state, &inst->fields, lit_as_string(argv[0]), argv[1]);
         return argv[1];
     }
-    if(!IS_STRING(argv[0]))
+    if(!lit_value_isstring(argv[0]))
     {
         lit_runtime_error_exiting(vm, "object index must be a string");
     }

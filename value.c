@@ -308,7 +308,7 @@ static void print_array(LitState* state, LitWriter* wr, LitArray* array, size_t 
         lit_writer_writestring(wr, " ");
         for(i = 0; i < size; i++)
         {
-            if(IS_ARRAY(lit_vallist_get(&array->list, i)) && (array == AS_ARRAY(lit_vallist_get(&array->list,i))))
+            if(lit_value_isarray(lit_vallist_get(&array->list, i)) && (array == AS_ARRAY(lit_vallist_get(&array->list,i))))
             {
                 lit_writer_writestring(wr, "(recursion)");
             }
@@ -352,7 +352,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
                     lit_writer_writestring(wr, " ");
                 }
                 lit_writer_writeformat(wr, "%s = ", entry->key->chars);
-                if(IS_MAP(entry->value) && (map == AS_MAP(entry->value)))
+                if(lit_value_ismap(entry->value) && (map == AS_MAP(entry->value)))
                 {
                     lit_writer_writestring(wr, "(recursion)");
                 }
@@ -554,7 +554,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     if(AS_CLASS(value) != NULL)
     {
         mthtostring = lit_instance_get_method(state, value, mthname);
-        if(!IS_NULL(mthtostring))
+        if(!lit_value_isnull(mthtostring))
         {
             fprintf(stderr, "lit_print_value: we got toString()! now checking if calling it works ...\n");
             inret = lit_instance_call_method(state, value, mthname, args, 0);
@@ -562,7 +562,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
             {
                 fprintf(stderr, "lit_print_value: calling toString() succeeded! but is it a string? ...\n");
                 tstrval = inret.result;
-                if(!IS_NULL(tstrval))
+                if(!lit_value_isnull(tstrval))
                 {
                     fprintf(stderr, "lit_print_value: toString() returned a string! so that's what we'll use.\n");
                     tstring = lit_as_string(tstrval);
@@ -578,15 +578,15 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     {
         lit_writer_writestring(wr, lit_as_bool(value) ? "true" : "false");
     }
-    else if(IS_NULL(value))
+    else if(lit_value_isnull(value))
     {
         lit_writer_writestring(wr, "null");
     }
-    else if(IS_NUMBER(value))
+    else if(lit_value_isnumber(value))
     {
         lit_writer_writeformat(wr, "%g", lit_value_to_number(value));
     }
-    else if(IS_OBJECT(value))
+    else if(lit_value_isobject(value))
     {
         print_object(state, wr, value);
     }
@@ -599,15 +599,15 @@ const char* lit_get_value_type(LitValue value)
     {
         return "bool";
     }
-    else if(IS_NULL(value))
+    else if(lit_value_isnull(value))
     {
         return "null";
     }
-    else if(IS_NUMBER(value))
+    else if(lit_value_isnumber(value))
     {
         return "number";
     }
-    else if(IS_OBJECT(value))
+    else if(lit_value_isobject(value))
     {
         return lit_object_type_names[OBJECT_TYPE(value)];
     }

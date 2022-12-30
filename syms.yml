@@ -1,72 +1,24 @@
-  # void lit_enable_compilation_time_measurement(void);
-  "lit_enable_compilation_time_measurement": "lit_enable_compilation_time_measurement"
-
-  # static void default_error(LitState *state, const char *message);
-  "default_error": "lit_util_default_error"
-
-  # static void default_printf(LitState *state, const char *message);
-  "default_printf": "lit_util_default_printf"
-
-  # LitState * lit_new_state(void);
-  "lit_new_state": "lit_make_state"
-
-  # int64_t lit_free_state(LitState *state);
-  "lit_free_state": "lit_destroy_state"
-
-  # void lit_push_root(LitState *state, LitObject *object);
-  "lit_push_root": "lit_state_pushroot"
-
-  # void lit_push_value_root(LitState *state, LitValue value);
-  "lit_push_value_root": "lit_state_pushvalueroot"
-
-  # LitValue lit_peek_root(LitState *state, uint8_t distance);
-  "lit_peek_root": "lit_state_peekroot"
-
-  # void lit_pop_root(LitState *state);
-  "lit_pop_root": "lit_state_poproot"
-
-  # void lit_pop_roots(LitState *state, uint8_t amount);
-  "lit_pop_roots": "lit_state_poproots"
-
-  # LitClass * lit_get_class_for(LitState *state, LitValue value);
-  "lit_get_class_for": "lit_state_getclassfor"
-
-  # static void free_statements(LitState *state, LitExprList *statements);
-  "free_statements": "free_statements"
-
-  # LitInterpretResult lit_interpret_source(LitState *state, const char *module_name, const char *code, size_t len);
-  "lit_interpret_source": "lit_state_execsource"
-
-  # LitModule * lit_compile_module(LitState *state, LitString *module_name, const char *code, size_t len);
-  "lit_compile_module": "lit_state_compilemodule"
-
-  # LitModule * lit_get_module(LitState *state, const char *name);
-  "lit_get_module": "lit_state_getmodule"
-
-  # LitInterpretResult lit_internal_interpret(LitState *state, LitString *module_name, const char *code, size_t len);
-  "lit_internal_interpret": "lit_state_internexecsource"
-
-  # char * lit_patch_file_name(char *file_name);
-  "lit_patch_file_name": "lit_util_patchfilename"
-
-  # char * copy_string(const char *string);
-  "copy_string": "lit_util_copystring"
-
-  # _Bool lit_compile_and_save_files(LitState *state, char *files[], size_t num_files, const char *output_file);
-  "lit_compile_and_save_files": "lit_state_compileandsave"
-
-  # static char * read_source(LitState *state, const char *file, char **patched_file_name, size_t *dlen);
-  "read_source": "lit_util_readsource"
-
-  # LitInterpretResult lit_interpret_file(LitState *state, const char *file);
-  "lit_interpret_file": "lit_state_execfile"
-
-  # LitInterpretResult lit_dump_file(LitState *state, const char *file);
-  "lit_dump_file": "lit_state_dumpfile"
-
-  # void lit_error(LitState *state, LitErrorType type, const char *message, ...);
-  "lit_error": "lit_state_raiseerror"
-
-  # void lit_printf(LitState *state, const char *message, ...);
-  "lit_printf": "lit_state_printf"
-
+  "BOOL_VALUE": "lit_value_boolvalue"
+  "IS_NULL": "lit_value_isnull"
+  "lit_value_isnumber": "lit_value_isnumber"
+  "IS_OBJECT": "lit_value_isobject"
+  "IS_OBJECTS_TYPE": "lit_value_istype"
+  "IS_STRING": "lit_value_isstring"
+  "IS_FUNCTION": "lit_value_isfunction"
+  "IS_NATIVE_FUNCTION": "lit_value_isnatfunction"
+  "IS_NATIVE_PRIMITIVE": "lit_value_isnatprim"
+  "IS_NATIVE_METHOD": "lit_value_isnatmethod"
+  "IS_PRIMITIVE_METHOD": "lit_value_isprimmethod"
+  "IS_MODULE": "lit_value_ismodule"
+  "IS_CLOSURE": "lit_value_isclosure"
+  "IS_UPVALUE": "lit_value_isupvalue"
+  "IS_CLASS": "lit_value_isclass"
+  "IS_INSTANCE": "lit_value_isinstance"
+  "IS_ARRAY": "lit_value_isarray"
+  "IS_MAP": "lit_value_ismap"
+  "IS_BOUND_METHOD": "lit_value_isboundmethod"
+  "IS_USERDATA": "lit_value_isuserdata"
+  "IS_RANGE": "lit_value_isrange"
+  "IS_FIELD": "lit_value_isfield"
+  "IS_REFERENCE": "lit_value_isreference"
+  "OBJECT_VALUE": "lit_value_objectvalue"

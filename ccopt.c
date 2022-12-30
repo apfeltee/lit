@@ -5,7 +5,7 @@
 #define LIT_DEBUG_OPTIMIZER
 
 #define optc_do_binary_op(op) \
-    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant binary expression of '" # op "' to constant value"); \
         return lit_number_to_value(lit_value_to_number(a) op lit_value_to_number(b)); \
@@ -13,7 +13,7 @@
     return NULL_VALUE;
 
 #define optc_do_bitwise_op(op) \
-    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant bitwise expression of '" #op "' to constant value"); \
         return lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
@@ -21,7 +21,7 @@
     return NULL_VALUE;
 
 #define optc_do_fn_op(fn, tokstr) \
-    if(IS_NUMBER(a) && IS_NUMBER(b)) \
+    if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant expression of '" tokstr "' to constant value via call to '" #fn "'"); \
         return lit_number_to_value(fn(lit_value_to_number(a), lit_value_to_number(b))); \
@@ -170,7 +170,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
     {
         case LITTOK_MINUS:
             {
-                if(IS_NUMBER(value))
+                if(lit_value_isnumber(value))
                 {
                     optdbg("translating constant unary minus on number to literal value");
                     return lit_number_to_value(-lit_value_to_number(value));
@@ -180,12 +180,12 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
         case LITTOK_BANG:
             {
                 optdbg("translating constant expression of '=' to literal value");
-                return BOOL_VALUE(lit_is_falsey(value));
+                return lit_value_boolvalue(lit_is_falsey(value));
             }
             break;
         case LITTOK_TILDE:
             {
-                if(IS_NUMBER(value))
+                if(lit_value_isnumber(value))
                 {
                     optdbg("translating unary tile (~) on number to literal value");
                     return lit_number_to_value(~((int)lit_value_to_number(value)));
@@ -281,7 +281,7 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
             break;
         case LITTOK_SHARP:
             {
-                if(IS_NUMBER(a) && IS_NUMBER(b))
+                if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     return lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b)));
                 }
@@ -290,12 +290,12 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
             break;
         case LITTOK_EQUAL_EQUAL:
             {
-                return BOOL_VALUE(a == b);
+                return lit_value_boolvalue(a == b);
             }
             break;
         case LITTOK_BANG_EQUAL:
             {
-                return BOOL_VALUE(a != b);
+                return lit_value_boolvalue(a != b);
             }
             break;
         case LITTOK_IS:
@@ -314,7 +314,7 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
     op = expression->op;
     LitExpression* branch;
     branch = left ? expression->left : expression->right;
-    if(IS_NUMBER(value))
+    if(lit_value_isnumber(value))
     {
         number = lit_value_to_number(value);
         if(op == LITTOK_STAR)
@@ -780,7 +780,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 LitRangeExpression* range = (LitRangeExpression*)stmt->condition;
                 LitValue from = evaluate_expression(optimizer, range->from);
                 LitValue to = evaluate_expression(optimizer, range->to);
-                if(!IS_NUMBER(from) || !IS_NUMBER(to))
+                if(!lit_value_isnumber(from) || !lit_value_isnumber(to))
                 {
                     break;
                 }

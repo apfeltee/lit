@@ -43,7 +43,7 @@ void lit_free_object(LitState* state, LitObject* object)
     LitClosure* closure;
 #ifdef LIT_LOG_ALLOCATION
     printf("(");
-    lit_print_value(OBJECT_VALUE(object));
+    lit_print_value(lit_value_objectvalue(object));
     printf(") %p free %s\n", (void*)object, lit_get_value_type(object->type));
 #endif
 
@@ -212,7 +212,7 @@ void lit_mark_object(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_MARKING
     printf("%p mark ", (void*)object);
-    lit_print_value(OBJECT_VALUE(object));
+    lit_print_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
 
@@ -227,7 +227,7 @@ void lit_mark_object(LitVM* vm, LitObject* object)
 
 void lit_mark_value(LitVM* vm, LitValue value)
 {
-    if(IS_OBJECT(value))
+    if(lit_value_isobject(value))
     {
         lit_mark_object(vm, lit_as_object(value));
     }
@@ -287,7 +287,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_BLACKING
     printf("%p blacken ", (void*)object);
-    lit_print_value(OBJECT_VALUE(object));
+    lit_print_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
     switch(object->type)

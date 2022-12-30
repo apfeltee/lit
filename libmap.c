@@ -29,7 +29,7 @@ static LitTableEntry* find_entry(LitTableEntry* entries, int capacity, LitString
         entry = &entries[index];
         if(entry->key == NULL)
         {
-            if(IS_NULL(entry->value))
+            if(lit_value_isnull(entry->value))
             {
                 return tombstone != NULL ? tombstone : entry;
             }
@@ -88,7 +88,7 @@ bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue va
     }
     entry = find_entry(table->entries, table->capacity, key);
     is_new = entry->key == NULL;
-    if(is_new && IS_NULL(entry->value))
+    if(is_new && lit_value_isnull(entry->value))
     {
         table->count++;
     }
@@ -142,7 +142,7 @@ bool lit_table_delete(LitTable* table, LitString* key)
         return false;
     }
     entry->key = NULL;
-    entry->value = BOOL_VALUE(true);
+    entry->value = lit_value_boolvalue(true);
     return true;
 }
 
@@ -160,7 +160,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, size_t leng
         entry = &table->entries[index];
         if(entry->key == NULL)
         {
-            if(IS_NULL(entry->value))
+            if(lit_value_isnull(entry->value))
             {
                 return NULL;
             }
@@ -242,7 +242,7 @@ LitValue util_table_iterator_key(LitTable* table, int index)
     {
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(table->entries[index].key);
+    return lit_value_objectvalue(table->entries[index].key);
 }
 
 static LitValue objfn_map_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -250,7 +250,7 @@ static LitValue objfn_map_constructor(LitVM* vm, LitValue instance, size_t argc,
     (void)instance;
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_create_map(vm->state));
+    return lit_value_objectvalue(lit_create_map(vm->state));
 }
 
 static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -259,7 +259,7 @@ static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, L
     LitValue value;
     LitMap* map;
     LitString* index;
-    if(!IS_STRING(argv[0]))
+    if(!lit_value_isstring(argv[0]))
     {
         lit_runtime_error_exiting(vm, "map index must be a string");
     }
@@ -289,7 +289,7 @@ static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, L
 static LitValue objfn_map_addall(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     LIT_ENSURE_ARGS(1);
-    if(!IS_MAP(argv[0]))
+    if(!lit_value_ismap(argv[0]))
     {
         lit_runtime_error_exiting(vm, "expected map as the argument");
     }
@@ -334,7 +334,7 @@ static LitValue objfn_map_clone(LitVM* vm, LitValue instance, size_t argc, LitVa
     state = vm->state;
     map = lit_create_map(state);
     lit_table_add_all(state, &AS_MAP(instance)->values, &map->values);
-    return OBJECT_VALUE(map);
+    return lit_value_objectvalue(map);
 }
 
 static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -386,7 +386,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             // Special hidden key
             field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
             // This check is required to prevent infinite loops when playing with Module.privates and such
-            strobval = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+            strobval = (lit_value_ismap(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
             lit_state_pushroot(state, (LitObject*)strobval);
             values_converted[i] = strobval;
             keys[i] = entry->key;
@@ -444,7 +444,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     buffer[olength] = '\0';
     LIT_FREE(vm->state, sizeof(LitString*), keys);
     LIT_FREE(vm->state, sizeof(LitString*), values_converted);
-    return OBJECT_VALUE(lit_string_take(vm->state, buffer, olength, false));
+    return lit_value_objectvalue(lit_string_take(vm->state, buffer, olength, false));
 }
 
 static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

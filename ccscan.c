@@ -309,7 +309,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
         }
     }
     token = make_token(scanner, string_type);
-    token.value = OBJECT_VALUE(lit_string_copy(state, (const char*)bytes.values, bytes.count));
+    token.value = lit_value_objectvalue(lit_string_copy(state, (const char*)bytes.values, bytes.count));
     lit_free_bytes(state, &bytes);
     return token;
 }

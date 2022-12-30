@@ -38,7 +38,7 @@ LitValue lit_get_global(LitState* state, LitString* name)
 LitFunction* lit_get_global_function(LitState* state, LitString* name)
 {
     LitValue function = lit_get_global(state, name);
-    if(IS_FUNCTION(function))
+    if(lit_value_isfunction(function))
     {
         return AS_FUNCTION(function);
     }
@@ -80,7 +80,7 @@ LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mt
     LitValue mthval;
     LitClass* klass;
     klass = lit_state_getclassfor(state, callee);
-    if((IS_INSTANCE(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
+    if((lit_value_isinstance(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
     {
         return mthval;
     }
@@ -91,7 +91,7 @@ LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, Li
 {
     LitValue mthval;
     mthval = lit_instance_get_method(state, callee, mthname);
-    if(!IS_NULL(mthval))
+    if(!lit_value_isnull(mthval))
     {
         return lit_call(state, mthval, argv, argc, false);
     }
@@ -101,7 +101,7 @@ LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, Li
 
 double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_NUMBER(args[id]))
+    if(arg_count <= id || !lit_value_isnumber(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
@@ -112,7 +112,7 @@ double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id
 double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
 {
     (void)vm;
-    if(arg_count <= id || !IS_NUMBER(args[id]))
+    if(arg_count <= id || !lit_value_isnumber(args[id]))
     {
         return def;
     }
@@ -142,7 +142,7 @@ bool lit_get_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 
 const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_STRING(args[id]))
+    if(arg_count <= id || !lit_value_isstring(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
@@ -154,7 +154,7 @@ const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8
 const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def)
 {
     (void)vm;
-    if(arg_count <= id || !IS_STRING(args[id]))
+    if(arg_count <= id || !lit_value_isstring(args[id]))
     {
         return def;
     }
@@ -164,7 +164,7 @@ const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_STRING(args[id]))
+    if(arg_count <= id || !lit_value_isstring(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
@@ -175,7 +175,7 @@ LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count,
 
 LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_INSTANCE(args[id]))
+    if(arg_count <= id || !lit_value_isinstance(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected an instance as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
@@ -186,7 +186,7 @@ LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, ui
 
 LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_REFERENCE(args[id]))
+    if(arg_count <= id || !lit_value_isreference(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a reference as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
@@ -205,7 +205,7 @@ void lit_ensure_bool(LitVM* vm, LitValue value, const char* error)
 
 void lit_ensure_string(LitVM* vm, LitValue value, const char* error)
 {
-    if(!IS_STRING(value))
+    if(!lit_value_isstring(value))
     {
         lit_runtime_error_exiting(vm, error);
     }
@@ -213,7 +213,7 @@ void lit_ensure_string(LitVM* vm, LitValue value, const char* error)
 
 void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
 {
-    if(!IS_NUMBER(value))
+    if(!lit_value_isnumber(value))
     {
         lit_runtime_error_exiting(vm, error);
     }
@@ -221,7 +221,7 @@ void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
 
 void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error)
 {
-    if(!IS_OBJECT(value) || OBJECT_TYPE(value) != type)
+    if(!lit_value_isobject(value) || OBJECT_TYPE(value) != type)
     {
         lit_runtime_error_exiting(vm, error);
     }
@@ -328,7 +328,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
     lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int)(fiber->stack_top - fiber->stack));
     frame = &fiber->frames[fiber->frame_count++];
     frame->slots = fiber->stack_top;
-    PUSH(OBJECT_VALUE(callee));
+    PUSH(lit_value_objectvalue(callee));
     for(i = 0; i < argc; i++)
     {
         PUSH(argv[i]);
@@ -346,7 +346,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
             }
             if(vararg)
             {
-                PUSH(OBJECT_VALUE(lit_create_array(vm->state)));
+                PUSH(lit_value_objectvalue(lit_create_array(vm->state)));
             }
         }
         else if(callee->vararg)
@@ -360,7 +360,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
             }
 
             fiber->stack_top -= varargc;
-            lit_push(vm, OBJECT_VALUE(array));
+            lit_push(vm, lit_value_objectvalue(array));
         }
         else
         {
@@ -372,7 +372,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
         array = lit_create_array(vm->state);
         varargc = argc - function_arg_count + 1;
         lit_vallist_push(vm->state, &array->list, *(fiber->stack_top - 1));
-        *(fiber->stack_top - 1) = OBJECT_VALUE(array);
+        *(fiber->stack_top - 1) = lit_value_objectvalue(array);
     }
     frame->ip = callee->chunk.code;
     frame->closure = NULL;
@@ -432,7 +432,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
     lir.result = NULL_VALUE;
     lir.type = LITRESULT_OK;
     vm = state->vm;
-    if(IS_OBJECT(callee))
+    if(lit_value_isobject(callee))
     {
         if(lit_set_native_exit_jump())
         {
@@ -500,10 +500,10 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
             case LITTYPE_CLASS:
                 {
                     klass = AS_CLASS(callee);
-                    *slot = OBJECT_VALUE(lit_create_instance(vm->state, klass));
+                    *slot = lit_value_objectvalue(lit_create_instance(vm->state, klass));
                     if(klass->init_method != NULL)
                     {
-                        lir = lit_call_method(state, *slot, OBJECT_VALUE(klass->init_method), argv, argc, ignfiber);
+                        lir = lit_call_method(state, *slot, lit_value_objectvalue(klass->init_method), argv, argc, ignfiber);
                     }
                     // TODO: when should this return *slot instead of lir?
                     fiber->stack_top = slot;
@@ -516,13 +516,13 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                     bound_method = AS_BOUND_METHOD(callee);
                     mthval = bound_method->method;
                     *slot = bound_method->receiver;
-                    if(IS_NATIVE_METHOD(mthval))
+                    if(lit_value_isnatmethod(mthval))
                     {
                         result = AS_NATIVE_METHOD(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
                         fiber->stack_top = slot;
                         RETURN_OK(result);
                     }
-                    else if(IS_PRIMITIVE_METHOD(mthval))
+                    else if(lit_value_isprimmethod(mthval))
                     {
                         AS_PRIMITIVE_METHOD(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
 
@@ -549,7 +549,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 break;
         }
     }
-    if(IS_NULL(callee))
+    if(lit_value_isnull(callee))
     {
         lit_runtime_error(vm, "attempt to call a null value");
     }
@@ -583,7 +583,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
         }
     }
     klass = lit_state_getclassfor(state, callee);
-    if((IS_INSTANCE(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
+    if((lit_value_isinstance(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
     {
         return lit_call_method(state, callee, mthval, argv, argc, ignfiber);
     }
@@ -599,17 +599,17 @@ LitString* lit_to_string(LitState* state, LitValue object)
     LitChunk* chunk;
     LitCallFrame* frame;
     LitInterpretResult result;
-    if(IS_STRING(object))
+    if(lit_value_isstring(object))
     {
         return lit_as_string(object);
     }
-    else if(!IS_OBJECT(object))
+    else if(!lit_value_isobject(object))
     {
-        if(IS_NULL(object))
+        if(lit_value_isnull(object))
         {
             return CONST_STRING(state, "null");
         }
-        else if(IS_NUMBER(object))
+        else if(lit_value_isnumber(object))
         {
             return lit_as_string(lit_string_numbertostring(state, lit_value_to_number(object)));
         }
@@ -618,7 +618,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
             return CONST_STRING(state, lit_as_bool(object) ? "true" : "false");
         }
     }
-    else if(IS_REFERENCE(object))
+    else if(lit_value_isreference(object))
     {
         slot = AS_REFERENCE(object)->slot;
 
@@ -657,7 +657,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
     frame->slots = fiber->stack_top;
     frame->result_ignored = false;
     frame->return_to_c = true;
-    PUSH(OBJECT_VALUE(function));
+    PUSH(lit_value_objectvalue(function));
     PUSH(object);
     result = lit_interpret_fiber(state, fiber);
     if(result.type != LITRESULT_OK)
@@ -679,7 +679,7 @@ LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t argc, 
     klass = AS_CLASS(value);
     if(klass->init_method == NULL)
     {
-        return OBJECT_VALUE(lit_create_instance(vm->state, klass));
+        return lit_value_objectvalue(lit_create_instance(vm->state, klass));
     }
     return lit_call_method(vm->state, value, value, args, argc, ignfiber).result;
 }

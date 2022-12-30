@@ -44,7 +44,7 @@ function testfiber()
     })
 
     fiber = new Fiber(() => {
-      Fiber.run()
+      Number.doesnotexist()
       println("help")
     })
 
@@ -60,6 +60,7 @@ function testfiber()
     }
 
     shout("tea", "coffee", "sugar")
+    println("fiber is working fine");
 }
 
 {

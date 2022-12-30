@@ -4,7 +4,7 @@
 static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    if(argc < 1 || !IS_FUNCTION(argv[0]))
+    if(argc < 1 || !lit_value_isfunction(argv[0]))
     {
         lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
     }
@@ -15,7 +15,7 @@ static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t arg
 
     fiber->parent = vm->fiber;
 
-    return OBJECT_VALUE(fiber);
+    return lit_value_objectvalue(fiber);
 }
 
 
@@ -24,7 +24,7 @@ static LitValue objfn_fiber_done(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return BOOL_VALUE(util_is_fiber_done(AS_FIBER(instance)));
+    return lit_value_boolvalue(util_is_fiber_done(AS_FIBER(instance)));
 }
 
 
@@ -42,7 +42,7 @@ static LitValue objfn_fiber_current(LitVM* vm, LitValue instance, size_t argc, L
     (void)instance;
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(vm->fiber);
+    return lit_value_objectvalue(vm->fiber);
 }
 
 
@@ -75,7 +75,7 @@ static bool objfn_fiber_yield(LitVM* vm, LitValue instance, size_t argc, LitValu
 
     vm->fiber = vm->fiber->parent;
     vm->fiber->stack_top -= fiber->arg_count;
-    vm->fiber->stack_top[-1] = argc == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, argv[0]));
+    vm->fiber->stack_top[-1] = argc == 0 ? NULL_VALUE : lit_value_objectvalue(lit_to_string(vm->state, argv[0]));
 
     argv[-1] = NULL_VALUE;
     return true;
@@ -96,7 +96,7 @@ static bool objfn_fiber_yeet(LitVM* vm, LitValue instance, size_t argc, LitValue
 
     vm->fiber = vm->fiber->parent;
     vm->fiber->stack_top -= fiber->arg_count;
-    vm->fiber->stack_top[-1] = argc == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, argv[0]));
+    vm->fiber->stack_top[-1] = argc == 0 ? NULL_VALUE : lit_value_objectvalue(lit_to_string(vm->state, argv[0]));
 
     argv[-1] = NULL_VALUE;
     return true;
@@ -116,7 +116,7 @@ static LitValue objfn_fiber_tostring(LitVM* vm, LitValue instance, size_t argc, 
 {
     (void)argc;
     (void)argv;
-    return OBJECT_VALUE(lit_string_format(vm->state, "fiber@%p", &instance));
+    return lit_value_objectvalue(lit_string_format(vm->state, "fiber@%p", &instance));
 
 }
 

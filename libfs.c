@@ -45,7 +45,7 @@ static void* LIT_INSERT_DATA(LitVM* vm, LitValue instance, size_t typsz, Cleanup
 {
     LitUserdata* userdata = lit_create_userdata(vm->state, typsz, false);
     userdata->cleanup_fn = cleanup;
-    lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
+    lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), lit_value_objectvalue(userdata));
     return userdata->data;
 }
 
@@ -303,7 +303,7 @@ static void save_chunk(FILE* file, LitChunk* chunk)
     {
         LitValue constant = lit_vallist_get(&chunk->constants, i);
 
-        if(IS_OBJECT(constant))
+        if(lit_value_isobject(constant))
         {
             LitObjectType type = lit_as_object(constant)->type;
             lit_write_uint8_t(file, (uint8_t)(type + 1));
@@ -390,15 +390,15 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
             {
                 case LITTYPE_STRING:
                     {
-                        //chunk->constants.values[i] = OBJECT_VALUE(lit_read_estring(state, file));
-                        lit_vallist_set(&chunk->constants, i, OBJECT_VALUE(lit_read_estring(state, file)));
+                        //chunk->constants.values[i] = lit_value_objectvalue(lit_read_estring(state, file));
+                        lit_vallist_set(&chunk->constants, i, lit_value_objectvalue(lit_read_estring(state, file)));
 
                     }
                     break;
                 case LITTYPE_FUNCTION:
                     {
-                        //chunk->constants.values[i] = OBJECT_VALUE(load_function(state, file, module));
-                        lit_vallist_set(&chunk->constants, i, OBJECT_VALUE(load_function(state, file, module)));
+                        //chunk->constants.values[i] = lit_value_objectvalue(load_function(state, file, module));
+                        lit_vallist_set(&chunk->constants, i, lit_value_objectvalue(load_function(state, file, module)));
 
                     }
                     break;
@@ -481,7 +481,7 @@ LitModule* lit_load_module(LitState* state, const char* input, size_t len)
             }
         }
         module->main_function = load_function(state, &file, module);
-        lit_table_set(state, &state->vm->modules->values, module->name, OBJECT_VALUE(module));
+        lit_table_set(state, &state->vm->modules->values, module->name, lit_value_objectvalue(module));
         if(j == 0)
         {
             first = module;
@@ -534,7 +534,7 @@ static LitValue objmethod_file_constructor(LitVM* vm, LitValue instance, size_t 
     LitStdioHandle* hstd;    
     if(argc > 1)
     {
-        if(IS_USERDATA(argv[0]))
+        if(lit_value_isuserdata(argv[0]))
         {
             hstd = (LitStdioHandle*)(AS_USERDATA(argv[0])->data);
             hnd = hstd->handle;
@@ -585,7 +585,7 @@ static LitValue objmethod_file_exists(LitVM* vm, LitValue instance, size_t argc,
 {
     char* file_name;
     file_name = NULL;
-    if(IS_INSTANCE(instance))
+    if(lit_value_isinstance(instance))
     {
         file_name = ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->path;
     }
@@ -593,7 +593,7 @@ static LitValue objmethod_file_exists(LitVM* vm, LitValue instance, size_t argc,
     {
         file_name = (char*)lit_check_string(vm, argv, argc, 0);
     }
-    return BOOL_VALUE(lit_file_exists(file_name));
+    return lit_value_boolvalue(lit_file_exists(file_name));
 }
 
 /*
@@ -704,7 +704,7 @@ static LitValue objmethod_file_readall(LitVM* vm, LitValue instance, size_t argc
     }
     result->hash = lit_util_hashstring(result->chars, actuallength);
     lit_state_regstring(vm->state, result);
-    return OBJECT_VALUE(result);
+    return lit_value_objectvalue(result);
 }
 
 static LitValue objmethod_file_readline(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -724,7 +724,7 @@ static LitValue objmethod_file_readline(LitVM* vm, LitValue instance, size_t arg
         LIT_FREE(vm->state, sizeof(char), line);
         return NULL_VALUE;
     }
-    return OBJECT_VALUE(lit_string_take(vm->state, line, strlen(line) - 1, false));
+    return lit_value_objectvalue(lit_string_take(vm->state, line, strlen(line) - 1, false));
 }
 
 static LitValue objmethod_file_readbyte(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -760,7 +760,7 @@ static LitValue objmethod_file_readbool(LitVM* vm, LitValue instance, size_t arg
     (void)instance;
     (void)argc;
     (void)argv;
-    return BOOL_VALUE((char)lit_read_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle) == '1');
+    return lit_value_boolvalue((char)lit_read_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle) == '1');
 }
 
 static LitValue objmethod_file_readstring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -772,7 +772,7 @@ static LitValue objmethod_file_readstring(LitVM* vm, LitValue instance, size_t a
     LitFileData* data = (LitFileData*)LIT_EXTRACT_DATA(vm, instance);
     LitString* string = lit_read_string(vm->state, data->handle);
 
-    return string == NULL ? NULL_VALUE : OBJECT_VALUE(string);
+    return string == NULL ? NULL_VALUE : lit_value_objectvalue(string);
 }
 
 static LitValue objmethod_file_getlastmodified(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -782,7 +782,7 @@ static LitValue objmethod_file_getlastmodified(LitVM* vm, LitValue instance, siz
     (void)vm;
     (void)argc;
     (void)argv;
-    if(IS_INSTANCE(instance))
+    if(lit_value_isinstance(instance))
     {
         file_name = ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->path;
     }
@@ -815,7 +815,7 @@ static LitValue objfunction_directory_exists(LitVM* vm, LitValue instance, size_
     (void)instance;
     (void)argc;
     (void)argv;
-    return BOOL_VALUE(stat(directory_name, &buffer) == 0 && S_ISDIR(buffer.st_mode));
+    return lit_value_boolvalue(stat(directory_name, &buffer) == 0 && S_ISDIR(buffer.st_mode));
 }
 
 static LitValue objfunction_directory_listfiles(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -831,7 +831,7 @@ static LitValue objfunction_directory_listfiles(LitVM* vm, LitValue instance, si
         DIR* dir = opendir(lit_check_string(vm, argv, argc, 0));
         if(dir == NULL)
         {
-            return OBJECT_VALUE(array);
+            return lit_value_objectvalue(array);
         }
         while((ep = readdir(dir)))
         {
@@ -843,7 +843,7 @@ static LitValue objfunction_directory_listfiles(LitVM* vm, LitValue instance, si
         closedir(dir);
     }
     #endif
-    return OBJECT_VALUE(array);
+    return lit_value_objectvalue(array);
 }
 
 static LitValue objfunction_directory_listdirs(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -874,7 +874,7 @@ static LitValue objfunction_directory_listdirs(LitVM* vm, LitValue instance, siz
         }
         lit_dir_close(&rd);
     }
-    return OBJECT_VALUE(array);
+    return lit_value_objectvalue(array);
 }
 
 static void free_handle(LitState* state, LitUserdata* userdata, bool mark)
@@ -908,8 +908,8 @@ static void make_handle(LitState* state, LitValue fileval, const char* name, FIL
         userhnd->cleanup_fn = free_handle;
         varname = CONST_STRING(state, name);
         descname = CONST_STRING(state, name);
-        args[0] = OBJECT_VALUE(userhnd);
-        args[1] = OBJECT_VALUE(descname);
+        args[0] = lit_value_objectvalue(userhnd);
+        args[1] = lit_value_objectvalue(descname);
         res = lit_call(state, fileval, args, 2, false);
         //fprintf(stderr, "make_handle(%s, hnd=%p): res.type=%d, res.result=%s\n", name, hnd, res.type, lit_get_value_type(res.result));
         lit_set_global(state, varname, res.result);
