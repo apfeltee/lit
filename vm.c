@@ -178,7 +178,7 @@ bool lit_set_native_exit_jump(void);
 
 #define vmexec_advinvokefromclass(zklass, method_name, arg_count, error, stat, ignoring, callee) \
     LitValue mthval; \
-    if((lit_value_isinstance(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval))) \
+    if((lit_value_isinstance(callee) && (lit_table_get(&lit_value_asinstance(callee)->fields, method_name, &mthval))) \
        || lit_table_get(&zklass->stat, method_name, &mthval)) \
     { \
         if(ignoring) \
@@ -239,7 +239,7 @@ bool lit_set_native_exit_jump(void);
             } \
         } \
         vmexec_drop(fiber); \
-        *(fiber->stack_top - 1) = (type(lit_value_to_number(a) op lit_value_to_number(b))); \
+        *(fiber->stack_top - 1) = (type(vm->state, lit_value_to_number(a) op lit_value_to_number(b))); \
         continue; \
     } \
     if(lit_value_isnull(a)) \
@@ -263,7 +263,7 @@ bool lit_set_native_exit_jump(void);
                            lit_get_value_type(a), lit_get_value_type(b)); \
     } \
     vmexec_drop(fiber); \
-    *(fiber->stack_top - 1) = (lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)));
+    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, (int)lit_value_to_number(a) op(int) lit_value_to_number(b)));
 
 #define vm_invokeoperation(ignoring) \
     uint8_t arg_count = vmexec_readbyte(&est); \
@@ -276,12 +276,12 @@ bool lit_set_native_exit_jump(void);
     vm_writeframe(&est, est.ip); \
     if(lit_value_isclass(receiver)) \
     { \
-        vmexec_advinvokefromclass(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring, receiver); \
+        vmexec_advinvokefromclass(lit_value_asclass(receiver), method_name, arg_count, true, static_fields, ignoring, receiver); \
         continue; \
     } \
     else if(lit_value_isinstance(receiver)) \
     { \
-        LitInstance* instance = AS_INSTANCE(receiver); \
+        LitInstance* instance = lit_value_asinstance(receiver); \
         LitValue value; \
         if(lit_table_get(&instance->fields, method_name, &value)) \
         { \
@@ -327,12 +327,12 @@ static inline LitValue vmexec_readconstantlong(LitExecState* est)
 
 static inline LitString* vmexec_readstring(LitExecState* est)
 {
-    return lit_as_string(vmexec_readconstant(est));
+    return lit_value_asstring(vmexec_readconstant(est));
 }
 
 static inline LitString* vmexec_readstringlong(LitExecState* est)
 {
-    return lit_as_string(vmexec_readconstantlong(est));
+    return lit_value_asstring(vmexec_readconstantlong(est));
 }
 
 
@@ -393,7 +393,7 @@ static void reset_vm(LitState* state, LitVM* vm)
     vm->gray_stack = NULL;
     vm->gray_count = 0;
     vm->gray_capacity = 0;
-    lit_init_table(&vm->strings);
+    lit_table_init(vm->state, &vm->strings);
     vm->globals = NULL;
     vm->modules = NULL;
 }
@@ -407,7 +407,7 @@ void lit_init_vm(LitState* state, LitVM* vm)
 
 void lit_free_vm(LitVM* vm)
 {
-    lit_free_table(vm->state, &vm->strings);
+    lit_table_destroy(vm->state, &vm->strings);
     lit_free_objects(vm->state, vm->objects);
     reset_vm(vm->state, vm);
 }
@@ -662,23 +662,23 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
         {
             return true;
         }
-        switch(OBJECT_TYPE(callee))
+        switch(lit_value_type(callee))
         {
             case LITTYPE_FUNCTION:
                 {
-                    return call(vm, AS_FUNCTION(callee), NULL, arg_count);
+                    return call(vm, lit_value_asfunction(callee), NULL, arg_count);
                 }
                 break;
             case LITTYPE_CLOSURE:
                 {
-                    closure = AS_CLOSURE(callee);
+                    closure = lit_value_asclosure(callee);
                     return call(vm, closure->function, closure, arg_count);
                 }
                 break;
             case LITTYPE_NATIVE_FUNCTION:
                 {
                     vm_pushgc(vm->state, false)
-                    result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
+                    result = lit_value_asnativefunction(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
                     vm->fiber->stack_top -= arg_count + 1;
                     lit_push(vm, result);
                     vm_popgc(vm->state);
@@ -689,7 +689,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                 {
                     vm_pushgc(vm->state, false)
                     fiber = vm->fiber;
-                    bres = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, fiber->stack_top - arg_count);
+                    bres = lit_value_asnativeprimitive(callee)->function(vm, arg_count, fiber->stack_top - arg_count);
                     if(bres)
                     {
                         fiber->stack_top -= arg_count;
@@ -701,7 +701,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
             case LITTYPE_NATIVE_METHOD:
                 {
                     vm_pushgc(vm->state, false);
-                    mthobj = AS_NATIVE_METHOD(callee);
+                    mthobj = lit_value_asnativemethod(callee);
                     fiber = vm->fiber;
                     result = mthobj->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
                     vm->fiber->stack_top -= arg_count + 1;
@@ -720,7 +720,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                 {
                     vm_pushgc(vm->state, false);
                     fiber = vm->fiber;
-                    bres = AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count);
+                    bres = lit_value_asprimitivemethod(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count);
                     if(bres)
                     {
                         fiber->stack_top -= arg_count;
@@ -731,7 +731,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                 break;
             case LITTYPE_CLASS:
                 {
-                    klass = AS_CLASS(callee);
+                    klass = lit_value_asclass(callee);
                     instance = lit_create_instance(vm->state, klass);
                     vm->fiber->stack_top[-arg_count - 1] = lit_value_objectvalue(instance);
                     if(klass->init_method != NULL)
@@ -749,12 +749,12 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    bound_method = AS_BOUND_METHOD(callee);
+                    bound_method = lit_value_asboundmethod(callee);
                     mthval = bound_method->method;
                     if(lit_value_isnatmethod(mthval))
                     {
                         vm_pushgc(vm->state, false);
-                        result = AS_NATIVE_METHOD(mthval)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
+                        result = lit_value_asnativemethod(mthval)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
                         vm->fiber->stack_top -= arg_count + 1;
                         lit_push(vm, result);
                         vm_popgc(vm->state);
@@ -764,7 +764,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                     {
                         fiber = vm->fiber;
                         vm_pushgc(vm->state, false);
-                        if(AS_PRIMITIVE_METHOD(mthval)->method(vm, bound_method->receiver, arg_count, fiber->stack_top - arg_count))
+                        if(lit_value_asprimitivemethod(mthval)->method(vm, bound_method->receiver, arg_count, fiber->stack_top - arg_count))
                         {
                             fiber->stack_top -= arg_count;
                             return true;
@@ -775,7 +775,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                     else
                     {
                         vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
-                        return call(vm, AS_FUNCTION(mthval), NULL, arg_count);
+                        return call(vm, lit_value_asfunction(mthval), NULL, arg_count);
                     }
                 }
                 break;
@@ -1076,7 +1076,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     arg = vmexec_peek(fiber, 0);
                     // Don't even ask me why
                     // This doesn't kill our performance, since it's a error anyway
-                    if(lit_value_isstring(arg) && strcmp(lit_as_cstring(arg), "muffin") == 0)
+                    if(lit_value_isstring(arg) && strcmp(lit_value_ascstring(arg), "muffin") == 0)
                     {
                         vm_rterror("Idk, can you negate a muffin?");
                     }
@@ -1085,7 +1085,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         vm_rterror("Operand must be a number");
                     }
                 }
-                tmpval = lit_number_to_value(-lit_value_to_number(vmexec_pop(fiber)));
+                tmpval = lit_number_to_value(vm->state, -lit_value_to_number(vmexec_pop(fiber)));
                 vmexec_push(fiber, tmpval);
                 continue;
             }
@@ -1094,10 +1094,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isinstance(vmexec_peek(fiber, 0)))
                 {
                     vm_writeframe(&est, est.ip);
-                    vmexec_invokefromclass(AS_INSTANCE(vmexec_peek(fiber, 0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
+                    vmexec_invokefromclass(lit_value_asinstance(vmexec_peek(fiber, 0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
                     continue;
                 }
-                tmpval = lit_value_boolvalue(lit_is_falsey(vmexec_pop(fiber)));
+                tmpval = lit_bool_to_value(vm->state, lit_value_isfalsey(vmexec_pop(fiber)));
                 vmexec_push(fiber, tmpval);
                 continue;
             }
@@ -1107,7 +1107,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Operand must be a number");
                 }
-                tmpval = lit_number_to_value(~((int)lit_value_to_number(vmexec_pop(fiber))));
+                tmpval = lit_number_to_value(vm->state, ~((int)lit_value_to_number(vmexec_pop(fiber))));
                 vmexec_push(fiber, tmpval);
                 continue;
             }
@@ -1133,7 +1133,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = (lit_number_to_value(pow(lit_value_to_number(a), lit_value_to_number(b))));
+                    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, pow(lit_value_to_number(a), lit_value_to_number(b))));
                     continue;
                 }
                 vm_invokemethod(a, "**", 1);
@@ -1151,7 +1151,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = (lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b))));
+                    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, floor(lit_value_to_number(a) / lit_value_to_number(b))));
 
                     continue;
                 }
@@ -1166,7 +1166,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = lit_number_to_value(fmod(lit_value_to_number(a), lit_value_to_number(b)));
+                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, fmod(lit_value_to_number(a), lit_value_to_number(b)));
                     continue;
                 }
                 vm_invokemethod(a, "%", 1);
@@ -1199,7 +1199,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 vmexec_drop(fiber);
                 #if 0
-                    *(fiber->stack_top - 1) = lit_number_to_value((int)lit_value_to_number(a) << (int)lit_value_to_number(b));
+                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, (int)lit_value_to_number(a) << (int)lit_value_to_number(b));
 
                 #else
                     /*
@@ -1213,7 +1213,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     int uleft = lit_util_numbertoint32(lit_value_to_number(a));
                     unsigned int uright = lit_util_numbertouint32(lit_value_to_number(b));
 
-                    *(fiber->stack_top - 1) = lit_number_to_value(uleft << (uright & 0x1F));
+                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, uleft << (uright & 0x1F));
  
 
                 #endif
@@ -1239,7 +1239,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 int uleft = lit_util_numbertoint32(lit_value_to_number(a));
                 unsigned int uright = lit_util_numbertouint32(lit_value_to_number(b));
 
-                *(fiber->stack_top - 1) = lit_number_to_value(uleft >> (uright & 0x1F));
+                *(fiber->stack_top - 1) = lit_number_to_value(vm->state, uleft >> (uright & 0x1F));
                 
 
                 continue;
@@ -1252,12 +1252,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_writeframe(&est, est.ip);
                     fprintf(stderr, "OP_EQUAL: trying to invoke '==' ...\n");
-                    vmexec_invokefromclass(AS_INSTANCE(vmexec_peek(fiber, 1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
+                    vmexec_invokefromclass(lit_value_asinstance(vmexec_peek(fiber, 1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
                     continue;
                 }
                 a = vmexec_pop(fiber);
                 b = vmexec_pop(fiber);
-                vmexec_push(fiber, lit_value_boolvalue(a == b));
+                vmexec_push(fiber, lit_bool_to_value(vm->state, a == b));
                 */
                 vm_binaryop(lit_number_to_value, ==, "==");
                 continue;
@@ -1265,22 +1265,22 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
 
             op_case(GREATER)
             {
-                vm_binaryop(lit_value_boolvalue, >, ">");
+                vm_binaryop(lit_bool_to_value, >, ">");
                 continue;
             }
             op_case(GREATER_EQUAL)
             {
-                vm_binaryop(lit_value_boolvalue, >=, ">=");
+                vm_binaryop(lit_bool_to_value, >=, ">=");
                 continue;
             }
             op_case(LESS)
             {
-                vm_binaryop(lit_value_boolvalue, <, "<");
+                vm_binaryop(lit_bool_to_value, <, "<");
                 continue;
             }
             op_case(LESS_EQUAL)
             {
-                vm_binaryop(lit_value_boolvalue, <=, "<=");
+                vm_binaryop(lit_bool_to_value, <=, "<=");
                 continue;
             }
 
@@ -1363,7 +1363,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(JUMP_IF_FALSE)
             {
                 offset = vmexec_readshort(&est);
-                if(lit_is_falsey(vmexec_pop(fiber)))
+                if(lit_value_isfalsey(vmexec_pop(fiber)))
                 {
                     est.ip += offset;
                 }
@@ -1402,7 +1402,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(AND)
             {
                 offset = vmexec_readshort(&est);
-                if(lit_is_falsey(vmexec_peek(fiber, 0)))
+                if(lit_value_isfalsey(vmexec_peek(fiber, 0)))
                 {
                     est.ip += offset;
                 }
@@ -1415,7 +1415,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(OR)
             {
                 offset = vmexec_readshort(&est);
-                if(lit_is_falsey(vmexec_peek(fiber, 0)))
+                if(lit_value_isfalsey(vmexec_peek(fiber, 0)))
                 {
                     vmexec_drop(fiber);
                 }
@@ -1447,7 +1447,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(CLOSURE)
             {
-                function = AS_FUNCTION(vmexec_readconstantlong(&est));
+                function = lit_value_asfunction(vmexec_readconstantlong(&est));
                 closure = lit_create_closure(state, function);
                 vmexec_push(fiber, lit_value_objectvalue(closure));
                 for(i = 0; i < closure->upvalue_count; i++)
@@ -1489,10 +1489,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Attempt to index a null value");
                 }
-                name = lit_as_string(vmexec_peek(fiber, 0));
+                name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isinstance(object))
                 {
-                    instobj = AS_INSTANCE(object);
+                    instobj = lit_value_asinstance(object);
 
                     if(!lit_table_get(&instobj->fields, name, &getval))
                     {
@@ -1500,7 +1500,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         {
                             if(lit_value_isfield(getval))
                             {
-                                field = AS_FIELD(getval);
+                                field = lit_value_asfield(getval);
                                 if(field->getter == NULL)
                                 {
                                     vm_rterrorvarg("Class %s does not have a getter for the field %s",
@@ -1508,7 +1508,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                                 }
                                 vmexec_drop(fiber);
                                 vm_writeframe(&est, est.ip);
-                                vm_callvalue(lit_value_objectvalue(AS_FIELD(getval)->getter), 0);
+                                vm_callvalue(lit_value_objectvalue(lit_value_asfield(getval)->getter), 0);
                                 vm_readframe(fiber, &est);
                                 continue;
                             }
@@ -1525,7 +1525,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else if(lit_value_isclass(object))
                 {
-                    klassobj = AS_CLASS(object);
+                    klassobj = lit_value_asclass(object);
                     if(lit_table_get(&klassobj->static_fields, name, &getval))
                     {
                         if(lit_value_isnatmethod(getval) || lit_value_isprimmethod(getval))
@@ -1534,7 +1534,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         }
                         else if(lit_value_isfield(getval))
                         {
-                            field = AS_FIELD(getval);
+                            field = lit_value_asfield(getval);
                             if(field->getter == NULL)
                             {
                                 vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
@@ -1563,7 +1563,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     {
                         if(lit_value_isfield(getval))
                         {
-                            field = AS_FIELD(getval);
+                            field = lit_value_asfield(getval);
                             if(field->getter == NULL)
                             {
                                 vm_rterrorvarg("Class %s does not have a getter for the field %s", klassobj->name->chars,
@@ -1571,7 +1571,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                             }
                             vmexec_drop(fiber);
                             vm_writeframe(&est, est.ip);
-                            vm_callvalue(lit_value_objectvalue(AS_FIELD(getval)->getter), 0);
+                            vm_callvalue(lit_value_objectvalue(lit_value_asfield(getval)->getter), 0);
                             vm_readframe(fiber, &est);
                             continue;
                         }
@@ -1597,13 +1597,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     vm_rterror("Attempt to index a null value")
                 }
                 value = vmexec_peek(fiber, 1);
-                field_name = lit_as_string(vmexec_peek(fiber, 0));
+                field_name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isclass(instval))
                 {
-                    klassobj = AS_CLASS(instval);
+                    klassobj = lit_value_asclass(instval);
                     if(lit_table_get(&klassobj->static_fields, field_name, &setter) && lit_value_isfield(setter))
                     {
-                        field = AS_FIELD(setter);
+                        field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
                             vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
@@ -1630,10 +1630,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else if(lit_value_isinstance(instval))
                 {
-                    instobj = AS_INSTANCE(instval);
+                    instobj = lit_value_asinstance(instval);
                     if(lit_table_get(&instobj->klass->methods, field_name, &setter) && lit_value_isfield(setter))
                     {
-                        field = AS_FIELD(setter);
+                        field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
                             vm_rterrorvarg("Class %s does not have a setter for the field %s", instobj->klass->name->chars,
@@ -1666,7 +1666,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     }
                     if(lit_table_get(&klassobj->methods, field_name, &setter) && lit_value_isfield(setter))
                     {
-                        field = AS_FIELD(setter);
+                        field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
                             vm_rterrorvarg("Class %s does not have a setter for the field %s", klassobj->name->chars,
@@ -1698,7 +1698,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(PUSH_ARRAY_ELEMENT)
             {
-                values = &AS_ARRAY(vmexec_peek(fiber, 1))->list;
+                values = &lit_value_asarray(vmexec_peek(fiber, 1))->list;
                 arindex = lit_vallist_count(values);
                 lit_vallist_ensuresize(state, values, arindex + 1);
                 lit_vallist_set(values, arindex, vmexec_peek(fiber, 0));
@@ -1710,11 +1710,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 operand = vmexec_peek(fiber, 2);
                 if(lit_value_ismap(operand))
                 {
-                    lit_table_set(state, &AS_MAP(operand)->values, lit_as_string(vmexec_peek(fiber, 1)), vmexec_peek(fiber, 0));
+                    lit_table_set(state, &lit_value_asmap(operand)->values, lit_value_asstring(vmexec_peek(fiber, 1)), vmexec_peek(fiber, 0));
                 }
                 else if(lit_value_isinstance(operand))
                 {
-                    lit_table_set(state, &AS_INSTANCE(operand)->fields, lit_as_string(vmexec_peek(fiber, 1)), vmexec_peek(fiber, 0));
+                    lit_table_set(state, &lit_value_asinstance(operand)->fields, lit_value_asstring(vmexec_peek(fiber, 1)), vmexec_peek(fiber, 0));
                 }
                 else
                 {
@@ -1725,13 +1725,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(STATIC_FIELD)
             {
-                lit_table_set(state, &AS_CLASS(vmexec_peek(fiber, 1))->static_fields, vmexec_readstringlong(&est), vmexec_peek(fiber, 0));
+                lit_table_set(state, &lit_value_asclass(vmexec_peek(fiber, 1))->static_fields, vmexec_readstringlong(&est), vmexec_peek(fiber, 0));
                 vmexec_drop(fiber);
                 continue;
             }
             op_case(METHOD)
             {
-                klassobj = AS_CLASS(vmexec_peek(fiber, 1));
+                klassobj = lit_value_asclass(vmexec_peek(fiber, 1));
                 name = vmexec_readstringlong(&est);
                 if((klassobj->init_method == NULL || (klassobj->super != NULL && klassobj->init_method == ((LitClass*)klassobj->super)->init_method))
                    && lit_string_getlength(name) == 11 && memcmp(name->chars, "constructor", 11) == 0)
@@ -1744,7 +1744,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(DEFINE_FIELD)
             {
-                lit_table_set(state, &AS_CLASS(vmexec_peek(fiber, 1))->methods, vmexec_readstringlong(&est), vmexec_peek(fiber, 0));
+                lit_table_set(state, &lit_value_asclass(vmexec_peek(fiber, 1))->methods, vmexec_readstringlong(&est), vmexec_peek(fiber, 0));
                 vmexec_drop(fiber);
                 continue;
             }
@@ -1762,7 +1762,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             {
                 arg_count = vmexec_readbyte(&est);
                 method_name = vmexec_readstringlong(&est);
-                klassobj = AS_CLASS(vmexec_pop(fiber));
+                klassobj = lit_value_asclass(vmexec_pop(fiber));
                 vm_writeframe(&est, est.ip);
                 vmexec_invokefromclass(klassobj, method_name, arg_count, true, methods, false);
                 continue;
@@ -1771,7 +1771,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             {
                 arg_count = vmexec_readbyte(&est);
                 method_name = vmexec_readstringlong(&est);
-                klassobj = AS_CLASS(vmexec_pop(fiber));
+                klassobj = lit_value_asclass(vmexec_pop(fiber));
                 vm_writeframe(&est, est.ip);
                 vmexec_invokefromclass(klassobj, method_name, arg_count, true, methods, true);
                 continue;
@@ -1779,7 +1779,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(GET_SUPER_METHOD)
             {
                 method_name = vmexec_readstringlong(&est);
-                klassobj = AS_CLASS(vmexec_pop(fiber));
+                klassobj = lit_value_asclass(vmexec_pop(fiber));
                 instval = vmexec_pop(fiber);
                 if(lit_table_get(&klassobj->methods, method_name, &value))
                 {
@@ -1799,8 +1799,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Superclass must be a class");
                 }
-                klassobj = AS_CLASS(vmexec_peek(fiber, 0));
-                super_klass = AS_CLASS(super);
+                klassobj = lit_value_asclass(vmexec_peek(fiber, 0));
+                super_klass = lit_value_asclass(super);
                 klassobj->super = super_klass;
                 klassobj->init_method = super_klass->init_method;
                 lit_table_add_all(state, &super_klass->methods, &klassobj->methods);
@@ -1823,7 +1823,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("operands must be an instance and a class");
                 }            
-                type = AS_CLASS(klassval);
+                type = lit_value_asclass(klassval);
                 found = false;
                 while(instance_klass != NULL)
                 {
@@ -1835,7 +1835,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     instance_klass = (LitClass*)instance_klass->super;
                 }
                 vmexec_dropn(fiber, 2);// Drop the instance and class
-                vmexec_push(fiber, lit_value_boolvalue(found));
+                vmexec_push(fiber, lit_bool_to_value(vm->state, found));
                 continue;
             }
             op_case(POP_LOCALS)
@@ -1850,7 +1850,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     continue;
                 }
-                values = &AS_ARRAY(slot)->list;
+                values = &lit_value_asarray(slot)->list;
                 lit_ensure_fiber_stack(state, fiber, lit_vallist_count(values) + est.frame->function->max_slots + (int)(fiber->stack_top - fiber->stack));
                 for(i = 0; i < lit_vallist_count(values); i++)
                 {
@@ -1896,10 +1896,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Attempt to index a null value");
                 }
-                name = lit_as_string(vmexec_peek(fiber, 0));
+                name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isinstance(object))
                 {
-                    if(!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &pval))
+                    if(!lit_table_get_slot(&lit_value_asinstance(object)->fields, name, &pval))
                     {
                         vm_rterror("Attempt to reference a null value");
                     }
@@ -1921,7 +1921,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Provided value is not a reference");
                 }
-                *AS_REFERENCE(reference)->slot = vmexec_peek(fiber, 0);
+                *lit_value_asreference(reference)->slot = vmexec_peek(fiber, 0);
                 continue;
             }
             vm_default()

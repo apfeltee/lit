@@ -21,7 +21,7 @@ void lit_disassemble_chunk(LitState* state, LitChunk* chunk, const char* name, c
         value = lit_vallist_get(values, i);
         if(lit_value_isfunction(value))
         {
-            function = AS_FUNCTION(value);
+            function = lit_value_asfunction(value);
             lit_disassemble_chunk(state, &function->chunk, function->name->chars, source);
         }
     }
@@ -260,7 +260,7 @@ size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offs
                 lit_writer_writeformat(wr, "%-16s %4d ", "OP_CLOSURE", constant);
                 lit_print_value(state, wr, lit_vallist_get(&chunk->constants, constant));
                 lit_writer_writeformat(wr, "\n");
-                function = AS_FUNCTION(lit_vallist_get(&chunk->constants, constant));
+                function = lit_value_asfunction(lit_vallist_get(&chunk->constants, constant));
                 for(j = 0; j < function->upvalue_count; j++)
                 {
                     is_local = chunk->code[offset++];

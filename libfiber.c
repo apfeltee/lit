@@ -9,7 +9,7 @@ static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t arg
         lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
     }
 
-    LitFunction* function = AS_FUNCTION(argv[0]);
+    LitFunction* function = lit_value_asfunction(argv[0]);
     LitModule* module = vm->fiber->module;
     LitFiber* fiber = lit_create_fiber(vm->state, module, function);
 
@@ -24,7 +24,7 @@ static LitValue objfn_fiber_done(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_value_boolvalue(util_is_fiber_done(AS_FIBER(instance)));
+    return lit_bool_to_value(vm->state, util_is_fiber_done(lit_value_asfiber(instance)));
 }
 
 
@@ -33,7 +33,7 @@ static LitValue objfn_fiber_error(LitVM* vm, LitValue instance, size_t argc, Lit
     (void)vm;
     (void)argc;
     (void)argv;
-    return AS_FIBER(instance)->error;
+    return lit_value_asfiber(instance)->error;
 }
 
 
@@ -49,14 +49,14 @@ static LitValue objfn_fiber_current(LitVM* vm, LitValue instance, size_t argc, L
 static bool objfn_fiber_run(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    util_run_fiber(vm, AS_FIBER(instance), argv, argc, false);
+    util_run_fiber(vm, lit_value_asfiber(instance), argv, argc, false);
     return true;
 }
 
 
 static bool objfn_fiber_try(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    util_run_fiber(vm, AS_FIBER(instance), argv, argc, true);
+    util_run_fiber(vm, lit_value_asfiber(instance), argv, argc, true);
     return true;
 }
 

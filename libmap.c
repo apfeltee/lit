@@ -1,20 +1,21 @@
 
 #include "lit.h"
 
-void lit_init_table(LitTable* table)
+void lit_table_init(LitState* state, LitTable* table)
 {
+    table->state = state;
     table->capacity = -1;
     table->count = 0;
     table->entries = NULL;
 }
 
-void lit_free_table(LitState* state, LitTable* table)
+void lit_table_destroy(LitState* state, LitTable* table)
 {
     if(table->capacity > 0)
     {
         LIT_FREE_ARRAY(state, sizeof(LitTableEntry), table->entries, table->capacity + 1);
     }
-    lit_init_table(table);
+    lit_table_init(state, table);
 }
 
 static LitTableEntry* find_entry(LitTableEntry* entries, int capacity, LitString* key)
@@ -142,7 +143,7 @@ bool lit_table_delete(LitTable* table, LitString* key)
         return false;
     }
     entry->key = NULL;
-    entry->value = lit_value_boolvalue(true);
+    entry->value = lit_bool_to_value(table->state, true);
     return true;
 }
 
@@ -263,8 +264,8 @@ static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, L
     {
         lit_runtime_error_exiting(vm, "map index must be a string");
     }
-    map = AS_MAP(instance);
-    index = lit_as_string(argv[0]);
+    map = lit_value_asmap(instance);
+    index = lit_value_asstring(argv[0]);
     if(argc == 2)
     {
         val = argv[1];
@@ -293,7 +294,7 @@ static LitValue objfn_map_addall(LitVM* vm, LitValue instance, size_t argc, LitV
     {
         lit_runtime_error_exiting(vm, "expected map as the argument");
     }
-    lit_map_add_all(vm->state, AS_MAP(argv[0]), AS_MAP(instance));
+    lit_map_add_all(vm->state, lit_value_asmap(argv[0]), lit_value_asmap(instance));
     return NULL_VALUE;
 }
 
@@ -303,7 +304,7 @@ static LitValue objfn_map_clear(LitVM* vm, LitValue instance, size_t argc, LitVa
     (void)vm;
     (void)argv;
     (void)argc;
-    AS_MAP(instance)->values.count = 0;
+    lit_value_asmap(instance)->values.count = 0;
     return NULL_VALUE;
 }
 
@@ -314,15 +315,15 @@ static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, Li
     int index;
     int value;
     index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
-    value = util_table_iterator(&AS_MAP(instance)->values, index);
-    return value == -1 ? NULL_VALUE : lit_number_to_value(value);
+    value = util_table_iterator(&lit_value_asmap(instance)->values, index);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(vm->state, value);
 }
 
 static LitValue objfn_map_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
     index = lit_check_number(vm, argv, argc, 0);
-    return util_table_iterator_key(&AS_MAP(instance)->values, index);
+    return util_table_iterator_key(&lit_value_asmap(instance)->values, index);
 }
 
 static LitValue objfn_map_clone(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -333,7 +334,7 @@ static LitValue objfn_map_clone(LitVM* vm, LitValue instance, size_t argc, LitVa
     LitMap* map;
     state = vm->state;
     map = lit_create_map(state);
-    lit_table_add_all(state, &AS_MAP(instance)->values, &map->values);
+    lit_table_add_all(state, &lit_value_asmap(instance)->values, &map->values);
     return lit_value_objectvalue(map);
 }
 
@@ -360,7 +361,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
     LitString** values_converted;
     LitString** keys;
     state = vm->state;
-    map = AS_MAP(instance);
+    map = lit_value_asmap(instance);
     values = &map->values;
     if(values->count == 0)
     {
@@ -386,7 +387,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             // Special hidden key
             field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
             // This check is required to prevent infinite loops when playing with Module.privates and such
-            strobval = (lit_value_ismap(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+            strobval = (lit_value_ismap(field) && lit_value_asmap(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
             lit_state_pushroot(state, (LitObject*)strobval);
             values_converted[i] = strobval;
             keys[i] = entry->key;
@@ -452,7 +453,7 @@ static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(AS_MAP(instance)->values.count);
+    return lit_number_to_value(vm->state, lit_value_asmap(instance)->values.count);
 }
 
 void lit_open_map_library(LitState* state)

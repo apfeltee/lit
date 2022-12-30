@@ -6,7 +6,7 @@ static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, 
     LIT_ENSURE_ARGS(1);
     int number;
     LitRange* range;
-    range = AS_RANGE(instance);
+    range = lit_value_asrange(instance);
     number = range->from;
     (void)vm;
     (void)argc;
@@ -19,7 +19,7 @@ static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, 
         }
         number += (((range->from - range->to) > 0) ? -1 : 1);
     }
-    return lit_number_to_value(number);
+    return lit_number_to_value(vm->state, number);
 }
 
 static LitValue objfn_range_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -35,7 +35,7 @@ static LitValue objfn_range_tostring(LitVM* vm, LitValue instance, size_t argc, 
     (void)argc;
     (void)argv;
     LitRange* range;
-    range = AS_RANGE(instance);
+    range = lit_value_asrange(instance);
     return lit_value_objectvalue(lit_string_format(vm->state, "Range(#, #)", range->from, range->to));
 }
 
@@ -44,14 +44,14 @@ static LitValue objfn_range_from(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argv;
     (void)argc;
-    return lit_number_to_value(AS_RANGE(instance)->from);
+    return lit_number_to_value(vm->state, lit_value_asrange(instance)->from);
 }
 
 static LitValue objfn_range_set_from(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
-    AS_RANGE(instance)->from = lit_value_to_number(argv[0]);
+    lit_value_asrange(instance)->from = lit_value_to_number(argv[0]);
     return argv[0];
 }
 
@@ -60,14 +60,14 @@ static LitValue objfn_range_to(LitVM* vm, LitValue instance, size_t argc, LitVal
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(AS_RANGE(instance)->to);
+    return lit_number_to_value(vm->state, lit_value_asrange(instance)->to);
 }
 
 static LitValue objfn_range_set_to(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
-    AS_RANGE(instance)->to = lit_value_to_number(argv[0]);
+    lit_value_asrange(instance)->to = lit_value_to_number(argv[0]);
     return argv[0];
 }
 
@@ -77,8 +77,8 @@ static LitValue objfn_range_length(LitVM* vm, LitValue instance, size_t argc, Li
     (void)argc;
     (void)argv;
     LitRange* range;
-    range = AS_RANGE(instance);
-    return lit_number_to_value(range->to - range->from);
+    range = lit_value_asrange(instance);
+    return lit_number_to_value(vm->state, range->to - range->from);
 }
 
 void lit_open_range_library(LitState* state)

@@ -7,13 +7,13 @@ void lit_preproc_init(LitState* state, LitPreprocessor* preprocessor)
 {
     preprocessor->state = state;
 
-    lit_init_table(&preprocessor->defined);
+    lit_table_init(state, &preprocessor->defined);
     lit_vallist_init(&preprocessor->open_ifs);
 }
 
 void lit_preproc_destroy(LitPreprocessor* preprocessor)
 {
-    lit_free_table(preprocessor->state, &preprocessor->defined);
+    lit_table_destroy(preprocessor->state, &preprocessor->defined);
     lit_vallist_destroy(preprocessor->state, &preprocessor->open_ifs);
 }
 

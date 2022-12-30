@@ -308,7 +308,7 @@ static void print_array(LitState* state, LitWriter* wr, LitArray* array, size_t 
         lit_writer_writestring(wr, " ");
         for(i = 0; i < size; i++)
         {
-            if(lit_value_isarray(lit_vallist_get(&array->list, i)) && (array == AS_ARRAY(lit_vallist_get(&array->list,i))))
+            if(lit_value_isarray(lit_vallist_get(&array->list, i)) && (array == lit_value_asarray(lit_vallist_get(&array->list,i))))
             {
                 lit_writer_writestring(wr, "(recursion)");
             }
@@ -352,7 +352,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
                     lit_writer_writestring(wr, " ");
                 }
                 lit_writer_writeformat(wr, "%s = ", entry->key->chars);
-                if(lit_value_ismap(entry->value) && (map == AS_MAP(entry->value)))
+                if(lit_value_ismap(entry->value) && (map == lit_value_asmap(entry->value)))
                 {
                     lit_writer_writestring(wr, "(recursion)");
                 }
@@ -390,37 +390,37 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
         {
             case LITTYPE_STRING:
                 {
-                    lit_writer_writeformat(wr, "%s", lit_as_cstring(value));
+                    lit_writer_writeformat(wr, "%s", lit_value_ascstring(value));
                 }
                 break;
             case LITTYPE_FUNCTION:
                 {
-                    lit_writer_writeformat(wr, "function %s", AS_FUNCTION(value)->name->chars);
+                    lit_writer_writeformat(wr, "function %s", lit_value_asfunction(value)->name->chars);
                 }
                 break;
             case LITTYPE_CLOSURE:
                 {
-                    lit_writer_writeformat(wr, "closure %s", AS_CLOSURE(value)->function->name->chars);
+                    lit_writer_writeformat(wr, "closure %s", lit_value_asclosure(value)->function->name->chars);
                 }
                 break;
             case LITTYPE_NATIVE_PRIMITIVE:
                 {
-                    lit_writer_writeformat(wr, "function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
+                    lit_writer_writeformat(wr, "function %s", lit_value_asnativeprimitive(value)->name->chars);
                 }
                 break;
             case LITTYPE_NATIVE_FUNCTION:
                 {
-                    lit_writer_writeformat(wr, "function %s", AS_NATIVE_FUNCTION(value)->name->chars);
+                    lit_writer_writeformat(wr, "function %s", lit_value_asnativefunction(value)->name->chars);
                 }
                 break;
             case LITTYPE_PRIMITIVE_METHOD:
                 {
-                    lit_writer_writeformat(wr, "function %s", AS_PRIMITIVE_METHOD(value)->name->chars);
+                    lit_writer_writeformat(wr, "function %s", lit_value_asprimitivemethod(value)->name->chars);
                 }
                 break;
             case LITTYPE_NATIVE_METHOD:
                 {
-                    lit_writer_writeformat(wr, "function %s", AS_NATIVE_METHOD(value)->name->chars);
+                    lit_writer_writeformat(wr, "function %s", lit_value_asnativemethod(value)->name->chars);
                 }
                 break;
             case LITTYPE_FIBER:
@@ -430,13 +430,13 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_MODULE:
                 {
-                    lit_writer_writeformat(wr, "module %s", AS_MODULE(value)->name->chars);
+                    lit_writer_writeformat(wr, "module %s", lit_value_asmodule(value)->name->chars);
                 }
                 break;
 
             case LITTYPE_UPVALUE:
                 {
-                    upvalue = AS_UPVALUE(value);
+                    upvalue = lit_value_asupvalue(value);
                     if(upvalue->location == NULL)
                     {
                         lit_print_value(state, wr, upvalue->closed);
@@ -449,20 +449,20 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_CLASS:
                 {
-                    lit_writer_writeformat(wr, "class %s", AS_CLASS(value)->name->chars);
+                    lit_writer_writeformat(wr, "class %s", lit_value_asclass(value)->name->chars);
                 }
                 break;
             case LITTYPE_INSTANCE:
                 {
                     /*
-                    if(AS_INSTANCE(value)->klass->object.type == LITTYPE_MAP)
+                    if(lit_value_asinstance(value)->klass->object.type == LITTYPE_MAP)
                     {
                         fprintf(stderr, "instance is a map\n");
                     }
-                    printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
+                    printf("%s instance", lit_value_asinstance(value)->klass->name->chars);
                     */
-                    lit_writer_writeformat(wr, "<instance '%s' ", AS_INSTANCE(value)->klass->name->chars);
-                    map = AS_MAP(value);
+                    lit_writer_writeformat(wr, "<instance '%s' ", lit_value_asinstance(value)->klass->name->chars);
+                    map = lit_value_asmap(value);
                     size = map->values.count;
                     print_map(state, wr, map, size);
                     lit_writer_writestring(wr, ">");
@@ -470,7 +470,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    lit_print_value(state, wr, AS_BOUND_METHOD(value)->method);
+                    lit_print_value(state, wr, lit_value_asboundmethod(value)->method);
                     return;
                 }
                 break;
@@ -479,7 +479,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                     #ifdef LIT_MINIMIZE_CONTAINERS
                         lit_writer_writestring(wr, "array");
                     #else
-                        array = AS_ARRAY(value);
+                        array = lit_value_asarray(value);
                         size = lit_vallist_count(&array->list);
                         print_array(state, wr, array, size);
                     #endif
@@ -490,7 +490,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                     #ifdef LIT_MINIMIZE_CONTAINERS
                         lit_writer_writeformat(wr, "map");
                     #else
-                        map = AS_MAP(value);
+                        map = lit_value_asmap(value);
                         size = map->values.count;
                         print_map(state, wr, map, size);
                     #endif
@@ -503,7 +503,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_RANGE:
                 {
-                    range = AS_RANGE(value);
+                    range = lit_value_asrange(value);
                     lit_writer_writeformat(wr, "%g .. %g", range->from, range->to);
                 }
                 break;
@@ -515,7 +515,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
             case LITTYPE_REFERENCE:
                 {
                     lit_writer_writeformat(wr, "reference => ");
-                    slot = AS_REFERENCE(value)->slot;
+                    slot = lit_value_asreference(value)->slot;
                     if(slot == NULL)
                     {
                         lit_writer_writestring(wr, "null");
@@ -551,7 +551,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     LitValue args[1] = {NULL_VALUE};
     mthname = CONST_STRING(state, "toString");
     fprintf(stderr, "lit_print_value: checking if toString() exists for '%s' ...\n", lit_get_value_type(value));
-    if(AS_CLASS(value) != NULL)
+    if(lit_value_asclass(value) != NULL)
     {
         mthtostring = lit_instance_get_method(state, value, mthname);
         if(!lit_value_isnull(mthtostring))
@@ -565,7 +565,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
                 if(!lit_value_isnull(tstrval))
                 {
                     fprintf(stderr, "lit_print_value: toString() returned a string! so that's what we'll use.\n");
-                    tstring = lit_as_string(tstrval);
+                    tstring = lit_value_asstring(tstrval);
                     printf("%.*s", (int)lit_string_getlength(tstring), tstring->chars);
                     return;
                 }
@@ -574,9 +574,9 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     }
     fprintf(stderr, "lit_print_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
     */
-    if(IS_BOOL(value))
+    if(lit_value_isbool(value))
     {
-        lit_writer_writestring(wr, lit_as_bool(value) ? "true" : "false");
+        lit_writer_writestring(wr, lit_value_asbool(value) ? "true" : "false");
     }
     else if(lit_value_isnull(value))
     {
@@ -595,7 +595,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
 
 const char* lit_get_value_type(LitValue value)
 {
-    if(IS_BOOL(value))
+    if(lit_value_isbool(value))
     {
         return "bool";
     }
@@ -609,7 +609,7 @@ const char* lit_get_value_type(LitValue value)
     }
     else if(lit_value_isobject(value))
     {
-        return lit_object_type_names[OBJECT_TYPE(value)];
+        return lit_object_type_names[lit_value_type(value)];
     }
     return "unknown";
 }

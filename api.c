@@ -40,7 +40,7 @@ LitFunction* lit_get_global_function(LitState* state, LitString* name)
     LitValue function = lit_get_global(state, name);
     if(lit_value_isfunction(function))
     {
-        return AS_FUNCTION(function);
+        return lit_value_asfunction(function);
     }
     return NULL;
 }
@@ -62,16 +62,16 @@ bool lit_global_exists(LitState* state, LitString* name)
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native)
 {
     lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
-    lit_state_pushroot(state, (LitObject*)lit_create_native_function(state, native, lit_as_string(lit_state_peekroot(state, 0))));
-    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_function(state, native, lit_value_asstring(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_value_asstring(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
     lit_state_poproots(state, 2);
 }
 
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native)
 {
     lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
-    lit_state_pushroot(state, (LitObject*)lit_create_native_primitive(state, native, lit_as_string(lit_state_peekroot(state, 0))));
-    lit_table_set(state, &state->vm->globals->values, lit_as_string(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_primitive(state, native, lit_value_asstring(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_value_asstring(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
     lit_state_poproots(state, 2);
 }
 
@@ -80,7 +80,7 @@ LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mt
     LitValue mthval;
     LitClass* klass;
     klass = lit_state_getclassfor(state, callee);
-    if((lit_value_isinstance(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
+    if((lit_value_isinstance(callee) && lit_table_get(&lit_value_asinstance(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
     {
         return mthval;
     }
@@ -121,23 +121,23 @@ double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
 
 bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
-    if(arg_count <= id || !IS_BOOL(args[id]))
+    if(arg_count <= id || !lit_value_isbool(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a boolean as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
-    return lit_as_bool(args[id]);
+    return lit_value_asbool(args[id]);
 }
 
 bool lit_get_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def)
 {
     (void)vm;
-    if(arg_count <= id || !IS_BOOL(args[id]))
+    if(arg_count <= id || !lit_value_isbool(args[id]))
     {
         return def;
     }
-    return lit_as_bool(args[id]);
+    return lit_value_asbool(args[id]);
 }
 
 const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
@@ -148,7 +148,7 @@ const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
-    return lit_as_string(args[id])->chars;
+    return lit_value_asstring(args[id])->chars;
 }
 
 const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def)
@@ -159,7 +159,7 @@ const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t
         return def;
     }
 
-    return lit_as_string(args[id])->chars;
+    return lit_value_asstring(args[id])->chars;
 }
 
 LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
@@ -170,7 +170,7 @@ LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
-    return lit_as_string(args[id]);
+    return lit_value_asstring(args[id]);
 }
 
 LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
@@ -181,7 +181,7 @@ LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, ui
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
-    return AS_INSTANCE(args[id]);
+    return lit_value_asinstance(args[id]);
 }
 
 LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
@@ -192,12 +192,12 @@ LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
 
-    return AS_REFERENCE(args[id])->slot;
+    return lit_value_asreference(args[id])->slot;
 }
 
 void lit_ensure_bool(LitVM* vm, LitValue value, const char* error)
 {
-    if(!IS_BOOL(value))
+    if(!lit_value_isbool(value))
     {
         lit_runtime_error_exiting(vm, error);
     }
@@ -221,7 +221,7 @@ void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
 
 void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error)
 {
-    if(!lit_value_isobject(value) || OBJECT_TYPE(value) != type)
+    if(!lit_value_isobject(value) || lit_value_type(value) != type)
     {
         lit_runtime_error_exiting(vm, error);
     }
@@ -438,15 +438,15 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
         {
             RETURN_RUNTIME_ERROR();
         }
-        type = OBJECT_TYPE(callee);
+        type = lit_value_type(callee);
 
         if(type == LITTYPE_FUNCTION)
         {
-            return lit_call_function(state, AS_FUNCTION(callee), argv, argc, ignfiber);
+            return lit_call_function(state, lit_value_asfunction(callee), argv, argc, ignfiber);
         }
         else if(type == LITTYPE_CLOSURE)
         {
-            return lit_call_closure(state, AS_CLOSURE(callee), argv, argc, ignfiber);
+            return lit_call_closure(state, lit_value_asclosure(callee), argv, argc, ignfiber);
         }
         fiber = vm->fiber;
         if(ignfiber)
@@ -477,21 +477,21 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
         {
             case LITTYPE_NATIVE_FUNCTION:
                 {
-                    LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, argc, fiber->stack_top - argc);
+                    LitValue result = lit_value_asnativefunction(callee)->function(vm, argc, fiber->stack_top - argc);
                     fiber->stack_top = slot;
                     RETURN_OK(result);
                 }
                 break;
             case LITTYPE_NATIVE_PRIMITIVE:
                 {
-                    AS_NATIVE_PRIMITIVE(callee)->function(vm, argc, fiber->stack_top - argc);
+                    lit_value_asnativeprimitive(callee)->function(vm, argc, fiber->stack_top - argc);
                     fiber->stack_top = slot;
                     RETURN_OK(NULL_VALUE);
                 }
                 break;
             case LITTYPE_NATIVE_METHOD:
                 {
-                    natmethod = AS_NATIVE_METHOD(callee);
+                    natmethod = lit_value_asnativemethod(callee);
                     result = natmethod->method(vm, *(fiber->stack_top - argc - 1), argc, fiber->stack_top - argc);
                     fiber->stack_top = slot;
                     RETURN_OK(result);
@@ -499,7 +499,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 break;
             case LITTYPE_CLASS:
                 {
-                    klass = AS_CLASS(callee);
+                    klass = lit_value_asclass(callee);
                     *slot = lit_value_objectvalue(lit_create_instance(vm->state, klass));
                     if(klass->init_method != NULL)
                     {
@@ -513,18 +513,18 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    bound_method = AS_BOUND_METHOD(callee);
+                    bound_method = lit_value_asboundmethod(callee);
                     mthval = bound_method->method;
                     *slot = bound_method->receiver;
                     if(lit_value_isnatmethod(mthval))
                     {
-                        result = AS_NATIVE_METHOD(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
+                        result = lit_value_asnativemethod(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
                         fiber->stack_top = slot;
                         RETURN_OK(result);
                     }
                     else if(lit_value_isprimmethod(mthval))
                     {
-                        AS_PRIMITIVE_METHOD(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
+                        lit_value_asprimitivemethod(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
 
                         fiber->stack_top = slot;
                         RETURN_OK(NULL_VALUE);
@@ -532,13 +532,13 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
                     else
                     {
                         fiber->stack_top = slot;
-                        return lit_call_function(state, AS_FUNCTION(mthval), argv, argc, ignfiber);
+                        return lit_call_function(state, lit_value_asfunction(mthval), argv, argc, ignfiber);
                     }
                 }
                 break;
             case LITTYPE_PRIMITIVE_METHOD:
                 {
-                    AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - argc - 1), argc, fiber->stack_top - argc);
+                    lit_value_asprimitivemethod(callee)->method(vm, *(fiber->stack_top - argc - 1), argc, fiber->stack_top - argc);
                     fiber->stack_top = slot;
                     RETURN_OK(NULL_VALUE);
                 }
@@ -583,7 +583,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
         }
     }
     klass = lit_state_getclassfor(state, callee);
-    if((lit_value_isinstance(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
+    if((lit_value_isinstance(callee) && lit_table_get(&lit_value_asinstance(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
     {
         return lit_call_method(state, callee, mthval, argv, argc, ignfiber);
     }
@@ -601,7 +601,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
     LitInterpretResult result;
     if(lit_value_isstring(object))
     {
-        return lit_as_string(object);
+        return lit_value_asstring(object);
     }
     else if(!lit_value_isobject(object))
     {
@@ -611,16 +611,16 @@ LitString* lit_to_string(LitState* state, LitValue object)
         }
         else if(lit_value_isnumber(object))
         {
-            return lit_as_string(lit_string_numbertostring(state, lit_value_to_number(object)));
+            return lit_value_asstring(lit_string_numbertostring(state, lit_value_to_number(object)));
         }
-        else if(IS_BOOL(object))
+        else if(lit_value_isbool(object))
         {
-            return CONST_STRING(state, lit_as_bool(object) ? "true" : "false");
+            return CONST_STRING(state, lit_value_asbool(object) ? "true" : "false");
         }
     }
     else if(lit_value_isreference(object))
     {
-        slot = AS_REFERENCE(object)->slot;
+        slot = lit_value_asreference(object)->slot;
 
         if(slot == NULL)
         {
@@ -664,7 +664,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
     {
         return CONST_STRING(state, "null");
     }
-    return lit_as_string(result.result);
+    return lit_value_asstring(result.result);
 }
 
 LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t argc, bool ignfiber)
@@ -676,7 +676,7 @@ LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t argc, 
         lit_runtime_error(vm, "failed to create instance of class %s: class not found", name);
         return NULL_VALUE;
     }
-    klass = AS_CLASS(value);
+    klass = lit_value_asclass(value);
     if(klass->init_method == NULL)
     {
         return lit_value_objectvalue(lit_create_instance(vm->state, klass));

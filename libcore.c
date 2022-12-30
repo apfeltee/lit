@@ -33,7 +33,7 @@ void lit_open_libraries(LitState* state)
         { \
             return; \
         } \
-        !lit_is_falsey(r.result); \
+        !lit_value_isfalsey(r.result); \
     })
 #else
 static LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue a, LitValue b)
@@ -72,7 +72,7 @@ void util_custom_quick_sort(LitVM* vm, LitValue* l, int length, LitValue callee)
             {
                 return;
             }
-            if(lit_is_falsey(rt.result))
+            if(lit_value_isfalsey(rt.result))
             {
                 break;
             }
@@ -85,7 +85,7 @@ void util_custom_quick_sort(LitVM* vm, LitValue* l, int length, LitValue callee)
             {
                 return;
             }
-            if(lit_is_falsey(rt.result))
+            if(lit_value_isfalsey(rt.result))
             {
                 break;
             }
@@ -164,7 +164,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
         return lit_value_to_number(a) < lit_value_to_number(b);
     }
     argv[0] = b;
-    return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
+    return !lit_value_isfalsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
 }
 
 void util_basic_quick_sort(LitState* state, LitValue* clist, int length)
@@ -358,11 +358,11 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
         LitValue existing_module;
         if(lit_table_get(&vm->modules->values, name, &existing_module))
         {
-            LitModule* loaded_module = AS_MODULE(existing_module);
+            LitModule* loaded_module = lit_value_asmodule(existing_module);
             if(loaded_module->ran)
             {
                 vm->fiber->stack_top -= argc;
-                argv[-1] = AS_MODULE(existing_module)->return_value;
+                argv[-1] = lit_value_asmodule(existing_module)->return_value;
             }
             else
             {
@@ -422,7 +422,7 @@ LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, Lit
 {
     (void)argc;
     (void)argv;
-    lit_runtime_error_exiting(vm, "cannot create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
+    lit_runtime_error_exiting(vm, "cannot create an instance of built-in type", lit_value_asinstance(instance)->klass->name);
     return NULL_VALUE;
 }
 
@@ -447,19 +447,19 @@ static LitValue objfn_bool_compare(LitVM* vm, LitValue instance, size_t argc, Li
     bool bv;
     (void)vm;
     (void)argc;
-    bv = lit_as_bool(instance);
+    bv = lit_value_asbool(instance);
     if(lit_value_isnull(argv[0]))
     {
-        return lit_value_boolvalue(false);
+        return lit_bool_to_value(vm->state, false);
     }
-    return lit_value_boolvalue(lit_as_bool(argv[0]) == bv);
+    return lit_bool_to_value(vm->state, lit_value_asbool(argv[0]) == bv);
 }
 
 static LitValue objfn_bool_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)argc;
     (void)argv;
-    return OBJECT_CONST_STRING(vm->state, lit_as_bool(instance) ? "true" : "false");
+    return OBJECT_CONST_STRING(vm->state, lit_value_asbool(instance) ? "true" : "false");
 }
 
 static LitValue cfn_time(LitVM* vm, size_t argc, LitValue* argv)
@@ -467,7 +467,7 @@ static LitValue cfn_time(LitVM* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value((double)clock() / CLOCKS_PER_SEC);
+    return lit_number_to_value(vm->state, (double)clock() / CLOCKS_PER_SEC);
 }
 
 static LitValue cfn_systemTime(LitVM* vm, size_t argc, LitValue* argv)
@@ -475,7 +475,7 @@ static LitValue cfn_systemTime(LitVM* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(time(NULL));
+    return lit_number_to_value(vm->state, time(NULL));
 }
 
 static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
@@ -486,14 +486,14 @@ static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
     written = 0;
     if(argc == 0)
     {
-        return lit_number_to_value(0);
+        return lit_number_to_value(vm->state, 0);
     }
     for(i = 0; i < argc; i++)
     {
         sv = lit_to_string(vm->state, argv[i]);
         written += fwrite(sv->chars, sizeof(char), lit_string_getlength(sv), stdout);
     }
-    return lit_number_to_value(written);
+    return lit_number_to_value(vm->state, written);
 }
 
 static LitValue cfn_println(LitVM* vm, size_t argc, LitValue* argv)
@@ -525,7 +525,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
     LitString* name;
     LitString* modname;
     name = lit_check_object_string(vm, argv, argc, 0);
-    ignore_previous = argc > 1 && IS_BOOL(argv[1]) && lit_as_bool(argv[1]);
+    ignore_previous = argc > 1 && lit_value_isbool(argv[1]) && lit_value_asbool(argv[1]);
     // First check, if a file with this name exists in the local path
     if(util_attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))
     {

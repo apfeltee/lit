@@ -134,11 +134,11 @@ LitString* lit_vformat_error(LitState* state, size_t line, LitError error, va_li
     buffer[buffer_size - 1] = '\0';
     if(line != 0)
     {
-        rt = lit_as_string(lit_string_format(state, "[err # line #]: $", (double)error_id, (double)line, (const char*)buffer));
+        rt = lit_value_asstring(lit_string_format(state, "[err # line #]: $", (double)error_id, (double)line, (const char*)buffer));
     }
     else
     {
-        rt = lit_as_string(lit_string_format(state, "[err #]: $", (double)error_id, (const char*)buffer));
+        rt = lit_value_asstring(lit_string_format(state, "[err #]: $", (double)error_id, (const char*)buffer));
     }
     free(buffer);
     return rt;

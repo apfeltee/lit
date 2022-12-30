@@ -853,7 +853,7 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
     rule = get_rule(op);
     if(op == LITTOK_PLUS_PLUS || op == LITTOK_MINUS_MINUS)
     {
-        expression = (LitExpression*)lit_create_literal_expression(parser->state, line, lit_number_to_value(1));
+        expression = (LitExpression*)lit_create_literal_expression(parser->state, line, lit_number_to_value(parser->state, 1));
     }
     else
     {
@@ -914,7 +914,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
     expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
     do
     {
-        if(lit_string_getlength(lit_as_string(parser->previous.value)) > 0)
+        if(lit_string_getlength(lit_value_asstring(parser->previous.value)) > 0)
         {
             lit_exprlist_push(
             parser->state, &expression->expressions,
@@ -923,7 +923,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
         lit_exprlist_push(parser->state, &expression->expressions, parse_expression(parser, true));
     } while(prs_match(parser, LITTOK_INTERPOLATION));
     consume(parser, LITTOK_STRING, "end of interpolation");
-    if(lit_string_getlength(lit_as_string(parser->previous.value)) > 0)
+    if(lit_string_getlength(lit_value_asstring(parser->previous.value)) > 0)
     {
         lit_exprlist_push(
         parser->state, &expression->expressions,

@@ -396,7 +396,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
 
     lit_privlist_push(state, privates, (LitPrivate){ false, constant });
 
-    lit_table_set(state, private_names, lit_string_copy(state, name, length), lit_number_to_value(index));
+    lit_table_set(state, private_names, lit_string_copy(state, name, length), lit_number_to_value(state, index));
     emitter->module->private_count++;
 
     return index;
@@ -666,9 +666,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                 {
                     emit_constant(emitter, expr->line, value);
                 }
-                else if(IS_BOOL(value))
+                else if(lit_value_isbool(value))
                 {
-                    emit_op(emitter, expr->line, lit_as_bool(value) ? OP_TRUE : OP_FALSE);
+                    emit_op(emitter, expr->line, lit_value_asbool(value) ? OP_TRUE : OP_FALSE);
                 }
                 else if(lit_value_isnull(value))
                 {
@@ -1105,7 +1105,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
         case LITEXPR_LAMBDA:
             {
                 LitLambdaExpression* lambdaexpr = (LitLambdaExpression*)expr;
-                LitString* name = lit_as_string(lit_string_format(emitter->state, "lambda @:@", lit_value_objectvalue(emitter->module->name),
+                LitString* name = lit_value_asstring(lit_string_format(emitter->state, "lambda @:@", lit_value_objectvalue(emitter->module->name),
                                                               lit_string_numbertostring(emitter->state, expr->line)));
                 LitCompiler compiler;
                 init_compiler(emitter, &compiler, LITFUNC_REGULAR);
@@ -1720,7 +1720,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 vararg = emit_parameters(emitter, &mthstmt->parameters, statement->line);
                 emit_statement(emitter, mthstmt->body);
                 end_scope(emitter, emitter->last_line);
-                function = end_compiler(emitter, lit_as_string(lit_string_format(emitter->state, "@:@", lit_value_objectvalue(emitter->class_name), lit_value_objectvalue(mthstmt->name))));
+                function = end_compiler(emitter, lit_value_asstring(lit_string_format(emitter->state, "@:@", lit_value_objectvalue(emitter->class_name), lit_value_objectvalue(mthstmt->name))));
                 function->arg_count = mthstmt->parameters.count;
                 function->max_slots += function->arg_count;
                 function->vararg = vararg;
@@ -1800,7 +1800,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     emit_statement(emitter, fieldstmt->getter);
                     end_scope(emitter, emitter->last_line);
                     getter = end_compiler(emitter,
-                        lit_as_string(lit_string_format(emitter->state, "@:get @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
+                        lit_value_asstring(lit_string_format(emitter->state, "@:get @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
                 }
                 if(fieldstmt->setter != NULL)
                 {
@@ -1810,7 +1810,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     emit_statement(emitter, fieldstmt->setter);
                     end_scope(emitter, emitter->last_line);
                     setter = end_compiler(emitter,
-                        lit_as_string(lit_string_format(emitter->state, "@:set @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
+                        lit_value_asstring(lit_string_format(emitter->state, "@:set @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
                     setter->arg_count = 1;
                     setter->max_slots++;
                 }
@@ -1848,7 +1848,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* mod
     isnew = false;
     if(lit_table_get(&emitter->state->vm->modules->values, module_name, &module_value))
     {
-        module = AS_MODULE(module_value);
+        module = lit_value_asmodule(module_value);
     }
     else
     {
@@ -1900,7 +1900,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* mod
     lit_privlist_destroy(emitter->state, &emitter->privates);
     if(lit_is_optimization_enabled(LITOPTSTATE_PRIVATE_NAMES))
     {
-        lit_free_table(emitter->state, &emitter->module->private_names->values);
+        lit_table_destroy(emitter->state, &emitter->module->private_names->values);
     }
     if(isnew && !state->had_error)
     {

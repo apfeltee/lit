@@ -8,7 +8,7 @@
     if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant binary expression of '" # op "' to constant value"); \
-        return lit_number_to_value(lit_value_to_number(a) op lit_value_to_number(b)); \
+        return lit_number_to_value(optimizer->state, lit_value_to_number(a) op lit_value_to_number(b)); \
     } \
     return NULL_VALUE;
 
@@ -16,7 +16,7 @@
     if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant bitwise expression of '" #op "' to constant value"); \
-        return lit_number_to_value((int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
+        return lit_number_to_value(optimizer->state, (int)lit_value_to_number(a) op(int) lit_value_to_number(b)); \
     } \
     return NULL_VALUE;
 
@@ -24,7 +24,7 @@
     if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
         optdbg("translating constant expression of '" tokstr "' to constant value via call to '" #fn "'"); \
-        return lit_number_to_value(fn(lit_value_to_number(a), lit_value_to_number(b))); \
+        return lit_number_to_value(optimizer->state, fn(lit_value_to_number(a), lit_value_to_number(b))); \
     } \
     return NULL_VALUE;
 
@@ -164,7 +164,7 @@ static bool is_empty(LitExpression* statement)
     return statement == NULL || (statement->type == LITSTMT_BLOCK && ((LitBlockStatement*)statement)->statements.count == 0);
 }
 
-static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
+static LitValue evaluate_unary_op(LitOptimizer* optimizer, LitValue value, LitTokenType op)
 {
     switch(op)
     {
@@ -173,14 +173,14 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
                 if(lit_value_isnumber(value))
                 {
                     optdbg("translating constant unary minus on number to literal value");
-                    return lit_number_to_value(-lit_value_to_number(value));
+                    return lit_number_to_value(optimizer->state, -lit_value_to_number(value));
                 }
             }
             break;
         case LITTOK_BANG:
             {
                 optdbg("translating constant expression of '=' to literal value");
-                return lit_value_boolvalue(lit_is_falsey(value));
+                return lit_bool_to_value(optimizer->state, lit_value_isfalsey(value));
             }
             break;
         case LITTOK_TILDE:
@@ -188,7 +188,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
                 if(lit_value_isnumber(value))
                 {
                     optdbg("translating unary tile (~) on number to literal value");
-                    return lit_number_to_value(~((int)lit_value_to_number(value)));
+                    return lit_number_to_value(optimizer->state, ~((int)lit_value_to_number(value)));
                 }
             }
             break;
@@ -200,7 +200,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op)
     return NULL_VALUE;
 }
 
-static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
+static LitValue evaluate_binary_op(LitOptimizer* optimizer, LitValue a, LitValue b, LitTokenType op)
 {
     switch(op)
     {
@@ -283,19 +283,19 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op)
             {
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
-                    return lit_number_to_value(floor(lit_value_to_number(a) / lit_value_to_number(b)));
+                    return lit_number_to_value(optimizer->state, floor(lit_value_to_number(a) / lit_value_to_number(b)));
                 }
                 return NULL_VALUE;
             }
             break;
         case LITTOK_EQUAL_EQUAL:
             {
-                return lit_value_boolvalue(a == b);
+                return lit_bool_to_value(optimizer->state, a == b);
             }
             break;
         case LITTOK_BANG_EQUAL:
             {
-                return lit_value_boolvalue(a != b);
+                return lit_bool_to_value(optimizer->state, a != b);
             }
             break;
         case LITTOK_IS:
@@ -322,7 +322,7 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
             if(number == 0)
             {
                 optdbg("reducing expression to literal '0'");
-                return lit_number_to_value(0);
+                return lit_number_to_value(optimizer->state, 0);
             }
             else if(number == 1)
             {
@@ -374,7 +374,7 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
                 branch = evaluate_expression(optimizer, uexpr->right);
                 if(branch != NULL_VALUE)
                 {
-                    return evaluate_unary_op(branch, uexpr->op);
+                    return evaluate_unary_op(optimizer, branch, uexpr->op);
                 }
             }
             break;
@@ -385,7 +385,7 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
                 b = evaluate_expression(optimizer, bexpr->right);
                 if(a != NULL_VALUE && b != NULL_VALUE)
                 {
-                    return evaluate_binary_op(a, b, bexpr->op);
+                    return evaluate_binary_op(optimizer, a, b, bexpr->op);
                 }
                 else if(a != NULL_VALUE)
                 {
@@ -528,7 +528,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
 
             if(optimized != NULL_VALUE)
             {
-                if(lit_is_falsey(optimized))
+                if(lit_value_isfalsey(optimized))
                 {
                     *slot = expr->else_branch;
                     expr->else_branch = NULL;// So that it doesn't get freed
@@ -676,7 +676,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
             LitValue optimized = empty ? evaluate_expression(optimizer, stmt->condition) : NULL_VALUE;
 
-            if((optimized != NULL_VALUE && lit_is_falsey(optimized)) || (dead && is_empty(stmt->if_branch)))
+            if((optimized != NULL_VALUE && lit_value_isfalsey(optimized)) || (dead && is_empty(stmt->if_branch)))
             {
                 lit_free_expression(state, stmt->condition);
                 stmt->condition = NULL;
@@ -709,7 +709,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                         {
                             LitValue value = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
 
-                            if(value != NULL_VALUE && lit_is_falsey(value))
+                            if(value != NULL_VALUE && lit_value_isfalsey(value))
                             {
                                 lit_free_expression(state, stmt->elseif_conditions->values[i]);
                                 stmt->elseif_conditions->values[i] = NULL;
@@ -735,7 +735,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
             {
                 LitValue optimized = evaluate_expression(optimizer, stmt->condition);
 
-                if(optimized != NULL_VALUE && lit_is_falsey(optimized))
+                if(optimized != NULL_VALUE && lit_value_isfalsey(optimized))
                 {
                     lit_free_statement(optimizer->state, statement);
                     *slot = NULL;
@@ -795,7 +795,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 // i++ (or i--)
                 LitExpression* var_get = (LitExpression*)lit_create_var_expression(state, line, var->name, var->length);
                 LitBinaryExpr* assign_value = lit_create_binary_expression(
-                state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_number_to_value(1)),
+                state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_number_to_value(optimizer->state, 1)),
                 reverse ? LITTOK_MINUS_MINUS : LITTOK_PLUS);
                 assign_value->ignore_left = true;
                 LitExpression* increment

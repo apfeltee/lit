@@ -123,7 +123,7 @@ static LitValue objfn_class_tostring(LitVM* vm, LitValue instance, size_t argc, 
 {
     (void)argc;
     (void)argv;
-    return lit_value_objectvalue(lit_string_format(vm->state, "class @", lit_value_objectvalue(AS_CLASS(instance)->name)));
+    return lit_value_objectvalue(lit_string_format(vm->state, "class @", lit_value_objectvalue(lit_value_asclass(instance)->name)));
 }
 
 static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -135,7 +135,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
     LitClass* klass;
     (void)argc;
     LIT_ENSURE_ARGS(1);
-    klass = AS_CLASS(instance);
+    klass = lit_value_asclass(instance);
     index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
     mthcap = (int)klass->methods.capacity;
     fields = index >= mthcap;
@@ -154,7 +154,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
     {
         return NULL_VALUE;
     }
-    return lit_number_to_value(fields ? value + mthcap : value);
+    return lit_number_to_value(vm->state, fields ? value + mthcap : value);
 }
 
 
@@ -166,7 +166,7 @@ static LitValue objfn_class_iteratorvalue(LitVM* vm, LitValue instance, size_t a
     size_t mthcap;
     LitClass* klass;
     index = lit_check_number(vm, argv, argc, 0);
-    klass = AS_CLASS(instance);
+    klass = lit_value_asclass(instance);
     mthcap = klass->methods.capacity;
     fields = index >= mthcap;
     return util_table_iterator_key(fields ? &klass->static_fields : &klass->methods, fields ? index - mthcap : index);
@@ -182,11 +182,11 @@ static LitValue objfn_class_super(LitVM* vm, LitValue instance, size_t argc, Lit
     super = NULL;
     if(lit_value_isinstance(instance))
     {
-        super = AS_INSTANCE(instance)->klass->super;
+        super = lit_value_asinstance(instance)->klass->super;
     }
     else
     {
-        super = AS_CLASS(instance)->super;
+        super = lit_value_asclass(instance)->super;
     }
     if(super == NULL)
     {
@@ -200,7 +200,7 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
     LitClass* klass;    
     LitValue value;
     (void)argc;
-    klass = AS_CLASS(instance);
+    klass = lit_value_asclass(instance);
     if(argc == 2)
     {
         if(!lit_value_isstring(argv[0]))
@@ -208,18 +208,18 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
             lit_runtime_error_exiting(vm, "class index must be a string");
         }
 
-        lit_table_set(vm->state, &klass->static_fields, lit_as_string(argv[0]), argv[1]);
+        lit_table_set(vm->state, &klass->static_fields, lit_value_asstring(argv[0]), argv[1]);
         return argv[1];
     }
     if(!lit_value_isstring(argv[0]))
     {
         lit_runtime_error_exiting(vm, "class index must be a string");
     }
-    if(lit_table_get(&klass->static_fields, lit_as_string(argv[0]), &value))
+    if(lit_table_get(&klass->static_fields, lit_value_asstring(argv[0]), &value))
     {
         return value;
     }
-    if(lit_table_get(&klass->methods, lit_as_string(argv[0]), &value))
+    if(lit_table_get(&klass->methods, lit_value_asstring(argv[0]), &value))
     {
         return value;
     }
@@ -234,8 +234,8 @@ static LitValue objfn_class_compare(LitVM* vm, LitValue instance, size_t argc, L
     (void)argc;
     if(lit_value_isclass(argv[0]))
     {
-        selfclass = AS_CLASS(instance);
-        otherclass = AS_CLASS(argv[0]);
+        selfclass = lit_value_asclass(instance);
+        otherclass = lit_value_asclass(argv[0]);
         if(lit_string_equal(vm->state, selfclass->name, otherclass->name))
         {
             if(selfclass == otherclass)
@@ -252,7 +252,7 @@ static LitValue objfn_class_name(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_value_objectvalue(AS_CLASS(instance)->name);
+    return lit_value_objectvalue(lit_value_asclass(instance)->name);
 }
 
 void lit_open_class_library(LitState* state)

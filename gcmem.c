@@ -116,15 +116,15 @@ void lit_free_object(LitState* state, LitObject* object)
         case LITTYPE_CLASS:
             {
                 LitClass* klass = (LitClass*)object;
-                lit_free_table(state, &klass->methods);
-                lit_free_table(state, &klass->static_fields);
+                lit_table_destroy(state, &klass->methods);
+                lit_table_destroy(state, &klass->static_fields);
                 LIT_FREE(state, sizeof(LitClass), object);
             }
             break;
 
         case LITTYPE_INSTANCE:
             {
-                lit_free_table(state, &((LitInstance*)object)->fields);
+                lit_table_destroy(state, &((LitInstance*)object)->fields);
                 LIT_FREE(state, sizeof(LitInstance), object);
             }
             break;
@@ -141,7 +141,7 @@ void lit_free_object(LitState* state, LitObject* object)
             break;
         case LITTYPE_MAP:
             {
-                lit_free_table(state, &((LitMap*)object)->values);
+                lit_table_destroy(state, &((LitMap*)object)->values);
                 LIT_FREE(state, sizeof(LitMap), object);
             }
             break;

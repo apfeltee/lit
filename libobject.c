@@ -7,7 +7,7 @@ bool lit_is_callable_function(LitValue value)
 {
     if(lit_value_isobject(value))
     {
-        LitObjectType type = OBJECT_TYPE(value);
+        LitObjectType type = lit_value_type(value);
         return (
             (type == LITTYPE_CLOSURE) ||
             (type == LITTYPE_FUNCTION) ||
@@ -55,21 +55,21 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
     LitString* name;
     LitField* field;
     name = NULL;
-    switch(OBJECT_TYPE(instance))
+    switch(lit_value_type(instance))
     {
         case LITTYPE_FUNCTION:
             {
-                name = AS_FUNCTION(instance)->name;
+                name = lit_value_asfunction(instance)->name;
             }
             break;
         case LITTYPE_CLOSURE:
             {
-                name = AS_CLOSURE(instance)->function->name;
+                name = lit_value_asclosure(instance)->function->name;
             }
             break;
         case LITTYPE_FIELD:
             {
-                field = AS_FIELD(instance);
+                field = lit_value_asfield(instance);
                 if(field->getter != NULL)
                 {
                     return lit_get_function_name(vm, lit_value_objectvalue(field->getter));
@@ -79,27 +79,27 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
             break;
         case LITTYPE_NATIVE_PRIMITIVE:
             {
-                name = AS_NATIVE_PRIMITIVE(instance)->name;
+                name = lit_value_asnativeprimitive(instance)->name;
             }
             break;
         case LITTYPE_NATIVE_FUNCTION:
             {
-                name = AS_NATIVE_FUNCTION(instance)->name;
+                name = lit_value_asnativefunction(instance)->name;
             }
             break;
         case LITTYPE_NATIVE_METHOD:
             {
-                name = AS_NATIVE_METHOD(instance)->name;
+                name = lit_value_asnativemethod(instance)->name;
             }
             break;
         case LITTYPE_PRIMITIVE_METHOD:
             {
-                name = AS_PRIMITIVE_METHOD(instance)->name;
+                name = lit_value_asprimitivemethod(instance)->name;
             }
             break;
         case LITTYPE_BOUND_METHOD:
             {
-                return lit_get_function_name(vm, AS_BOUND_METHOD(instance)->method);
+                return lit_get_function_name(vm, lit_value_asboundmethod(instance)->method);
             }
             break;
         default:
@@ -276,8 +276,8 @@ LitClass* lit_create_class(LitState* state, LitString* name)
     klass->name = name;
     klass->init_method = NULL;
     klass->super = NULL;
-    lit_init_table(&klass->methods);
-    lit_init_table(&klass->static_fields);
+    lit_table_init(state, &klass->methods);
+    lit_table_init(state, &klass->static_fields);
     return klass;
 }
 
@@ -286,7 +286,7 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass)
     LitInstance* instance;
     instance = (LitInstance*)lit_allocate_object(state, sizeof(LitInstance), LITTYPE_INSTANCE);
     instance->klass = klass;
-    lit_init_table(&instance->fields);
+    lit_table_init(state, &instance->fields);
     instance->fields.count = 0;
     return instance;
 }
@@ -312,7 +312,7 @@ LitMap* lit_create_map(LitState* state)
 {
     LitMap* map;
     map = (LitMap*)lit_allocate_object(state, sizeof(LitMap), LITTYPE_MAP);
-    lit_init_table(&map->values);
+    lit_table_init(state, &map->values);
     map->index_fn = NULL;
     return map;
 }
@@ -455,7 +455,7 @@ static LitValue objfn_object_tomap(LitVM* vm, LitValue instance, size_t argc, Li
     {
         lit_runtime_error_exiting(vm, "toMap() can only be used on instances");
     }
-    inst = AS_INSTANCE(instance);
+    inst = lit_value_asinstance(instance);
     map = lit_create_map(vm->state);
     {
         minst = lit_create_map(vm->state);
@@ -489,7 +489,7 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
     {
         lit_runtime_error_exiting(vm, "cannot modify built-in types");
     }
-    inst = AS_INSTANCE(instance);
+    inst = lit_value_asinstance(instance);
     if(argc == 2)
     {
         if(!lit_value_isstring(argv[0]))
@@ -497,22 +497,22 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
             lit_runtime_error_exiting(vm, "object index must be a string");
         }
 
-        lit_table_set(vm->state, &inst->fields, lit_as_string(argv[0]), argv[1]);
+        lit_table_set(vm->state, &inst->fields, lit_value_asstring(argv[0]), argv[1]);
         return argv[1];
     }
     if(!lit_value_isstring(argv[0]))
     {
         lit_runtime_error_exiting(vm, "object index must be a string");
     }
-    if(lit_table_get(&inst->fields, lit_as_string(argv[0]), &value))
+    if(lit_table_get(&inst->fields, lit_value_asstring(argv[0]), &value))
     {
         return value;
     }
-    if(lit_table_get(&inst->klass->static_fields, lit_as_string(argv[0]), &value))
+    if(lit_table_get(&inst->klass->static_fields, lit_value_asstring(argv[0]), &value))
     {
         return value;
     }
-    if(lit_table_get(&inst->klass->methods, lit_as_string(argv[0]), &value))
+    if(lit_table_get(&inst->klass->methods, lit_value_asstring(argv[0]), &value))
     {
         return value;
     }
@@ -528,10 +528,10 @@ static LitValue objfn_object_iterator(LitVM* vm, LitValue instance, size_t argc,
     int index;
     LitInstance* self;
     LIT_ENSURE_ARGS(1);
-    self = AS_INSTANCE(instance);
+    self = lit_value_asinstance(instance);
     index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
     value = util_table_iterator(&self->fields, index);
-    return value == -1 ? NULL_VALUE : lit_number_to_value(value);
+    return value == -1 ? NULL_VALUE : lit_number_to_value(vm->state, value);
 }
 
 
@@ -540,7 +540,7 @@ static LitValue objfn_object_iteratorvalue(LitVM* vm, LitValue instance, size_t 
     size_t index;
     LitInstance* self;
     index = lit_check_number(vm, argv, argc, 0);
-    self = AS_INSTANCE(instance);
+    self = lit_value_asinstance(instance);
     return util_table_iterator_key(&self->fields, index);
 }
 

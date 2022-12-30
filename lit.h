@@ -135,8 +135,7 @@
     #define COLOR_WHITE ""
 #endif
 
-#define lit_value_boolvalue(boolean) \
-    ((boolean) ? TRUE_VALUE : FALSE_VALUE)
+
 
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
@@ -159,73 +158,6 @@
 #define LIT_FREE(state, typesz, pointer) \
     lit_reallocate(state, pointer, typesz, 0)
 
-
-
-#define lit_value_isnull(v) \
-    ((v) == NULL_VALUE)
-
-#define lit_value_isnumber(v) \
-    (((v)&QNAN) != QNAN)
-
-#define lit_value_isobject(v) \
-    (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
-
-#define lit_value_istype(value, t) \
-    (lit_value_isobject(value) && (lit_as_object(value) != NULL) && (lit_as_object(value)->type == t))
-
-#define lit_value_isstring(value) \
-    lit_value_istype(value, LITTYPE_STRING)
-
-#define lit_value_isfunction(value) \
-    lit_value_istype(value, LITTYPE_FUNCTION)
-
-#define lit_value_isnatfunction(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_FUNCTION)
-
-#define lit_value_isnatprim(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_PRIMITIVE)
-
-#define lit_value_isnatmethod(value) \
-    lit_value_istype(value, LITTYPE_NATIVE_METHOD)
-
-#define lit_value_isprimmethod(value) \
-    lit_value_istype(value, LITTYPE_PRIMITIVE_METHOD)
-
-#define lit_value_ismodule(value) \
-    lit_value_istype(value, LITTYPE_MODULE)
-
-#define lit_value_isclosure(value) \
-    lit_value_istype(value, LITTYPE_CLOSURE)
-
-#define lit_value_isupvalue(value) \
-    lit_value_istype(value, LITTYPE_UPVALUE)
-
-#define lit_value_isclass(value) \
-    lit_value_istype(value, LITTYPE_CLASS)
-
-#define lit_value_isinstance(value) \
-    lit_value_istype(value, LITTYPE_INSTANCE)
-
-#define lit_value_isarray(value) \
-    lit_value_istype(value, LITTYPE_ARRAY)
-
-#define lit_value_ismap(value) \
-    lit_value_istype(value, LITTYPE_MAP)
-
-#define lit_value_isboundmethod(value) \
-    lit_value_istype(value, LITTYPE_BOUND_METHOD)
-
-#define lit_value_isuserdata(value) \
-    lit_value_istype(value, LITTYPE_USERDATA)
-
-#define lit_value_isrange(value) \
-    lit_value_istype(value, LITTYPE_RANGE)
-
-#define lit_value_isfield(value) \
-    lit_value_istype(value, LITTYPE_FIELD)
-
-#define lit_value_isreference(value) \
-    lit_value_istype(value, LITTYPE_REFERENCE)
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
 
@@ -283,10 +215,10 @@
 
 
 
-#define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
-#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, id)
-#define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &AS_INSTANCE(instance)->fields, id, value)
-#define LIT_SET_MAP_FIELD(id, value) lit_set_map_field(vm->state, &AS_INSTANCE(instance)->fields, id, value)
+#define LIT_GET_FIELD(id) lit_get_field(vm->state, &lit_value_asinstance(instance)->fields, id)
+#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &lit_value_asinstance(instance)->fields, id)
+#define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
+#define LIT_SET_MAP_FIELD(id, value) lit_set_map_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
 
 
 #define LIT_ENSURE_ARGS(count)                                                   \
@@ -783,6 +715,8 @@ struct LitTableEntry
 
 struct LitTable
 {
+    LitState* state;
+
     /* how many entries are in this table */
     int count;
 
@@ -1237,9 +1171,16 @@ static inline double lit_value_to_number(LitValue v)
     return *((double*)&v);
 }
 
-/* turn a number into a value*/
-static inline LitValue lit_number_to_value(double num)
+static inline LitValue lit_bool_to_value(LitState* state, bool b) 
 {
+    (void)state;
+    return (b ? TRUE_VALUE : FALSE_VALUE);
+}
+
+/* turn a number into a value*/
+static inline LitValue lit_number_to_value(LitState* state, double num)
+{
+    (void)state;
     return *((LitValue*)&num);
 }
 
@@ -1248,18 +1189,96 @@ static inline LitObject* lit_as_object(LitValue v)
     return ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)));
 }
 
-static inline bool IS_BOOL(LitValue v)
+static inline bool lit_value_isbool(LitValue v)
 {
     return ((v & FALSE_VALUE) == FALSE_VALUE);
 }
 
-/* is this value falsey? */
-static inline bool lit_is_falsey(LitValue v)
+#define lit_value_isnull(v) \
+    ((v) == NULL_VALUE)
+
+#define lit_value_isnumber(v) \
+    (((v)&QNAN) != QNAN)
+
+#define lit_value_isobject(v) \
+    (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
+
+#define lit_value_istype(value, t) \
+    (lit_value_isobject(value) && (lit_as_object(value) != NULL) && (lit_as_object(value)->type == t))
+
+#define lit_value_isstring(value) \
+    lit_value_istype(value, LITTYPE_STRING)
+
+#define lit_value_isfunction(value) \
+    lit_value_istype(value, LITTYPE_FUNCTION)
+
+#define lit_value_isnatfunction(value) \
+    lit_value_istype(value, LITTYPE_NATIVE_FUNCTION)
+
+#define lit_value_isnatprim(value) \
+    lit_value_istype(value, LITTYPE_NATIVE_PRIMITIVE)
+
+#define lit_value_isnatmethod(value) \
+    lit_value_istype(value, LITTYPE_NATIVE_METHOD)
+
+#define lit_value_isprimmethod(value) \
+    lit_value_istype(value, LITTYPE_PRIMITIVE_METHOD)
+
+#define lit_value_ismodule(value) \
+    lit_value_istype(value, LITTYPE_MODULE)
+
+#define lit_value_isclosure(value) \
+    lit_value_istype(value, LITTYPE_CLOSURE)
+
+#define lit_value_isupvalue(value) \
+    lit_value_istype(value, LITTYPE_UPVALUE)
+
+#define lit_value_isclass(value) \
+    lit_value_istype(value, LITTYPE_CLASS)
+
+#define lit_value_isinstance(value) \
+    lit_value_istype(value, LITTYPE_INSTANCE)
+
+#define lit_value_isarray(value) \
+    lit_value_istype(value, LITTYPE_ARRAY)
+
+static inline bool lit_value_ismap(LitValue value)
 {
-    return (IS_BOOL(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_to_number(v) == 0);
+    return lit_value_istype(value, LITTYPE_MAP);
 }
 
-static inline LitObjectType OBJECT_TYPE(LitValue v)
+static inline bool lit_value_isboundmethod(LitValue value)
+{
+    return lit_value_istype(value, LITTYPE_BOUND_METHOD);
+}
+
+static inline bool lit_value_isuserdata(LitValue value)
+{
+    return lit_value_istype(value, LITTYPE_USERDATA);
+}
+
+static inline bool lit_value_isrange(LitValue value)
+{
+    return lit_value_istype(value, LITTYPE_RANGE);
+}
+
+static inline bool lit_value_isfield(LitValue value)
+{
+    return lit_value_istype(value, LITTYPE_FIELD);
+}
+
+static inline bool lit_value_isreference(LitValue value)
+{
+    return lit_value_istype(value, LITTYPE_REFERENCE);
+}
+
+/* is this value falsey? */
+static inline bool lit_value_isfalsey(LitValue v)
+{
+    return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_to_number(v) == 0);
+}
+
+static inline LitObjectType lit_value_type(LitValue v)
 {
     LitObject* o;
     o = lit_as_object(v);
@@ -1270,111 +1289,107 @@ static inline LitObjectType OBJECT_TYPE(LitValue v)
     return o->type;
 }
 
-static inline bool lit_as_bool(LitValue v)
+static inline bool lit_value_asbool(LitValue v)
 {
     return (v == TRUE_VALUE);
 }
 
-
-static inline LitString* lit_as_string(LitValue v)
+static inline LitString* lit_value_asstring(LitValue v)
 {
     return (LitString*)lit_as_object(v);
 }
 
-static inline char* lit_as_cstring(LitValue v)
+static inline char* lit_value_ascstring(LitValue v)
 {
-    return (lit_as_string(v)->chars);
+    return (lit_value_asstring(v)->chars);
 }
 
-static inline LitFunction* AS_FUNCTION(LitValue v)
+static inline LitFunction* lit_value_asfunction(LitValue v)
 {
     return (LitFunction*)lit_as_object(v);
 }
 
-static inline LitNativeFunction* AS_NATIVE_FUNCTION(LitValue v)
+static inline LitNativeFunction* lit_value_asnativefunction(LitValue v)
 {
     return (LitNativeFunction*)lit_as_object(v);
 }
 
-
-static inline LitNativePrimFunction* AS_NATIVE_PRIMITIVE(LitValue v)
+static inline LitNativePrimFunction* lit_value_asnativeprimitive(LitValue v)
 {
     return (LitNativePrimFunction*)lit_as_object(v);
 }
 
-
-static inline LitNativeMethod* AS_NATIVE_METHOD(LitValue v)
+static inline LitNativeMethod* lit_value_asnativemethod(LitValue v)
 {
     return (LitNativeMethod*)lit_as_object(v);
 }
 
-
-static inline LitPrimitiveMethod* AS_PRIMITIVE_METHOD(LitValue v)
+static inline LitPrimitiveMethod* lit_value_asprimitivemethod(LitValue v)
 {
     return (LitPrimitiveMethod*)lit_as_object(v);
 }
 
-static inline LitModule* AS_MODULE(LitValue v)
+static inline LitModule* lit_value_asmodule(LitValue v)
 {
     return (LitModule*)lit_as_object(v);
 }
 
-static inline LitClosure* AS_CLOSURE(LitValue v)
+static inline LitClosure* lit_value_asclosure(LitValue v)
 {
     return (LitClosure*)lit_as_object(v);
 }
 
-static inline LitUpvalue* AS_UPVALUE(LitValue v)
+static inline LitUpvalue* lit_value_asupvalue(LitValue v)
 {
     return (LitUpvalue*)lit_as_object(v);
 }
 
-static inline LitClass* AS_CLASS(LitValue v)
+static inline LitClass* lit_value_asclass(LitValue v)
 {
     return (LitClass*)lit_as_object(v);
 }
 
-static inline LitInstance* AS_INSTANCE(LitValue v)
+static inline LitInstance* lit_value_asinstance(LitValue v)
 {
     return (LitInstance*)lit_as_object(v);
 }
 
-static inline LitArray* AS_ARRAY(LitValue v)
+static inline LitArray* lit_value_asarray(LitValue v)
 {
     return (LitArray*)lit_as_object(v);
 }
 
-static inline LitMap* AS_MAP(LitValue v)
+static inline LitMap* lit_value_asmap(LitValue v)
 {
     return (LitMap*)lit_as_object(v);
 }
 
-static inline LitBoundMethod* AS_BOUND_METHOD(LitValue v)
+static inline LitBoundMethod* lit_value_asboundmethod(LitValue v)
 {
     return (LitBoundMethod*)lit_as_object(v);
 }
 
-static inline LitUserdata* AS_USERDATA(LitValue v)
+static inline LitUserdata* lit_value_asuserdata(LitValue v)
 {
     return (LitUserdata*)lit_as_object(v);
 }
 
-static inline LitRange* AS_RANGE(LitValue v)
+static inline LitRange* lit_value_asrange(LitValue v)
 {
     return (LitRange*)lit_as_object(v);
 }
 
-static inline LitField* AS_FIELD(LitValue v)
+static inline LitField* lit_value_asfield(LitValue v)
 {
     return (LitField*)lit_as_object(v);
 }
 
-static inline LitFiber* AS_FIBER(LitValue v)
+static inline LitFiber* lit_value_asfiber(LitValue v)
 {
     return (LitFiber*)lit_as_object(v);
 }
 
-static inline LitReference* AS_REFERENCE(LitValue v)
+static inline LitReference* lit_value_asreference(LitValue v)
 {
     return (LitReference*)lit_as_object(v);
 }
@@ -1492,8 +1507,8 @@ void lit_free_object(LitState* state, LitObject* object);
 
 int lit_closest_power_of_two(int n);
 
-void lit_init_table(LitTable* table);
-void lit_free_table(LitState* state, LitTable* table);
+void lit_table_init(LitState* state, LitTable* table);
+void lit_table_destroy(LitState* state, LitTable* table);
 bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue value);
 bool lit_table_get(LitTable* table, LitString* key, LitValue* value);
 bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value);

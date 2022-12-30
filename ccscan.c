@@ -353,15 +353,15 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_bina
     errno = 0;
     if(is_hex)
     {
-        value = lit_number_to_value((double)strtoll(scanner->start, NULL, 16));
+        value = lit_number_to_value(scanner->state, (double)strtoll(scanner->start, NULL, 16));
     }
     else if(is_binary)
     {
-        value = lit_number_to_value((int)strtoll(scanner->start + 2, NULL, 2));
+        value = lit_number_to_value(scanner->state, (int)strtoll(scanner->start + 2, NULL, 2));
     }
     else
     {
-        value = lit_number_to_value(strtod(scanner->start, NULL));
+        value = lit_number_to_value(scanner->state, strtod(scanner->start, NULL));
     }
 
     if(errno == ERANGE)

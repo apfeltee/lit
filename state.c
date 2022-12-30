@@ -130,7 +130,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
     LitUpvalue* upvalue;
     if(lit_value_isobject(value))
     {
-        switch(OBJECT_TYPE(value))
+        switch(lit_value_type(value))
         {
             case LITTYPE_STRING:
                 {
@@ -167,7 +167,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
                 break;
             case LITTYPE_UPVALUE:
                 {
-                    upvalue = AS_UPVALUE(value);
+                    upvalue = lit_value_asupvalue(value);
                     if(upvalue->location == NULL)
                     {
                         return lit_state_getclassfor(state, upvalue->closed);
@@ -177,7 +177,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
                 break;
             case LITTYPE_INSTANCE:
                 {
-                    return AS_INSTANCE(value)->klass;
+                    return lit_value_asinstance(value)->klass;
                 }
                 break;
             case LITTYPE_CLASS:
@@ -202,7 +202,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
                 break;
             case LITTYPE_REFERENCE:
                 {
-                    slot = AS_REFERENCE(value)->slot;
+                    slot = lit_value_asreference(value)->slot;
                     if(slot != NULL)
                     {
                         return lit_state_getclassfor(state, *slot);
@@ -217,7 +217,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
     {
         return state->numbervalue_class;
     }
-    else if(IS_BOOL(value))
+    else if(lit_value_isbool(value))
     {
         return state->boolvalue_class;
     }
@@ -308,7 +308,7 @@ LitModule* lit_state_getmodule(LitState* state, const char* name)
     LitValue value;
     if(lit_table_get(&state->vm->modules->values, CONST_STRING(state, name), &value))
     {
-        return AS_MODULE(value);
+        return lit_value_asmodule(value);
     }
     return NULL;
 }
