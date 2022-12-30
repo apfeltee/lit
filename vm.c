@@ -40,8 +40,8 @@ struct LitExecState
 #define vm_callvalue
 #define vm_rterror
 #define vm_rterrorvarg
-#define vm_invoke_from_class_advanced
-#define vm_invoke_from_class
+#define vmexec_advinvokefromclass
+#define vmexec_invokefromclass
 #define vm_invokemethod
 #define vm_binaryop
 #define vm_bitwiseop
@@ -102,10 +102,6 @@ bool lit_set_native_exit_jump(void);
 
 // the following macros cannot be turned into a function without
 // breaking everything
-#define vm_returnerror() \
-    vm_popgc(state); \
-    return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
-
 
 #ifdef LIT_USE_COMPUTEDGOTO
     #define vm_default()
@@ -117,6 +113,11 @@ bool lit_set_native_exit_jump(void);
         case OP_##name:
 #endif
 
+#define vm_returnerror() \
+    vm_popgc(state); \
+    return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
+
+
 #define vm_pushgc(state, allow) \
     bool was_allowed = state->allow_gc; \
     state->allow_gc = allow;
@@ -124,20 +125,27 @@ bool lit_set_native_exit_jump(void);
 #define vm_popgc(state) \
     state->allow_gc = was_allowed;
 
-
-    #define vm_recoverstate(fiber, est) \
-        vm_writeframe(&est, est.ip); \
-        fiber = vm->fiber; \
-        if(fiber == NULL) \
-        { \
-            return (LitInterpretResult){ LITRESULT_OK, vmexec_pop(fiber) }; \
-        } \
-        if(fiber->abort) \
-        { \
-            vm_returnerror(); \
-        } \
-        vm_readframe(fiber, &est); \
-        vm_traceframe(fiber);
+/*
+* can't be turned into a function because it is expected to return in
+* lit_interpret_fiber.
+* might be possible to wrap this by using an enum to specify
+* if (and what) to return, but it'll be quite a bit of work to refactor.
+* likewise, any macro that uses vm_recoverstate can't be turned into
+* a function.
+*/
+#define vm_recoverstate(fiber, est) \
+    vm_writeframe(&est, est.ip); \
+    fiber = vm->fiber; \
+    if(fiber == NULL) \
+    { \
+        return (LitInterpretResult){ LITRESULT_OK, vmexec_pop(fiber) }; \
+    } \
+    if(fiber->abort) \
+    { \
+        vm_returnerror(); \
+    } \
+    vm_readframe(fiber, &est); \
+    vm_traceframe(fiber);
 
 
 #define vm_callvalue(callee, arg_count) \
@@ -168,7 +176,7 @@ bool lit_set_native_exit_jump(void);
         vm_returnerror(); \
     }
 
-#define vm_invoke_from_class_advanced(zklass, method_name, arg_count, error, stat, ignoring, callee) \
+#define vmexec_advinvokefromclass(zklass, method_name, arg_count, error, stat, ignoring, callee) \
     LitValue mthval; \
     if((lit_value_isinstance(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &mthval))) \
        || lit_table_get(&zklass->stat, method_name, &mthval)) \
@@ -203,9 +211,11 @@ bool lit_set_native_exit_jump(void);
         continue; \
     }
 
-#define vm_invoke_from_class(klass, method_name, arg_count, error, stat, ignoring) \
-    vm_invoke_from_class_advanced(klass, method_name, arg_count, error, stat, ignoring, vmexec_peek(fiber, arg_count))
+// calls vm_recoverstate
+#define vmexec_invokefromclass(klass, method_name, arg_count, error, stat, ignoring) \
+    vmexec_advinvokefromclass(klass, method_name, arg_count, error, stat, ignoring, vmexec_peek(fiber, arg_count))
 
+// calls vm_recoverstate
 #define vm_invokemethod(instance, method_name, arg_count) \
     LitClass* klass = lit_state_getclassfor(state, instance); \
     if(klass == NULL) \
@@ -213,7 +223,7 @@ bool lit_set_native_exit_jump(void);
         vm_rterror("invokemethod: only instances and classes have methods"); \
     } \
     vm_writeframe(&est, est.ip); \
-    vm_invoke_from_class_advanced(klass, CONST_STRING(state, method_name), arg_count, true, methods, false, instance); \
+    vmexec_advinvokefromclass(klass, CONST_STRING(state, method_name), arg_count, true, methods, false, instance); \
     vm_readframe(fiber, &est)
 
 #define vm_binaryop(type, op, op_string) \
@@ -266,7 +276,7 @@ bool lit_set_native_exit_jump(void);
     vm_writeframe(&est, est.ip); \
     if(lit_value_isclass(receiver)) \
     { \
-        vm_invoke_from_class_advanced(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring, receiver); \
+        vmexec_advinvokefromclass(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring, receiver); \
         continue; \
     } \
     else if(lit_value_isinstance(receiver)) \
@@ -280,7 +290,7 @@ bool lit_set_native_exit_jump(void);
             vm_readframe(fiber, &est); \
             continue; \
         } \
-        vm_invoke_from_class_advanced(instance->klass, method_name, arg_count, true, methods, ignoring, receiver); \
+        vmexec_advinvokefromclass(instance->klass, method_name, arg_count, true, methods, ignoring, receiver); \
     } \
     else \
     { \
@@ -289,7 +299,7 @@ bool lit_set_native_exit_jump(void);
         { \
             vm_rterror("invokeoperation: only instances and classes have methods"); \
         } \
-        vm_invoke_from_class_advanced(type, method_name, arg_count, true, methods, ignoring, receiver); \
+        vmexec_advinvokefromclass(type, method_name, arg_count, true, methods, ignoring, receiver); \
     }
 
 static jmp_buf jump_buffer;
@@ -1084,7 +1094,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isinstance(vmexec_peek(fiber, 0)))
                 {
                     vm_writeframe(&est, est.ip);
-                    vm_invoke_from_class(AS_INSTANCE(vmexec_peek(fiber, 0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
+                    vmexec_invokefromclass(AS_INSTANCE(vmexec_peek(fiber, 0))->klass, CONST_STRING(state, "!"), 0, false, methods, false);
                     continue;
                 }
                 tmpval = lit_value_boolvalue(lit_is_falsey(vmexec_pop(fiber)));
@@ -1242,7 +1252,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_writeframe(&est, est.ip);
                     fprintf(stderr, "OP_EQUAL: trying to invoke '==' ...\n");
-                    vm_invoke_from_class(AS_INSTANCE(vmexec_peek(fiber, 1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
+                    vmexec_invokefromclass(AS_INSTANCE(vmexec_peek(fiber, 1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
                     continue;
                 }
                 a = vmexec_pop(fiber);
@@ -1754,7 +1764,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 method_name = vmexec_readstringlong(&est);
                 klassobj = AS_CLASS(vmexec_pop(fiber));
                 vm_writeframe(&est, est.ip);
-                vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, false);
+                vmexec_invokefromclass(klassobj, method_name, arg_count, true, methods, false);
                 continue;
             }
             op_case(INVOKE_SUPER_IGNORING)
@@ -1763,7 +1773,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 method_name = vmexec_readstringlong(&est);
                 klassobj = AS_CLASS(vmexec_pop(fiber));
                 vm_writeframe(&est, est.ip);
-                vm_invoke_from_class(klassobj, method_name, arg_count, true, methods, true);
+                vmexec_invokefromclass(klassobj, method_name, arg_count, true, methods, true);
                 continue;
             }
             op_case(GET_SUPER_METHOD)

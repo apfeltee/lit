@@ -15,7 +15,7 @@ void lit_class_bindconstructor(LitState* state, LitClass* cl, LitNativeMethodFn 
 {
     LitNativeMethod* mth;
     mth = lit_class_bindmethod(state, cl, "constructor", fn);
-    cl->init_method = mth;
+    cl->init_method = (LitObject*)mth;
 }
 
 LitNativeMethod* lit_class_bindmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn)
@@ -66,13 +66,17 @@ void lit_class_setstaticfield(LitState* state, LitClass* cl, const char* name, L
     lit_table_set(state, &cl->static_fields, nm, val);
 }
 
-LitNativeFunction* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn)
+LitField* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn, bool isstatic)
 {
+    LitTable* tbl;
+    LitField* field;
     LitString* nm;
-    LitNativeFunction* mthset;
-    LitNativeFunction* mthget;
+    LitNativeMethod* mthset;
+    LitNativeMethod* mthget;
+    tbl = &cl->methods;
     mthset = NULL;
     mthget = NULL;
+
     nm = lit_string_copy(state, name, strlen(name));
     if(getfn != NULL)
     {
@@ -82,8 +86,13 @@ LitNativeFunction* lit_class_bindgetset(LitState* state, LitClass* cl, const cha
     {
         mthset = lit_create_native_method(state, setfn, nm);
     }
-    lit_table_set(state, &cl->methods, nm, lit_value_objectvalue(lit_create_field(state, (LitObject*)mthget, (LitObject*)mthset))); 
-
+    if(isstatic)
+    {
+        tbl = &cl->static_fields;
+    }
+    field = lit_create_field(state, (LitObject*)mthget, (LitObject*)mthset);
+    lit_table_set(state, tbl, nm, lit_value_objectvalue(field)); 
+    return field;
 }
 
 

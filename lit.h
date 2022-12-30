@@ -266,30 +266,21 @@
     lit_class_setstaticfield(state, klass, name, field);
 
 #define LIT_BIND_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter);
+    lit_class_bindgetset(state, klass, name, NULL, setter, false);
 
 #define LIT_BIND_GETTER(name, getter) \
-    lit_class_bindgetset(state, klass, name, getter, NULL);
+    lit_class_bindgetset(state, klass, name, getter, NULL, false);
 
 #define LIT_BIND_FIELD(name, getter, setter) \
-    lit_class_bindgetset(state, klass, name, getter, setter);
+    lit_class_bindgetset(state, klass, name, getter, setter, false);
 
 #define LIT_BIND_STATIC_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter);
+    lit_class_bindgetset(state, klass, name, NULL, setter, true);
 
-#define LIT_BIND_STATIC_GETTER(name, getter)                                                                                 \
-    {                                                                                                                        \
-        LitString* nm = lit_string_copy(state, name, strlen(name));                                                          \
-        lit_table_set(state, &klass->static_fields, nm,                                                                      \
-                      lit_value_objectvalue(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), NULL))); \
-    }
-#define LIT_BIND_STATIC_FIELD(name, getter, setter)                                                                 \
-    {                                                                                                               \
-        LitString* nm = lit_string_copy(state, name, strlen(name));                                                 \
-        lit_table_set(state, &klass->static_fields, nm,                                                             \
-                      lit_value_objectvalue(lit_create_field(state, (LitObject*)lit_create_native_method(state, getter, nm), \
-                                                    (LitObject*)lit_create_native_method(state, setter, nm))));     \
-    }
+
+#define LIT_BIND_STATIC_GETTER(name, getter) \
+    lit_class_bindgetset(state, klass, name, getter, NULL, true);
+
 
 
 #define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
@@ -1175,7 +1166,7 @@ LitPrimitiveMethod* lit_class_bindprimitive(LitState* state, LitClass* cl, const
 LitNativeMethod* lit_class_bindstaticmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn);
 LitPrimitiveMethod* lit_class_bindstaticprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn);
 void lit_class_setstaticfield(LitState* state, LitClass* cl, const char* name, LitValue val);
-LitNativeFunction* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn);
+LitField* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn, bool isstatic);
 
 
 /**
