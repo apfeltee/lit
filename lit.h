@@ -135,13 +135,9 @@
     #define COLOR_WHITE ""
 #endif
 
-
-
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
 #define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
-
-
 
 #define LIT_GROW_CAPACITY(capacity) \
     ((capacity) < 8 ? 8 : (capacity)*2)
@@ -161,65 +157,10 @@
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
 
-
-    #define LIT_BEGIN_CLASS(name) \
-        LitClass* klass = lit_create_classobject(state, name);
-
-    #define LIT_INHERIT_CLASS(super_klass) \
-        lit_class_inheritfrom(state, klass, super_klass);
-
-    #define LIT_END_CLASS_IGNORING()                            \
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
-
-    #define LIT_END_CLASS() \
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass)); \
-        if(klass->super == NULL) \
-        { \
-            LIT_INHERIT_CLASS(state->objectvalue_class); \
-        }
-
-    #define LIT_BIND_METHOD(name, method) \
-        lit_class_bindmethod(state, klass, name, method);
-
-    #define LIT_BIND_PRIMITIVE(name, method) \
-        lit_class_bindprimitive(state, klass, name, method);
-
-    #define LIT_BIND_CONSTRUCTOR(method) \
-        lit_class_bindconstructor(state, klass, method);
-
-    #define LIT_BIND_STATIC_METHOD(name, method) \
-        lit_class_bindstaticmethod(state, klass, name, method);
-
-    #define LIT_BIND_STATIC_PRIMITIVE(name, method) \
-        lit_class_bindstaticprimitive(state, klass, name, method);
-
-
-#define LIT_SET_STATIC_FIELD(name, field) \
-    lit_class_setstaticfield(state, klass, name, field);
-
-#define LIT_BIND_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter, false);
-
-#define LIT_BIND_GETTER(name, getter) \
-    lit_class_bindgetset(state, klass, name, getter, NULL, false);
-
-#define LIT_BIND_FIELD(name, getter, setter) \
-    lit_class_bindgetset(state, klass, name, getter, setter, false);
-
-#define LIT_BIND_STATIC_SETTER(name, setter) \
-    lit_class_bindgetset(state, klass, name, NULL, setter, true);
-
-
-#define LIT_BIND_STATIC_GETTER(name, getter) \
-    lit_class_bindgetset(state, klass, name, getter, NULL, true);
-
-
-
 #define LIT_GET_FIELD(id) lit_get_field(vm->state, &lit_value_asinstance(instance)->fields, id)
 #define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &lit_value_asinstance(instance)->fields, id)
 #define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
 #define LIT_SET_MAP_FIELD(id, value) lit_set_map_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
-
 
 #define LIT_ENSURE_ARGS(count)                                                   \
     if(argc != count)                                                       \

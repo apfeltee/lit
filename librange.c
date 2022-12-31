@@ -83,17 +83,23 @@ static LitValue objfn_range_length(LitVM* vm, LitValue instance, size_t argc, Li
 
 void lit_open_range_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Range");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Range");
     {
-        LIT_INHERIT_CLASS(state->objectvalue_class);
-        LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-        LIT_BIND_METHOD("iterator", objfn_range_iterator);
-        LIT_BIND_METHOD("iteratorValue", objfn_range_iteratorvalue);
-        LIT_BIND_METHOD("toString", objfn_range_tostring);
-        LIT_BIND_FIELD("from", objfn_range_from, objfn_range_set_from);
-        LIT_BIND_FIELD("to", objfn_range_to, objfn_range_set_to);
-        LIT_BIND_GETTER("length", objfn_range_length);
-        state->rangevalue_class  = klass;
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        lit_class_bindconstructor(state, klass, util_invalid_constructor);
+        lit_class_bindmethod(state, klass, "iterator", objfn_range_iterator);
+        lit_class_bindmethod(state, klass, "iteratorValue", objfn_range_iteratorvalue);
+        lit_class_bindmethod(state, klass, "toString", objfn_range_tostring);
+        lit_class_bindgetset(state, klass, "from", objfn_range_from, objfn_range_set_from, false);
+        lit_class_bindgetset(state, klass, "to", objfn_range_to, objfn_range_set_to, false);
+        lit_class_bindgetset(state, klass, "length", objfn_range_length, NULL, false);
+        state->rangevalue_class = klass;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
+

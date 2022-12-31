@@ -570,6 +570,7 @@ void lit_open_object_library(LitState* state);
 
 void lit_open_core_library(LitState* state)
 {
+    LitClass* klass;
     /*
     * the order here is important: class must be declared first, and object second,
     * since object derives class, and everything else derives object.
@@ -586,27 +587,35 @@ void lit_open_core_library(LitState* state)
         lit_open_function_library(state);
     }
     {
-        LIT_BEGIN_CLASS("Number");
+        klass = lit_create_classobject(state, "Number");
         {
-            LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-            LIT_BIND_METHOD("toString", objfn_number_tostring);
-            LIT_BIND_METHOD("toChar", objfn_number_tochar);
-            LIT_BIND_GETTER("chr", objfn_number_tochar);
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+            lit_class_bindconstructor(state, klass, util_invalid_constructor);
+            lit_class_bindmethod(state, klass, "toString", objfn_number_tostring);
+            lit_class_bindmethod(state, klass, "toChar", objfn_number_tochar);
+            lit_class_bindgetset(state, klass, "chr", objfn_number_tochar, NULL, false);
             state->numbervalue_class = klass;
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
     {
-        LIT_BEGIN_CLASS("Bool");
+        klass = lit_create_classobject(state, "Bool");
         {
-            LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-            LIT_BIND_METHOD("==", objfn_bool_compare);
-            LIT_BIND_METHOD("toString", objfn_bool_tostring);
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+            lit_class_bindconstructor(state, klass, util_invalid_constructor);
+            lit_class_bindmethod(state, klass, "==", objfn_bool_compare);
+            lit_class_bindmethod(state, klass, "toString", objfn_bool_tostring);
             state->boolvalue_class = klass;
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
     {
         lit_define_native(state, "time", cfn_time);

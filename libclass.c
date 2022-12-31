@@ -257,19 +257,21 @@ static LitValue objfn_class_name(LitVM* vm, LitValue instance, size_t argc, LitV
 
 void lit_open_class_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Class");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Class");
     {
-        LIT_BIND_METHOD("[]", objfn_class_subscript);
-        LIT_BIND_METHOD("==", objfn_class_compare);
-        LIT_BIND_METHOD("toString", objfn_class_tostring);
-        LIT_BIND_STATIC_METHOD("toString", objfn_class_tostring);
-        LIT_BIND_STATIC_METHOD("iterator", objfn_class_iterator);
-        LIT_BIND_STATIC_METHOD("iteratorValue", objfn_class_iteratorvalue);
-        LIT_BIND_GETTER("super", objfn_class_super);
-        LIT_BIND_STATIC_GETTER("super", objfn_class_super);
-        LIT_BIND_STATIC_GETTER("name", objfn_class_name);
+        lit_class_bindmethod(state, klass, "[]", objfn_class_subscript);
+        lit_class_bindmethod(state, klass, "==", objfn_class_compare);
+        lit_class_bindmethod(state, klass, "toString", objfn_class_tostring);
+        lit_class_bindstaticmethod(state, klass, "toString", objfn_class_tostring);
+        lit_class_bindstaticmethod(state, klass, "iterator", objfn_class_iterator);
+        lit_class_bindstaticmethod(state, klass, "iteratorValue", objfn_class_iteratorvalue);
+        lit_class_bindgetset(state, klass, "super", objfn_class_super, NULL, false);
+        lit_class_bindgetset(state, klass, "super", objfn_class_super, NULL, true);
+        lit_class_bindgetset(state, klass, "name", objfn_class_name, NULL, true);
         state->classvalue_class = klass;
     }
-    LIT_END_CLASS_IGNORING();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
 }
+
 

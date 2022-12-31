@@ -533,23 +533,27 @@ static LitValue objfn_object_iteratorvalue(LitVM* vm, LitValue instance, size_t 
 
 void lit_open_object_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Object");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Object");
     {
-        LIT_INHERIT_CLASS(state->classvalue_class);
-        LIT_BIND_GETTER("class", objfn_object_class);
-        LIT_BIND_GETTER("super", objfn_object_super);
-        LIT_BIND_METHOD("[]", objfn_object_subscript);
+        lit_class_inheritfrom(state, klass, state->classvalue_class);
+        lit_class_bindgetset(state, klass, "class", objfn_object_class, NULL, false);
+        lit_class_bindgetset(state, klass, "super", objfn_object_super, NULL, false);
+        lit_class_bindmethod(state, klass, "[]", objfn_object_subscript);
         #if 0
-        LIT_BIND_METHOD("hasMethod", objfn_object_hasmethod);
-        
+        lit_class_bindmethod(state, klass, "hasMethod", objfn_object_hasmethod);
         #endif
-        LIT_BIND_METHOD("toString", objfn_object_tostring);
-        LIT_BIND_METHOD("toMap", objfn_object_tomap);
-        LIT_BIND_METHOD("iterator", objfn_object_iterator);
-        LIT_BIND_METHOD("iteratorValue", objfn_object_iteratorvalue);
-
+        lit_class_bindmethod(state, klass, "toString", objfn_object_tostring);
+        lit_class_bindmethod(state, klass, "toMap", objfn_object_tomap);
+        lit_class_bindmethod(state, klass, "iterator", objfn_object_iterator);
+        lit_class_bindmethod(state, klass, "iteratorValue", objfn_object_iteratorvalue);
         state->objectvalue_class = klass;
         state->objectvalue_class->super = state->classvalue_class;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
+

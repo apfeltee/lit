@@ -458,19 +458,25 @@ static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitV
 
 void lit_open_map_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Map");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Map");
     {
-        LIT_INHERIT_CLASS(state->objectvalue_class);
-        LIT_BIND_CONSTRUCTOR(objfn_map_constructor);
-        LIT_BIND_METHOD("[]", objfn_map_subscript);
-        LIT_BIND_METHOD("addAll", objfn_map_addall);
-        LIT_BIND_METHOD("clear", objfn_map_clear);
-        LIT_BIND_METHOD("iterator", objfn_map_iterator);
-        LIT_BIND_METHOD("iteratorValue", objfn_map_iteratorvalue);
-        LIT_BIND_METHOD("clone", objfn_map_clone);
-        LIT_BIND_METHOD("toString", objfn_map_tostring);
-        LIT_BIND_GETTER("length", objfn_map_length);
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        lit_class_bindconstructor(state, klass, objfn_map_constructor);
+        lit_class_bindmethod(state, klass, "[]", objfn_map_subscript);
+        lit_class_bindmethod(state, klass, "addAll", objfn_map_addall);
+        lit_class_bindmethod(state, klass, "clear", objfn_map_clear);
+        lit_class_bindmethod(state, klass, "iterator", objfn_map_iterator);
+        lit_class_bindmethod(state, klass, "iteratorValue", objfn_map_iteratorvalue);
+        lit_class_bindmethod(state, klass, "clone", objfn_map_clone);
+        lit_class_bindmethod(state, klass, "toString", objfn_map_tostring);
+        lit_class_bindgetset(state, klass, "length", objfn_map_length, NULL, false);
         state->mapvalue_class = klass;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
+

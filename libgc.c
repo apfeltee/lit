@@ -32,12 +32,18 @@ static LitValue objfn_gc_trigger(LitVM* vm, LitValue instance, size_t arg_count,
 
 void lit_open_gc_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("GC");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "GC");
     {
-        LIT_BIND_STATIC_GETTER("memoryUsed", objfn_gc_memory_used);
-        LIT_BIND_STATIC_GETTER("nextRound", objfn_gc_next_round);
-        LIT_BIND_STATIC_METHOD("trigger", objfn_gc_trigger);
+        lit_class_bindgetset(state, klass, "memoryUsed", objfn_gc_memory_used, NULL, true);
+        lit_class_bindgetset(state, klass, "nextRound", objfn_gc_next_round, NULL, true);
+        lit_class_bindstaticmethod(state, klass, "trigger", objfn_gc_trigger);
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
+
 

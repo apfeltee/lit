@@ -1080,50 +1080,53 @@ static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, L
 void lit_open_string_library(LitState* state)
 {
     {
-        LIT_BEGIN_CLASS("String");
+        LitClass* klass;
+        klass = lit_create_classobject(state, "String");
         {
-            LIT_INHERIT_CLASS(state->objectvalue_class);
-            LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-            LIT_BIND_METHOD("+", objfn_string_plus);
-            LIT_BIND_METHOD("[]", objfn_string_subscript);
-            LIT_BIND_METHOD("<", objfn_string_less);
-            LIT_BIND_METHOD(">", objfn_string_greater);
-            LIT_BIND_METHOD("==", objfn_string_compare);
-            LIT_BIND_METHOD("toString", objfn_string_tostring);
-
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+            lit_class_bindconstructor(state, klass, util_invalid_constructor);
+            lit_class_bindmethod(state, klass, "+", objfn_string_plus);
+            lit_class_bindmethod(state, klass, "[]", objfn_string_subscript);
+            lit_class_bindmethod(state, klass, "<", objfn_string_less);
+            lit_class_bindmethod(state, klass, ">", objfn_string_greater);
+            lit_class_bindmethod(state, klass, "==", objfn_string_compare);
+            lit_class_bindmethod(state, klass, "toString", objfn_string_tostring);
             // js-isms
-            LIT_BIND_METHOD("charCodeAt", objfn_string_byteat);
-            LIT_BIND_METHOD("charAt", objfn_string_subscript);
-
+            lit_class_bindmethod(state, klass, "charCodeAt", objfn_string_byteat);
+            lit_class_bindmethod(state, klass, "charAt", objfn_string_subscript);
             {
-                LIT_BIND_METHOD("toNumber", objfn_string_tonumber);
-                LIT_BIND_GETTER("to_i", objfn_string_tonumber);
+                lit_class_bindmethod(state, klass, "toNumber", objfn_string_tonumber);
+                lit_class_bindgetset(state, klass, "to_i", objfn_string_tonumber, NULL, false);
             }
             {
-                LIT_BIND_METHOD("toUpperCase", objfn_string_touppercase);
-                LIT_BIND_METHOD("toUpper", objfn_string_touppercase);
-                LIT_BIND_GETTER("upper", objfn_string_touppercase);
+                lit_class_bindmethod(state, klass, "toUpperCase", objfn_string_touppercase);
+                lit_class_bindmethod(state, klass, "toUpper", objfn_string_touppercase);
+                lit_class_bindgetset(state, klass, "upper", objfn_string_touppercase, NULL, false);
             }
             {
-                LIT_BIND_METHOD("toLowerCase", objfn_string_tolowercase);
-                LIT_BIND_METHOD("toLower", objfn_string_tolowercase);
-                LIT_BIND_GETTER("lower", objfn_string_tolowercase);
+                lit_class_bindmethod(state, klass, "toLowerCase", objfn_string_tolowercase);
+                lit_class_bindmethod(state, klass, "toLower", objfn_string_tolowercase);
+                lit_class_bindgetset(state, klass, "lower", objfn_string_tolowercase, NULL, false);
             }
             {
-                LIT_BIND_GETTER("toByte", objfn_string_tobyte);
+                lit_class_bindgetset(state, klass, "toByte", objfn_string_tobyte, NULL, false);
             }
-            LIT_BIND_METHOD("contains", objfn_string_contains);
-            LIT_BIND_METHOD("startsWith", objfn_string_startswith);
-            LIT_BIND_METHOD("endsWith", objfn_string_endswith);
-            LIT_BIND_METHOD("replace", objfn_string_replace);
-            LIT_BIND_METHOD("substring", objfn_string_substring);
-            LIT_BIND_METHOD("iterator", objfn_string_iterator);
-            LIT_BIND_METHOD("iteratorValue", objfn_string_iteratorvalue);
-            LIT_BIND_GETTER("length", objfn_string_length);
-            LIT_BIND_METHOD("format", objfn_string_format);
+            lit_class_bindmethod(state, klass, "contains", objfn_string_contains);
+            lit_class_bindmethod(state, klass, "startsWith", objfn_string_startswith);
+            lit_class_bindmethod(state, klass, "endsWith", objfn_string_endswith);
+            lit_class_bindmethod(state, klass, "replace", objfn_string_replace);
+            lit_class_bindmethod(state, klass, "substring", objfn_string_substring);
+            lit_class_bindmethod(state, klass, "iterator", objfn_string_iterator);
+            lit_class_bindmethod(state, klass, "iteratorValue", objfn_string_iteratorvalue);
+            lit_class_bindgetset(state, klass, "length", objfn_string_length, NULL, false);
+            lit_class_bindmethod(state, klass, "format", objfn_string_format);
             state->stringvalue_class = klass;
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
 }
 

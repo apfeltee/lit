@@ -77,18 +77,23 @@ static LitValue objfn_module_name(LitVM* vm, LitValue instance, size_t argc, Lit
 
 void lit_open_module_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Module");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Module");
     {
-        LIT_INHERIT_CLASS(state->objectvalue_class);
-        LIT_BIND_CONSTRUCTOR(util_invalid_constructor);
-        LIT_SET_STATIC_FIELD("loaded", lit_value_objectvalue(state->vm->modules));
-        LIT_BIND_STATIC_GETTER("privates", objfn_module_privates);
-        LIT_BIND_STATIC_GETTER("current", objfn_module_current);
-        LIT_BIND_METHOD("toString", objfn_module_tostring);
-        LIT_BIND_GETTER("name", objfn_module_name);
-        LIT_BIND_GETTER("privates", objfn_module_privates);
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        lit_class_bindconstructor(state, klass, util_invalid_constructor);
+        lit_class_setstaticfield(state, klass, "loaded", lit_value_objectvalue(state->vm->modules));
+        lit_class_bindgetset(state, klass, "privates", objfn_module_privates, NULL, true);
+        lit_class_bindgetset(state, klass, "current", objfn_module_current, NULL, true);
+        lit_class_bindmethod(state, klass, "toString", objfn_module_tostring);
+        lit_class_bindgetset(state, klass, "name", objfn_module_name, NULL, false);
+        lit_class_bindgetset(state, klass, "privates", objfn_module_privates, NULL, false);
         state->modulevalue_class = klass;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
 

@@ -717,32 +717,38 @@ static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, Li
 
 void lit_open_array_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Array");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Array");
     {
-        LIT_INHERIT_CLASS(state->objectvalue_class);
-        LIT_BIND_CONSTRUCTOR(objfn_array_constructor);
-        LIT_BIND_METHOD("[]", objfn_array_subscript);
-        LIT_BIND_METHOD("==", objfn_array_compare);
-        LIT_BIND_METHOD("add", objfn_array_add);
-        LIT_BIND_METHOD("push", objfn_array_add);
-        LIT_BIND_METHOD("insert", objfn_array_insert);
-        LIT_BIND_METHOD("slice", objfn_array_slice);
-        LIT_BIND_METHOD("addAll", objfn_array_addall);
-        LIT_BIND_METHOD("remove", objfn_array_remove);
-        LIT_BIND_METHOD("removeAt", objfn_array_removeat);
-        LIT_BIND_METHOD("indexOf", objfn_array_indexof);
-        LIT_BIND_METHOD("contains", objfn_array_contains);
-        LIT_BIND_METHOD("clear", objfn_array_clear);
-        LIT_BIND_METHOD("iterator", objfn_array_iterator);
-        LIT_BIND_METHOD("iteratorValue", objfn_array_iteratorvalue);
-        LIT_BIND_METHOD("join", objfn_array_join);
-        LIT_BIND_METHOD("sort", objfn_array_sort);
-        LIT_BIND_METHOD("clone", objfn_array_clone);
-        LIT_BIND_METHOD("toString", objfn_array_tostring);
-        LIT_BIND_METHOD("pop", objfn_array_pop);
-        LIT_BIND_GETTER("length", objfn_array_length);
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        lit_class_bindconstructor(state, klass, objfn_array_constructor);
+        lit_class_bindmethod(state, klass, "[]", objfn_array_subscript);
+        lit_class_bindmethod(state, klass, "==", objfn_array_compare);
+        lit_class_bindmethod(state, klass, "add", objfn_array_add);
+        lit_class_bindmethod(state, klass, "push", objfn_array_add);
+        lit_class_bindmethod(state, klass, "insert", objfn_array_insert);
+        lit_class_bindmethod(state, klass, "slice", objfn_array_slice);
+        lit_class_bindmethod(state, klass, "addAll", objfn_array_addall);
+        lit_class_bindmethod(state, klass, "remove", objfn_array_remove);
+        lit_class_bindmethod(state, klass, "removeAt", objfn_array_removeat);
+        lit_class_bindmethod(state, klass, "indexOf", objfn_array_indexof);
+        lit_class_bindmethod(state, klass, "contains", objfn_array_contains);
+        lit_class_bindmethod(state, klass, "clear", objfn_array_clear);
+        lit_class_bindmethod(state, klass, "iterator", objfn_array_iterator);
+        lit_class_bindmethod(state, klass, "iteratorValue", objfn_array_iteratorvalue);
+        lit_class_bindmethod(state, klass, "join", objfn_array_join);
+        lit_class_bindmethod(state, klass, "sort", objfn_array_sort);
+        lit_class_bindmethod(state, klass, "clone", objfn_array_clone);
+        lit_class_bindmethod(state, klass, "toString", objfn_array_tostring);
+        lit_class_bindmethod(state, klass, "pop", objfn_array_pop);
+        lit_class_bindgetset(state, klass, "length", objfn_array_length, NULL, false);
         state->arrayvalue_class = klass;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    }
 }
+
 

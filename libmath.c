@@ -334,51 +334,60 @@ static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue*
 
 void lit_open_math_library(LitState* state)
 {
+    LitClass* klass;
     {
-        LIT_BEGIN_CLASS("Math");
+        klass = lit_create_classobject(state, "Math");
         {
-            LIT_SET_STATIC_FIELD("Pi", lit_value_numbertovalue(state, M_PI));
-            LIT_SET_STATIC_FIELD("Tau", lit_value_numbertovalue(state, M_PI * 2));
-            LIT_BIND_STATIC_METHOD("abs", math_abs);
-            LIT_BIND_STATIC_METHOD("sin", math_sin);
-            LIT_BIND_STATIC_METHOD("cos", math_cos);
-            LIT_BIND_STATIC_METHOD("tan", math_tan);
-            LIT_BIND_STATIC_METHOD("asin", math_asin);
-            LIT_BIND_STATIC_METHOD("acos", math_acos);
-            LIT_BIND_STATIC_METHOD("atan", math_atan);
-            LIT_BIND_STATIC_METHOD("atan2", math_atan2);
-            LIT_BIND_STATIC_METHOD("floor", math_floor);
-            LIT_BIND_STATIC_METHOD("ceil", math_ceil);
-            LIT_BIND_STATIC_METHOD("round", math_round);
-            LIT_BIND_STATIC_METHOD("min", math_min);
-            LIT_BIND_STATIC_METHOD("max", math_max);
-            LIT_BIND_STATIC_METHOD("mid", math_mid);
-            LIT_BIND_STATIC_METHOD("toRadians", math_toRadians);
-            LIT_BIND_STATIC_METHOD("toDegrees", math_toDegrees);
-            LIT_BIND_STATIC_METHOD("sqrt", math_sqrt);
-            LIT_BIND_STATIC_METHOD("log", math_log);
-            LIT_BIND_STATIC_METHOD("exp", math_exp);
+            lit_class_setstaticfield(state, klass, "Pi", lit_value_numbertovalue(state, M_PI));
+            lit_class_setstaticfield(state, klass, "Tau", lit_value_numbertovalue(state, M_PI * 2));
+            lit_class_bindstaticmethod(state, klass, "abs", math_abs);
+            lit_class_bindstaticmethod(state, klass, "sin", math_sin);
+            lit_class_bindstaticmethod(state, klass, "cos", math_cos);
+            lit_class_bindstaticmethod(state, klass, "tan", math_tan);
+            lit_class_bindstaticmethod(state, klass, "asin", math_asin);
+            lit_class_bindstaticmethod(state, klass, "acos", math_acos);
+            lit_class_bindstaticmethod(state, klass, "atan", math_atan);
+            lit_class_bindstaticmethod(state, klass, "atan2", math_atan2);
+            lit_class_bindstaticmethod(state, klass, "floor", math_floor);
+            lit_class_bindstaticmethod(state, klass, "ceil", math_ceil);
+            lit_class_bindstaticmethod(state, klass, "round", math_round);
+            lit_class_bindstaticmethod(state, klass, "min", math_min);
+            lit_class_bindstaticmethod(state, klass, "max", math_max);
+            lit_class_bindstaticmethod(state, klass, "mid", math_mid);
+            lit_class_bindstaticmethod(state, klass, "toRadians", math_toRadians);
+            lit_class_bindstaticmethod(state, klass, "toDegrees", math_toDegrees);
+            lit_class_bindstaticmethod(state, klass, "sqrt", math_sqrt);
+            lit_class_bindstaticmethod(state, klass, "log", math_log);
+            lit_class_bindstaticmethod(state, klass, "exp", math_exp);
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
     srand(time(NULL));
     static_random_data = time(NULL);
     {
-        LIT_BEGIN_CLASS("Random");
+        klass = lit_create_classobject(state, "Random");
         {
-            LIT_BIND_CONSTRUCTOR(random_constructor);
-            LIT_BIND_METHOD("setSeed", random_setSeed);
-            LIT_BIND_METHOD("int", random_int);
-            LIT_BIND_METHOD("float", random_float);
-            LIT_BIND_METHOD("chance", random_chance);
-            LIT_BIND_METHOD("pick", random_pick);
-            LIT_BIND_STATIC_METHOD("setSeed", random_setSeed);
-            LIT_BIND_STATIC_METHOD("int", random_int);
-            LIT_BIND_STATIC_METHOD("float", random_float);
-            LIT_BIND_STATIC_METHOD("bool", random_bool);
-            LIT_BIND_STATIC_METHOD("chance", random_chance);
-            LIT_BIND_STATIC_METHOD("pick", random_pick);
+            lit_class_bindconstructor(state, klass, random_constructor);
+            lit_class_bindmethod(state, klass, "setSeed", random_setSeed);
+            lit_class_bindmethod(state, klass, "int", random_int);
+            lit_class_bindmethod(state, klass, "float", random_float);
+            lit_class_bindmethod(state, klass, "chance", random_chance);
+            lit_class_bindmethod(state, klass, "pick", random_pick);
+            lit_class_bindstaticmethod(state, klass, "setSeed", random_setSeed);
+            lit_class_bindstaticmethod(state, klass, "int", random_int);
+            lit_class_bindstaticmethod(state, klass, "float", random_float);
+            lit_class_bindstaticmethod(state, klass, "bool", random_bool);
+            lit_class_bindstaticmethod(state, klass, "chance", random_chance);
+            lit_class_bindstaticmethod(state, klass, "pick", random_pick);
         }
-        LIT_END_CLASS()
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        }
     }
 }

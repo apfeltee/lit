@@ -122,21 +122,25 @@ static LitValue objfn_fiber_tostring(LitVM* vm, LitValue instance, size_t argc, 
 
 void lit_open_fiber_library(LitState* state)
 {
-    LIT_BEGIN_CLASS("Fiber");
+    LitClass* klass;
+    klass = lit_create_classobject(state, "Fiber");
     {
-        LIT_INHERIT_CLASS(state->objectvalue_class);
-        LIT_BIND_CONSTRUCTOR(objfn_fiber_constructor);
-        LIT_BIND_METHOD("toString", objfn_fiber_tostring);
-        LIT_BIND_PRIMITIVE("run", objfn_fiber_run);
-        LIT_BIND_PRIMITIVE("try", objfn_fiber_try);
-        LIT_BIND_GETTER("done", objfn_fiber_done);
-        LIT_BIND_GETTER("error", objfn_fiber_error);
-        LIT_BIND_STATIC_PRIMITIVE("yield", objfn_fiber_yield);
-        LIT_BIND_STATIC_PRIMITIVE("yeet", objfn_fiber_yeet);
-        LIT_BIND_STATIC_PRIMITIVE("abort", objfn_fiber_abort);
-        LIT_BIND_STATIC_GETTER("current", objfn_fiber_current);
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        lit_class_bindconstructor(state, klass, objfn_fiber_constructor);
+        lit_class_bindmethod(state, klass, "toString", objfn_fiber_tostring);
+        lit_class_bindprimitive(state, klass, "run", objfn_fiber_run);
+        lit_class_bindprimitive(state, klass, "try", objfn_fiber_try);
+        lit_class_bindgetset(state, klass, "done", objfn_fiber_done, NULL, false);
+        lit_class_bindgetset(state, klass, "error", objfn_fiber_error, NULL, false);
+        lit_class_bindstaticprimitive(state, klass, "yield", objfn_fiber_yield);
+        lit_class_bindstaticprimitive(state, klass, "yeet", objfn_fiber_yeet);
+        lit_class_bindstaticprimitive(state, klass, "abort", objfn_fiber_abort);
+        lit_class_bindgetset(state, klass, "current", objfn_fiber_current, NULL, true);
         state->fibervalue_class = klass;
     }
-    LIT_END_CLASS();
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
 }
-

@@ -931,40 +931,50 @@ static void make_stdhandles(LitState* state)
 
 void lit_open_file_library(LitState* state)
 {
+    LitClass* klass;
     {
-        LIT_BEGIN_CLASS("File");
+        klass = lit_create_classobject(state, "File");
         {
-            LIT_BIND_STATIC_METHOD("exists", objmethod_file_exists);
-            LIT_BIND_STATIC_METHOD("getLastModified", objmethod_file_getlastmodified);
-            LIT_BIND_CONSTRUCTOR(objmethod_file_constructor);
-            LIT_BIND_METHOD("close", objmethod_file_close);
-            LIT_BIND_METHOD("write", objmethod_file_write);
-            LIT_BIND_METHOD("writeByte", objmethod_file_writebyte);
-            LIT_BIND_METHOD("writeShort", objmethod_file_writeshort);
-            LIT_BIND_METHOD("writeNumber", objmethod_file_writenumber);
-            LIT_BIND_METHOD("writeBool", objmethod_file_writebool);
-            LIT_BIND_METHOD("writeString", objmethod_file_writestring);
-            LIT_BIND_METHOD("readAll", objmethod_file_readall);
-            LIT_BIND_METHOD("readLine", objmethod_file_readline);
-            LIT_BIND_METHOD("readByte", objmethod_file_readbyte);
-            LIT_BIND_METHOD("readShort", objmethod_file_readshort);
-            LIT_BIND_METHOD("readNumber", objmethod_file_readnumber);
-            LIT_BIND_METHOD("readBool", objmethod_file_readbool);
-            LIT_BIND_METHOD("readString", objmethod_file_readstring);
-            LIT_BIND_METHOD("getLastModified", objmethod_file_getlastmodified);
-            LIT_BIND_GETTER("exists", objmethod_file_exists);
+            lit_class_bindstaticmethod(state, klass, "exists", objmethod_file_exists);
+            lit_class_bindstaticmethod(state, klass, "getLastModified", objmethod_file_getlastmodified);
+            lit_class_bindconstructor(state, klass, objmethod_file_constructor);
+            lit_class_bindmethod(state, klass, "close", objmethod_file_close);
+            lit_class_bindmethod(state, klass, "write", objmethod_file_write);
+            lit_class_bindmethod(state, klass, "writeByte", objmethod_file_writebyte);
+            lit_class_bindmethod(state, klass, "writeShort", objmethod_file_writeshort);
+            lit_class_bindmethod(state, klass, "writeNumber", objmethod_file_writenumber);
+            lit_class_bindmethod(state, klass, "writeBool", objmethod_file_writebool);
+            lit_class_bindmethod(state, klass, "writeString", objmethod_file_writestring);
+            lit_class_bindmethod(state, klass, "readAll", objmethod_file_readall);
+            lit_class_bindmethod(state, klass, "readLine", objmethod_file_readline);
+            lit_class_bindmethod(state, klass, "readByte", objmethod_file_readbyte);
+            lit_class_bindmethod(state, klass, "readShort", objmethod_file_readshort);
+            lit_class_bindmethod(state, klass, "readNumber", objmethod_file_readnumber);
+            lit_class_bindmethod(state, klass, "readBool", objmethod_file_readbool);
+            lit_class_bindmethod(state, klass, "readString", objmethod_file_readstring);
+            lit_class_bindmethod(state, klass, "getLastModified", objmethod_file_getlastmodified);
+            lit_class_bindgetset(state, klass, "exists", objmethod_file_exists, NULL, false);
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
     {
-        LIT_BEGIN_CLASS("Directory");
+        klass = lit_create_classobject(state, "Directory");
         {
-            LIT_BIND_STATIC_METHOD("exists", objfunction_directory_exists);
-            LIT_BIND_STATIC_METHOD("listFiles", objfunction_directory_listfiles);
-            LIT_BIND_STATIC_METHOD("listDirectories", objfunction_directory_listdirs);
+            lit_class_bindstaticmethod(state, klass, "exists", objfunction_directory_exists);
+            lit_class_bindstaticmethod(state, klass, "listFiles", objfunction_directory_listfiles);
+            lit_class_bindstaticmethod(state, klass, "listDirectories", objfunction_directory_listdirs);
         }
-        LIT_END_CLASS();
+        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        if(klass->super == NULL)
+        {
+            lit_class_inheritfrom(state, klass, state->objectvalue_class);
+        };
     }
     make_stdhandles(state);
 }
+
 
