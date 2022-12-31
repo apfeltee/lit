@@ -136,7 +136,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
     (void)argc;
     LIT_ENSURE_ARGS(1);
     klass = lit_value_asclass(instance);
-    index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
+    index = argv[0] == NULL_VALUE ? -1 : lit_value_asnumber(argv[0]);
     mthcap = (int)klass->methods.capacity;
     fields = index >= mthcap;
     value = util_table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - mthcap : index);
@@ -154,7 +154,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
     {
         return NULL_VALUE;
     }
-    return lit_number_to_value(vm->state, fields ? value + mthcap : value);
+    return lit_value_numbertovalue(vm->state, fields ? value + mthcap : value);
 }
 
 

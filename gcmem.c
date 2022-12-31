@@ -5,6 +5,40 @@
 #include "lit.h"
 #include "sds.h"
 
+#if 0
+    static LitObject g_stackmem[1024 * (1024 * 4)];
+    static size_t g_objcount = 0;
+#endif
+
+LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type, bool islight)
+{
+    LitObject* obj;
+    if(islight)
+    {
+        #if 0
+            obj = &g_stackmem[g_objcount];
+            g_objcount++;
+        #else
+            LitObject stackobj[1];
+            obj = stackobj;
+        #endif
+        obj->mustfree = false;
+    }
+    else
+    {
+        obj = (LitObject*)lit_reallocate(state, NULL, 0, size);
+        obj->mustfree = true;
+    }
+    obj->type = type;
+    obj->marked = false;
+    obj->next = state->vm->objects;
+    state->vm->objects = obj;
+    #ifdef LIT_LOG_ALLOCATION
+        printf("%p allocate %ld for %s\n", (void*)obj, size, lit_get_value_type(type));
+    #endif
+
+    return obj;
+}
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size)
 {
@@ -49,6 +83,15 @@ void lit_free_object(LitState* state, LitObject* object)
 
     switch(object->type)
     {
+        case LITTYPE_NUMBER:
+            {
+                LitNumber* n = (LitNumber*)object;
+                if(object->mustfree)
+                {
+                    LIT_FREE(state, sizeof(LitNumber), object);
+                }
+            }
+            break;
         case LITTYPE_STRING:
             {
                 string = (LitString*)object;
@@ -180,6 +223,7 @@ void lit_free_object(LitState* state, LitObject* object)
             break;
         default:
             {
+                fprintf(stderr, "internal error: trying to free something else!\n");
                 UNREACHABLE
             }
             break;
@@ -229,7 +273,7 @@ void lit_mark_value(LitVM* vm, LitValue value)
 {
     if(lit_value_isobject(value))
     {
-        lit_mark_object(vm, lit_as_object(value));
+        lit_mark_object(vm, lit_value_asobject(value));
     }
 }
 
@@ -298,6 +342,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
         case LITTYPE_PRIMITIVE_METHOD:
         case LITTYPE_RANGE:
         case LITTYPE_STRING:
+        case LITTYPE_NUMBER:
             {
             }
             break;
@@ -425,6 +470,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
             break;
         default:
             {
+                fprintf(stderr, "internal error: trying to blacken something else!\n");
                 UNREACHABLE
             }
             break;

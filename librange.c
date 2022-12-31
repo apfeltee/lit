@@ -12,14 +12,14 @@ static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, 
     (void)argc;
     if(lit_value_isnumber(argv[0]))
     {
-        number = lit_value_to_number(argv[0]);
+        number = lit_value_asnumber(argv[0]);
         if((range->to > range->from) ? (number >= range->to) : (number >= range->from))
         {
             return NULL_VALUE;
         }
         number += (((range->from - range->to) > 0) ? -1 : 1);
     }
-    return lit_number_to_value(vm->state, number);
+    return lit_value_numbertovalue(vm->state, number);
 }
 
 static LitValue objfn_range_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -44,14 +44,14 @@ static LitValue objfn_range_from(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argv;
     (void)argc;
-    return lit_number_to_value(vm->state, lit_value_asrange(instance)->from);
+    return lit_value_numbertovalue(vm->state, lit_value_asrange(instance)->from);
 }
 
 static LitValue objfn_range_set_from(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
-    lit_value_asrange(instance)->from = lit_value_to_number(argv[0]);
+    lit_value_asrange(instance)->from = lit_value_asnumber(argv[0]);
     return argv[0];
 }
 
@@ -60,14 +60,14 @@ static LitValue objfn_range_to(LitVM* vm, LitValue instance, size_t argc, LitVal
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, lit_value_asrange(instance)->to);
+    return lit_value_numbertovalue(vm->state, lit_value_asrange(instance)->to);
 }
 
 static LitValue objfn_range_set_to(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)vm;
     (void)argc;
-    lit_value_asrange(instance)->to = lit_value_to_number(argv[0]);
+    lit_value_asrange(instance)->to = lit_value_asnumber(argv[0]);
     return argv[0];
 }
 
@@ -78,7 +78,7 @@ static LitValue objfn_range_length(LitVM* vm, LitValue instance, size_t argc, Li
     (void)argv;
     LitRange* range;
     range = lit_value_asrange(instance);
-    return lit_number_to_value(vm->state, range->to - range->from);
+    return lit_value_numbertovalue(vm->state, range->to - range->from);
 }
 
 void lit_open_range_library(LitState* state)

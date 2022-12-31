@@ -239,7 +239,7 @@ bool lit_set_native_exit_jump(void);
             } \
         } \
         vmexec_drop(fiber); \
-        *(fiber->stack_top - 1) = (type(vm->state, lit_value_to_number(a) op lit_value_to_number(b))); \
+        *(fiber->stack_top - 1) = (type(vm->state, lit_value_asnumber(a) op lit_value_asnumber(b))); \
         continue; \
     } \
     if(lit_value_isnull(a)) \
@@ -263,7 +263,7 @@ bool lit_set_native_exit_jump(void);
                            lit_get_value_type(a), lit_get_value_type(b)); \
     } \
     vmexec_drop(fiber); \
-    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, (int)lit_value_to_number(a) op(int) lit_value_to_number(b)));
+    *(fiber->stack_top - 1) = (lit_value_numbertovalue(vm->state, (int)lit_value_asnumber(a) op(int) lit_value_asnumber(b)));
 
 #define vm_invokeoperation(ignoring) \
     uint8_t arg_count = vmexec_readbyte(&est); \
@@ -605,11 +605,11 @@ static bool call(LitVM* vm, LitFunction* function, LitClosure* closure, uint8_t 
             amount = (int)function_arg_count - arg_count - (vararg ? 1 : 0);
             for(i = 0; i < amount; i++)
             {
-                lit_push(vm, NULL_VALUE);
+                lit_vm_push(vm, NULL_VALUE);
             }
             if(vararg)
             {
-                lit_push(vm, lit_value_objectvalue(lit_create_array(vm->state)));
+                lit_vm_push(vm, lit_value_objectvalue(lit_create_array(vm->state)));
             }
         }
         else if(function->vararg)
@@ -624,7 +624,7 @@ static bool call(LitVM* vm, LitFunction* function, LitClosure* closure, uint8_t 
                 lit_vallist_set(&array->list, i, vm->fiber->stack_top[(int)i - (int)vararg_count]);
             }
             vm->fiber->stack_top -= vararg_count;
-            lit_push(vm, lit_value_objectvalue(array));
+            lit_vm_push(vm, lit_value_objectvalue(array));
         }
         else
         {
@@ -680,7 +680,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                     vm_pushgc(vm->state, false)
                     result = lit_value_asnativefunction(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
                     vm->fiber->stack_top -= arg_count + 1;
-                    lit_push(vm, result);
+                    lit_vm_push(vm, result);
                     vm_popgc(vm->state);
                     return false;
                 }
@@ -709,7 +709,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                     {
                         if(!vm->fiber->abort)
                         {
-                            lit_push(vm, result);
+                            lit_vm_push(vm, result);
                         }
                     }
                     vm_popgc(vm->state);
@@ -742,7 +742,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                     // (default constructor has no arguments)
                     for(i = 0; i < arg_count; i++)
                     {
-                        lit_pop(vm);
+                        lit_vm_pop(vm);
                     }
                     return false;
                 }
@@ -756,7 +756,7 @@ static bool call_value(LitVM* vm, LitValue callee, uint8_t arg_count)
                         vm_pushgc(vm->state, false);
                         result = lit_value_asnativemethod(mthval)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
                         vm->fiber->stack_top -= arg_count + 1;
-                        lit_push(vm, result);
+                        lit_vm_push(vm, result);
                         vm_popgc(vm->state);
                         return false;
                     }
@@ -848,7 +848,7 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module)
     vm = state->vm;
     fiber = lit_create_fiber(state, module, module->main_function);
     vm->fiber = fiber;
-    lit_push(vm, lit_value_objectvalue(module->main_function));
+    lit_vm_push(vm, lit_value_objectvalue(module->main_function));
     result = lit_interpret_fiber(state, fiber);
     return result;
 }
@@ -1066,7 +1066,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Range operands must be number");
                 }
-                vmexec_push(fiber, lit_value_objectvalue(lit_create_range(state, lit_value_to_number(a), lit_value_to_number(b))));
+                vmexec_push(fiber, lit_value_objectvalue(lit_create_range(state, lit_value_asnumber(a), lit_value_asnumber(b))));
                 continue;
             }
             op_case(NEGATE)
@@ -1085,7 +1085,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         vm_rterror("Operand must be a number");
                     }
                 }
-                tmpval = lit_number_to_value(vm->state, -lit_value_to_number(vmexec_pop(fiber)));
+                tmpval = lit_value_numbertovalue(vm->state, -lit_value_asnumber(vmexec_pop(fiber)));
                 vmexec_push(fiber, tmpval);
                 continue;
             }
@@ -1107,23 +1107,23 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 {
                     vm_rterror("Operand must be a number");
                 }
-                tmpval = lit_number_to_value(vm->state, ~((int)lit_value_to_number(vmexec_pop(fiber))));
+                tmpval = lit_value_numbertovalue(vm->state, ~((int)lit_value_asnumber(vmexec_pop(fiber))));
                 vmexec_push(fiber, tmpval);
                 continue;
             }
             op_case(ADD)
             {
-                vm_binaryop(lit_number_to_value, +, "+");
+                vm_binaryop(lit_value_numbertovalue, +, "+");
                 continue;
             }
             op_case(SUBTRACT)
             {
-                vm_binaryop(lit_number_to_value, -, "-");
+                vm_binaryop(lit_value_numbertovalue, -, "-");
                 continue;
             }
             op_case(MULTIPLY)
             {
-                vm_binaryop(lit_number_to_value, *, "*");
+                vm_binaryop(lit_value_numbertovalue, *, "*");
                 continue;
             }
             op_case(POWER)
@@ -1133,7 +1133,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, pow(lit_value_to_number(a), lit_value_to_number(b))));
+                    *(fiber->stack_top - 1) = (lit_value_numbertovalue(vm->state, pow(lit_value_asnumber(a), lit_value_asnumber(b))));
                     continue;
                 }
                 vm_invokemethod(a, "**", 1);
@@ -1141,7 +1141,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             }
             op_case(DIVIDE)
             {
-                vm_binaryop(lit_number_to_value, /, "/");
+                vm_binaryop(lit_value_numbertovalue, /, "/");
                 continue;
             }
             op_case(FLOOR_DIVIDE)
@@ -1151,7 +1151,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = (lit_number_to_value(vm->state, floor(lit_value_to_number(a) / lit_value_to_number(b))));
+                    *(fiber->stack_top - 1) = (lit_value_numbertovalue(vm->state, floor(lit_value_asnumber(a) / lit_value_asnumber(b))));
 
                     continue;
                 }
@@ -1166,7 +1166,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(lit_value_isnumber(a) && lit_value_isnumber(b))
                 {
                     vmexec_drop(fiber);
-                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, fmod(lit_value_to_number(a), lit_value_to_number(b)));
+                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, fmod(lit_value_asnumber(a), lit_value_asnumber(b)));
                     continue;
                 }
                 vm_invokemethod(a, "%", 1);
@@ -1199,7 +1199,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 vmexec_drop(fiber);
                 #if 0
-                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, (int)lit_value_to_number(a) << (int)lit_value_to_number(b));
+                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, (int)lit_value_asnumber(a) << (int)lit_value_asnumber(b));
 
                 #else
                     /*
@@ -1210,10 +1210,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         unsigned int lit_util_numbertouint32(double n);
                     */
                     
-                    int uleft = lit_util_numbertoint32(lit_value_to_number(a));
-                    unsigned int uright = lit_util_numbertouint32(lit_value_to_number(b));
+                    int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
+                    unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
 
-                    *(fiber->stack_top - 1) = lit_number_to_value(vm->state, uleft << (uright & 0x1F));
+                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, uleft << (uright & 0x1F));
  
 
                 #endif
@@ -1236,10 +1236,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     int lit_util_doubletoint(double n);
                     unsigned int lit_util_numbertouint32(double n);
                 */
-                int uleft = lit_util_numbertoint32(lit_value_to_number(a));
-                unsigned int uright = lit_util_numbertouint32(lit_value_to_number(b));
+                int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
+                unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
 
-                *(fiber->stack_top - 1) = lit_number_to_value(vm->state, uleft >> (uright & 0x1F));
+                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, uleft >> (uright & 0x1F));
                 
 
                 continue;
@@ -1259,7 +1259,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 b = vmexec_pop(fiber);
                 vmexec_push(fiber, lit_bool_to_value(vm->state, a == b));
                 */
-                vm_binaryop(lit_number_to_value, ==, "==");
+                vm_binaryop(lit_value_numbertovalue, ==, "==");
                 continue;
             }
 
@@ -1736,7 +1736,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if((klassobj->init_method == NULL || (klassobj->super != NULL && klassobj->init_method == ((LitClass*)klassobj->super)->init_method))
                    && lit_string_getlength(name) == 11 && memcmp(name->chars, "constructor", 11) == 0)
                 {
-                    klassobj->init_method = lit_as_object(vmexec_peek(fiber, 0));
+                    klassobj->init_method = lit_value_asobject(vmexec_peek(fiber, 0));
                 }
                 lit_table_set(state, &klassobj->methods, name, vmexec_peek(fiber, 0));
                 vmexec_drop(fiber);

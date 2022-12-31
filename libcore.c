@@ -130,19 +130,19 @@ void util_run_fiber(LitVM* vm, LitFiber* fiber, LitValue* argv, size_t argc, boo
         fiber->arg_count = argc;
         lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int)(fiber->stack_top - fiber->stack));
         frame->slots = fiber->stack_top;
-        lit_push(vm, lit_value_objectvalue(frame->function));
+        lit_vm_push(vm, lit_value_objectvalue(frame->function));
         vararg = frame->function->vararg;
         objfn_function_arg_count = frame->function->arg_count;
         to = objfn_function_arg_count - (vararg ? 1 : 0);
         fiber->arg_count = objfn_function_arg_count;
         for(i = 0; i < to; i++)
         {
-            lit_push(vm, i < (int)argc ? argv[i] : NULL_VALUE);
+            lit_vm_push(vm, i < (int)argc ? argv[i] : NULL_VALUE);
         }
         if(vararg)
         {
             array = lit_create_array(vm->state);
-            lit_push(vm, lit_value_objectvalue(array));
+            lit_vm_push(vm, lit_value_objectvalue(array));
             vararg_count = argc - objfn_function_arg_count + 1;
             if(vararg_count > 0)
             {
@@ -161,7 +161,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
     LitValue argv[1];
     if(lit_value_isnumber(a) && lit_value_isnumber(b))
     {
-        return lit_value_to_number(a) < lit_value_to_number(b);
+        return lit_value_asnumber(a) < lit_value_asnumber(b);
     }
     argv[0] = b;
     return !lit_value_isfalsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
@@ -217,7 +217,7 @@ bool util_interpret(LitVM* vm, LitModule* module)
     if(frame->ip == frame->function->chunk.code)
     {
         frame->slots = fiber->stack_top;
-        lit_push(vm, lit_value_objectvalue(frame->function));
+        lit_vm_push(vm, lit_value_objectvalue(frame->function));
     }
     return true;
 }
@@ -430,7 +430,7 @@ static LitValue objfn_number_tostring(LitVM* vm, LitValue instance, size_t argc,
 {
     (void)argc;
     (void)argv;
-    return lit_value_objectvalue(lit_string_numbertostring(vm->state, lit_value_to_number(instance)));
+    return lit_value_objectvalue(lit_string_numbertostring(vm->state, lit_value_asnumber(instance)));
 }
 
 static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -438,7 +438,7 @@ static LitValue objfn_number_tochar(LitVM* vm, LitValue instance, size_t argc, L
     char ch;
     (void)argc;
     (void)argv;
-    ch = lit_value_to_number(instance);
+    ch = lit_value_asnumber(instance);
     return lit_value_objectvalue(lit_string_copy(vm->state, &ch, 1));
 }
 
@@ -467,7 +467,7 @@ static LitValue cfn_time(LitVM* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, (double)clock() / CLOCKS_PER_SEC);
+    return lit_value_numbertovalue(vm->state, (double)clock() / CLOCKS_PER_SEC);
 }
 
 static LitValue cfn_systemTime(LitVM* vm, size_t argc, LitValue* argv)
@@ -475,7 +475,7 @@ static LitValue cfn_systemTime(LitVM* vm, size_t argc, LitValue* argv)
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, time(NULL));
+    return lit_value_numbertovalue(vm->state, time(NULL));
 }
 
 static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
@@ -486,14 +486,14 @@ static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
     written = 0;
     if(argc == 0)
     {
-        return lit_number_to_value(vm->state, 0);
+        return lit_value_numbertovalue(vm->state, 0);
     }
     for(i = 0; i < argc; i++)
     {
         sv = lit_to_string(vm->state, argv[i]);
         written += fwrite(sv->chars, sizeof(char), lit_string_getlength(sv), stdout);
     }
-    return lit_number_to_value(vm->state, written);
+    return lit_value_numbertovalue(vm->state, written);
 }
 
 static LitValue cfn_println(LitVM* vm, size_t argc, LitValue* argv)

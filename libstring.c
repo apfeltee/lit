@@ -313,7 +313,7 @@ int lit_util_ucharoffset(char* str, int index)
 LitString* lit_string_makeempty(LitState* state, size_t length, bool reuse)
 {
     LitString* string;
-    string = (LitString*)lit_allocate_object(state, sizeof(LitString), LITTYPE_STRING);
+    string = (LitString*)lit_allocate_object(state, sizeof(LitString), LITTYPE_STRING, false);
     if(!reuse)
     {
         string->chars = sdsempty();
@@ -716,7 +716,7 @@ static LitValue objfn_string_tonumber(LitVM* vm, LitValue instance, size_t argc,
         errno = 0;
         return NULL_VALUE;
     }
-    return lit_number_to_value(vm->state, result);
+    return lit_value_numbertovalue(vm->state, result);
 }
 
 static LitValue objfn_string_touppercase(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -766,7 +766,7 @@ static LitValue objfn_string_tobyte(LitVM* vm, LitValue instance, size_t argc, L
     (void)argv;
     selfstr = lit_value_asstring(instance);
     iv = lit_ustring_decode((const uint8_t*)selfstr->chars, lit_string_getlength(selfstr));
-    return lit_number_to_value(vm->state, iv);
+    return lit_value_numbertovalue(vm->state, iv);
 }
 
 static LitValue objfn_string_contains(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -902,7 +902,7 @@ static LitValue objfn_string_byteat(LitVM* vm, LitValue instance, size_t argc, L
 {
     int idx;
     idx = lit_check_number(vm, argv, argc, 0);
-    return lit_number_to_value(vm->state, lit_value_asstring(instance)->chars[idx]);
+    return lit_value_numbertovalue(vm->state, lit_value_asstring(instance)->chars[idx]);
 }
 
 static LitValue objfn_string_length(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -910,7 +910,7 @@ static LitValue objfn_string_length(LitVM* vm, LitValue instance, size_t argc, L
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, lit_ustring_length(lit_value_asstring(instance)));
+    return lit_value_numbertovalue(vm->state, lit_ustring_length(lit_value_asstring(instance)));
 }
 
 static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -924,7 +924,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
         {
             return NULL_VALUE;
         }
-        return lit_number_to_value(vm->state, 0);
+        return lit_value_numbertovalue(vm->state, 0);
     }
     index = lit_check_number(vm, argv, argc, 0);
     if(index < 0)
@@ -939,7 +939,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
             return NULL_VALUE;
         }
     } while((string->chars[index] & 0xc0) == 0x80);
-    return lit_number_to_value(vm->state, index);
+    return lit_value_numbertovalue(vm->state, index);
 }
 
 

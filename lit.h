@@ -525,7 +525,9 @@ enum LitObjectType
     LITTYPE_USERDATA,
     LITTYPE_RANGE,
     LITTYPE_FIELD,
-    LITTYPE_REFERENCE
+    LITTYPE_REFERENCE,
+    LITTYPE_NUMBER,
+
 };
 
 typedef enum /**/LitOpCode LitOpCode;
@@ -549,6 +551,7 @@ typedef struct /**/LitState LitState;
 typedef struct /**/LitInterpretResult LitInterpretResult;
 typedef struct /**/LitObject LitObject;
 typedef struct /**/LitMap LitMap;
+typedef struct /**/LitNumber LitNumber;
 typedef struct /**/LitString LitString;
 typedef struct /**/LitModule LitModule;
 typedef struct /**/LitFiber LitFiber;
@@ -733,6 +736,13 @@ struct LitObject
     LitObjectType type;
     LitObject* next;
     bool marked;
+    bool mustfree;
+};
+
+struct LitNumber
+{
+    LitObject object;
+    double num;
 };
 
 struct LitString
@@ -1165,46 +1175,31 @@ int lit_array_indexof(LitArray *array, LitValue value);
 /* remove the value at $index */
 LitValue lit_array_removeat(LitArray *array, size_t index);
 
-/* turn the given value to a number */
-static inline double lit_value_to_number(LitValue v)
-{
-    return *((double*)&v);
-}
+LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type, bool islight);
 
-static inline LitValue lit_bool_to_value(LitState* state, bool b) 
-{
-    (void)state;
-    return (b ? TRUE_VALUE : FALSE_VALUE);
-}
+
+#define lit_value_objectvalue(obj) lit_value_objectvalue_actual((uintptr_t)obj)
+
+LitValue lit_value_objectvalue_actual(uintptr_t obj);
+LitObject* lit_value_asobject(LitValue v);
+LitValue lit_bool_to_value(LitState* state, bool b);
+
+/* turn the given value to a number */
+double lit_value_asnumber(LitValue v);
 
 /* turn a number into a value*/
-static inline LitValue lit_number_to_value(LitState* state, double num)
-{
-    (void)state;
-    return *((LitValue*)&num);
-}
+LitValue lit_value_numbertovalue(LitState* state, double num);
 
-static inline LitObject* lit_as_object(LitValue v)
-{
-    return ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)));
-}
+bool lit_value_isbool(LitValue v);
+bool lit_value_isobject(LitValue v);
 
-static inline bool lit_value_isbool(LitValue v)
-{
-    return ((v & FALSE_VALUE) == FALSE_VALUE);
-}
+#define lit_value_istype(value, t) \
+    (lit_value_isobject(value) && (lit_value_asobject(value) != NULL) && (lit_value_asobject(value)->type == t))
 
 #define lit_value_isnull(v) \
     ((v) == NULL_VALUE)
 
-#define lit_value_isnumber(v) \
-    (((v)&QNAN) != QNAN)
-
-#define lit_value_isobject(v) \
-    (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
-
-#define lit_value_istype(value, t) \
-    (lit_value_isobject(value) && (lit_as_object(value) != NULL) && (lit_as_object(value)->type == t))
+bool lit_value_isnumber(LitValue v);
 
 #define lit_value_isstring(value) \
     lit_value_istype(value, LITTYPE_STRING)
@@ -1275,13 +1270,13 @@ static inline bool lit_value_isreference(LitValue value)
 /* is this value falsey? */
 static inline bool lit_value_isfalsey(LitValue v)
 {
-    return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_to_number(v) == 0);
+    return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
 }
 
 static inline LitObjectType lit_value_type(LitValue v)
 {
     LitObject* o;
-    o = lit_as_object(v);
+    o = lit_value_asobject(v);
     if(o == NULL)
     {
         return LITTYPE_UNDEFINED;
@@ -1296,7 +1291,7 @@ static inline bool lit_value_asbool(LitValue v)
 
 static inline LitString* lit_value_asstring(LitValue v)
 {
-    return (LitString*)lit_as_object(v);
+    return (LitString*)lit_value_asobject(v);
 }
 
 static inline char* lit_value_ascstring(LitValue v)
@@ -1306,100 +1301,94 @@ static inline char* lit_value_ascstring(LitValue v)
 
 static inline LitFunction* lit_value_asfunction(LitValue v)
 {
-    return (LitFunction*)lit_as_object(v);
+    return (LitFunction*)lit_value_asobject(v);
 }
 
 static inline LitNativeFunction* lit_value_asnativefunction(LitValue v)
 {
-    return (LitNativeFunction*)lit_as_object(v);
+    return (LitNativeFunction*)lit_value_asobject(v);
 }
 
 static inline LitNativePrimFunction* lit_value_asnativeprimitive(LitValue v)
 {
-    return (LitNativePrimFunction*)lit_as_object(v);
+    return (LitNativePrimFunction*)lit_value_asobject(v);
 }
 
 static inline LitNativeMethod* lit_value_asnativemethod(LitValue v)
 {
-    return (LitNativeMethod*)lit_as_object(v);
+    return (LitNativeMethod*)lit_value_asobject(v);
 }
 
 static inline LitPrimitiveMethod* lit_value_asprimitivemethod(LitValue v)
 {
-    return (LitPrimitiveMethod*)lit_as_object(v);
+    return (LitPrimitiveMethod*)lit_value_asobject(v);
 }
 
 static inline LitModule* lit_value_asmodule(LitValue v)
 {
-    return (LitModule*)lit_as_object(v);
+    return (LitModule*)lit_value_asobject(v);
 }
 
 static inline LitClosure* lit_value_asclosure(LitValue v)
 {
-    return (LitClosure*)lit_as_object(v);
+    return (LitClosure*)lit_value_asobject(v);
 }
 
 static inline LitUpvalue* lit_value_asupvalue(LitValue v)
 {
-    return (LitUpvalue*)lit_as_object(v);
+    return (LitUpvalue*)lit_value_asobject(v);
 }
 
 static inline LitClass* lit_value_asclass(LitValue v)
 {
-    return (LitClass*)lit_as_object(v);
+    return (LitClass*)lit_value_asobject(v);
 }
 
 static inline LitInstance* lit_value_asinstance(LitValue v)
 {
-    return (LitInstance*)lit_as_object(v);
+    return (LitInstance*)lit_value_asobject(v);
 }
 
 static inline LitArray* lit_value_asarray(LitValue v)
 {
-    return (LitArray*)lit_as_object(v);
+    return (LitArray*)lit_value_asobject(v);
 }
 
 static inline LitMap* lit_value_asmap(LitValue v)
 {
-    return (LitMap*)lit_as_object(v);
+    return (LitMap*)lit_value_asobject(v);
 }
 
 static inline LitBoundMethod* lit_value_asboundmethod(LitValue v)
 {
-    return (LitBoundMethod*)lit_as_object(v);
+    return (LitBoundMethod*)lit_value_asobject(v);
 }
 
 static inline LitUserdata* lit_value_asuserdata(LitValue v)
 {
-    return (LitUserdata*)lit_as_object(v);
+    return (LitUserdata*)lit_value_asobject(v);
 }
 
 static inline LitRange* lit_value_asrange(LitValue v)
 {
-    return (LitRange*)lit_as_object(v);
+    return (LitRange*)lit_value_asobject(v);
 }
 
 static inline LitField* lit_value_asfield(LitValue v)
 {
-    return (LitField*)lit_as_object(v);
+    return (LitField*)lit_value_asobject(v);
 }
 
 static inline LitFiber* lit_value_asfiber(LitValue v)
 {
-    return (LitFiber*)lit_as_object(v);
+    return (LitFiber*)lit_value_asobject(v);
 }
 
 static inline LitReference* lit_value_asreference(LitValue v)
 {
-    return (LitReference*)lit_as_object(v);
+    return (LitReference*)lit_value_asobject(v);
 }
 
-#define lit_value_objectvalue(obj) lit_object_to_value_actual((uintptr_t)obj)
-
-static inline LitValue lit_object_to_value_actual(uintptr_t obj)
-{
-    return (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj));
-}
 
 /* copy a string, creating a full newly allocated LitString. */
 LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
@@ -1518,7 +1507,6 @@ void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
 void lit_table_remove_white(LitTable* table);
 void lit_mark_table(LitVM* vm, LitTable* table);
 bool lit_is_callable_function(LitValue value);
-LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);
 
 /**
 * string methods
@@ -1620,14 +1608,14 @@ void lit_init_vm(LitState* state, LitVM* vm);
 void lit_free_vm(LitVM* vm);
 void lit_trace_vm_stack(LitVM* vm, LitWriter* wr);
 
-static inline void lit_push(LitVM* vm, LitValue value)
+static inline void lit_vm_push(LitVM* vm, LitValue value)
 {
     *(vm->fiber->stack_top) = value;
     vm->fiber->stack_top++;
 
 }
 
-static inline LitValue lit_pop(LitVM* vm)
+static inline LitValue lit_vm_pop(LitVM* vm)
 {
     LitValue rt;
     rt = *(vm->fiber->stack_top);

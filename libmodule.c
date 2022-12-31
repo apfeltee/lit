@@ -21,7 +21,7 @@ static LitValue access_private(LitVM* vm, LitMap* map, LitString* name, LitValue
 
     if(lit_table_get(&module->private_names->values, name, &value))
     {
-        index = (int)lit_value_to_number(value);
+        index = (int)lit_value_asnumber(value);
         if(index > -1 && index < (int)module->private_count)
         {
             if(val != NULL)

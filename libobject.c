@@ -22,24 +22,11 @@ bool lit_is_callable_function(LitValue value)
     return false;
 }
 
-LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
-{
-    LitObject* object;
-    object = (LitObject*)lit_reallocate(state, NULL, 0, size);
-    object->type = type;
-    object->marked = false;
-    object->next = state->vm->objects;
-    state->vm->objects = object;
-#ifdef LIT_LOG_ALLOCATION
-    printf("%p allocate %ld for %s\n", (void*)object, size, lit_get_value_type(type));
-#endif
-    return object;
-}
 
 LitFunction* lit_create_function(LitState* state, LitModule* module)
 {
     LitFunction* function;
-    function = (LitFunction*)lit_allocate_object(state, sizeof(LitFunction), LITTYPE_FUNCTION);
+    function = (LitFunction*)lit_allocate_object(state, sizeof(LitFunction), LITTYPE_FUNCTION, false);
     lit_init_chunk(&function->chunk);
     function->name = NULL;
     function->arg_count = 0;
@@ -109,7 +96,7 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
     }
     if(name == NULL)
     {
-        return lit_value_objectvalue(lit_string_format(vm->state, "function #", *((double*)lit_as_object(instance))));
+        return lit_value_objectvalue(lit_string_format(vm->state, "function #", *((double*)lit_value_asobject(instance))));
     }
 
     return lit_value_objectvalue(lit_string_format(vm->state, "function @", lit_value_objectvalue(name)));
@@ -118,7 +105,7 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot)
 {
     LitUpvalue* upvalue;
-    upvalue = (LitUpvalue*)lit_allocate_object(state, sizeof(LitUpvalue), LITTYPE_UPVALUE);
+    upvalue = (LitUpvalue*)lit_allocate_object(state, sizeof(LitUpvalue), LITTYPE_UPVALUE, false);
     upvalue->location = slot;
     upvalue->closed = NULL_VALUE;
     upvalue->next = NULL;
@@ -130,7 +117,7 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function)
     size_t i;
     LitClosure* closure;
     LitUpvalue** upvalues;
-    closure = (LitClosure*)lit_allocate_object(state, sizeof(LitClosure), LITTYPE_CLOSURE);
+    closure = (LitClosure*)lit_allocate_object(state, sizeof(LitClosure), LITTYPE_CLOSURE, false);
     lit_state_pushroot(state, (LitObject*)closure);
     upvalues = LIT_ALLOCATE(state, sizeof(LitUpvalue*), function->upvalue_count);
     lit_state_poproot(state);
@@ -147,7 +134,7 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function)
 LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name)
 {
     LitNativeFunction* native;
-    native = (LitNativeFunction*)lit_allocate_object(state, sizeof(LitNativeFunction), LITTYPE_NATIVE_FUNCTION);
+    native = (LitNativeFunction*)lit_allocate_object(state, sizeof(LitNativeFunction), LITTYPE_NATIVE_FUNCTION, false);
     native->function = function;
     native->name = name;
     return native;
@@ -156,7 +143,7 @@ LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunction
 LitNativePrimFunction* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function, LitString* name)
 {
     LitNativePrimFunction* native;
-    native = (LitNativePrimFunction*)lit_allocate_object(state, sizeof(LitNativePrimFunction), LITTYPE_NATIVE_PRIMITIVE);
+    native = (LitNativePrimFunction*)lit_allocate_object(state, sizeof(LitNativePrimFunction), LITTYPE_NATIVE_PRIMITIVE, false);
     native->function = function;
     native->name = name;
     return native;
@@ -165,7 +152,7 @@ LitNativePrimFunction* lit_create_native_primitive(LitState* state, LitNativePri
 LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method, LitString* name)
 {
     LitNativeMethod* native;
-    native = (LitNativeMethod*)lit_allocate_object(state, sizeof(LitNativeMethod), LITTYPE_NATIVE_METHOD);
+    native = (LitNativeMethod*)lit_allocate_object(state, sizeof(LitNativeMethod), LITTYPE_NATIVE_METHOD, false);
     native->method = method;
     native->name = name;
     return native;
@@ -174,7 +161,7 @@ LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn met
 LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method, LitString* name)
 {
     LitPrimitiveMethod* native;
-    native = (LitPrimitiveMethod*)lit_allocate_object(state, sizeof(LitPrimitiveMethod), LITTYPE_PRIMITIVE_METHOD);
+    native = (LitPrimitiveMethod*)lit_allocate_object(state, sizeof(LitPrimitiveMethod), LITTYPE_PRIMITIVE_METHOD, false);
     native->method = method;
     native->name = name;
     return native;
@@ -191,7 +178,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
     stack_capacity = function == NULL ? 1 : (size_t)lit_closest_power_of_two(function->max_slots + 1);
     stack = LIT_ALLOCATE(state, sizeof(LitValue), stack_capacity);
     frames = LIT_ALLOCATE(state, sizeof(LitCallFrame), LIT_INITIAL_CALL_FRAMES);
-    fiber = (LitFiber*)lit_allocate_object(state, sizeof(LitFiber), LITTYPE_FIBER);
+    fiber = (LitFiber*)lit_allocate_object(state, sizeof(LitFiber), LITTYPE_FIBER, false);
     if(module != NULL)
     {
         if(module->main_fiber == NULL)
@@ -257,7 +244,7 @@ void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, size_t needed)
 LitModule* lit_create_module(LitState* state, LitString* name)
 {
     LitModule* module;
-    module = (LitModule*)lit_allocate_object(state, sizeof(LitModule), LITTYPE_MODULE);
+    module = (LitModule*)lit_allocate_object(state, sizeof(LitModule), LITTYPE_MODULE, false);
     module->name = name;
     module->return_value = NULL_VALUE;
     module->main_function = NULL;
@@ -272,7 +259,7 @@ LitModule* lit_create_module(LitState* state, LitString* name)
 LitClass* lit_create_class(LitState* state, LitString* name)
 {
     LitClass* klass;
-    klass = (LitClass*)lit_allocate_object(state, sizeof(LitClass), LITTYPE_CLASS);
+    klass = (LitClass*)lit_allocate_object(state, sizeof(LitClass), LITTYPE_CLASS, false);
     klass->name = name;
     klass->init_method = NULL;
     klass->super = NULL;
@@ -284,7 +271,7 @@ LitClass* lit_create_class(LitState* state, LitString* name)
 LitInstance* lit_create_instance(LitState* state, LitClass* klass)
 {
     LitInstance* instance;
-    instance = (LitInstance*)lit_allocate_object(state, sizeof(LitInstance), LITTYPE_INSTANCE);
+    instance = (LitInstance*)lit_allocate_object(state, sizeof(LitInstance), LITTYPE_INSTANCE, false);
     instance->klass = klass;
     lit_table_init(state, &instance->fields);
     instance->fields.count = 0;
@@ -294,7 +281,7 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass)
 LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitValue method)
 {
     LitBoundMethod* bound_method;
-    bound_method = (LitBoundMethod*)lit_allocate_object(state, sizeof(LitBoundMethod), LITTYPE_BOUND_METHOD);
+    bound_method = (LitBoundMethod*)lit_allocate_object(state, sizeof(LitBoundMethod), LITTYPE_BOUND_METHOD, false);
     bound_method->receiver = receiver;
     bound_method->method = method;
     return bound_method;
@@ -303,7 +290,7 @@ LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitV
 LitArray* lit_create_array(LitState* state)
 {
     LitArray* array;
-    array = (LitArray*)lit_allocate_object(state, sizeof(LitArray), LITTYPE_ARRAY);
+    array = (LitArray*)lit_allocate_object(state, sizeof(LitArray), LITTYPE_ARRAY, false);
     lit_vallist_init(&array->list);
     return array;
 }
@@ -311,7 +298,7 @@ LitArray* lit_create_array(LitState* state)
 LitMap* lit_create_map(LitState* state)
 {
     LitMap* map;
-    map = (LitMap*)lit_allocate_object(state, sizeof(LitMap), LITTYPE_MAP);
+    map = (LitMap*)lit_allocate_object(state, sizeof(LitMap), LITTYPE_MAP, false);
     lit_table_init(state, &map->values);
     map->index_fn = NULL;
     return map;
@@ -354,7 +341,7 @@ void lit_map_add_all(LitState* state, LitMap* from, LitMap* to)
 LitUserdata* lit_create_userdata(LitState* state, size_t size, bool ispointeronly)
 {
     LitUserdata* userdata;
-    userdata = (LitUserdata*)lit_allocate_object(state, sizeof(LitUserdata), LITTYPE_USERDATA);
+    userdata = (LitUserdata*)lit_allocate_object(state, sizeof(LitUserdata), LITTYPE_USERDATA, false);
     userdata->data = NULL;
     if(size > 0)
     {
@@ -372,7 +359,7 @@ LitUserdata* lit_create_userdata(LitState* state, size_t size, bool ispointeronl
 LitRange* lit_create_range(LitState* state, double from, double to)
 {
     LitRange* range;
-    range = (LitRange*)lit_allocate_object(state, sizeof(LitRange), LITTYPE_RANGE);
+    range = (LitRange*)lit_allocate_object(state, sizeof(LitRange), LITTYPE_RANGE, false);
     range->from = from;
     range->to = to;
     return range;
@@ -381,7 +368,7 @@ LitRange* lit_create_range(LitState* state, double from, double to)
 LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter)
 {
     LitField* field;
-    field = (LitField*)lit_allocate_object(state, sizeof(LitField), LITTYPE_FIELD);
+    field = (LitField*)lit_allocate_object(state, sizeof(LitField), LITTYPE_FIELD, false);
     field->getter = getter;
     field->setter = setter;
     return field;
@@ -390,7 +377,7 @@ LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter
 LitReference* lit_create_reference(LitState* state, LitValue* slot)
 {
     LitReference* reference;
-    reference = (LitReference*)lit_allocate_object(state, sizeof(LitReference), LITTYPE_REFERENCE);
+    reference = (LitReference*)lit_allocate_object(state, sizeof(LitReference), LITTYPE_REFERENCE, false);
     reference->slot = slot;
     return reference;
 }
@@ -529,9 +516,9 @@ static LitValue objfn_object_iterator(LitVM* vm, LitValue instance, size_t argc,
     LitInstance* self;
     LIT_ENSURE_ARGS(1);
     self = lit_value_asinstance(instance);
-    index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
+    index = argv[0] == NULL_VALUE ? -1 : lit_value_asnumber(argv[0]);
     value = util_table_iterator(&self->fields, index);
-    return value == -1 ? NULL_VALUE : lit_number_to_value(vm->state, value);
+    return value == -1 ? NULL_VALUE : lit_value_numbertovalue(vm->state, value);
 }
 
 

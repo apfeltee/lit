@@ -314,9 +314,9 @@ static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, Li
     (void)vm;
     int index;
     int value;
-    index = argv[0] == NULL_VALUE ? -1 : lit_value_to_number(argv[0]);
+    index = argv[0] == NULL_VALUE ? -1 : lit_value_asnumber(argv[0]);
     value = util_table_iterator(&lit_value_asmap(instance)->values, index);
-    return value == -1 ? NULL_VALUE : lit_number_to_value(vm->state, value);
+    return value == -1 ? NULL_VALUE : lit_value_numbertovalue(vm->state, value);
 }
 
 static LitValue objfn_map_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -453,7 +453,7 @@ static LitValue objfn_map_length(LitVM* vm, LitValue instance, size_t argc, LitV
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, lit_value_asmap(instance)->values.count);
+    return lit_value_numbertovalue(vm->state, lit_value_asmap(instance)->values.count);
 }
 
 void lit_open_map_library(LitState* state)

@@ -106,7 +106,7 @@ double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id
         lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_get_value_type(args[id]));
     }
-    return lit_value_to_number(args[id]);
+    return lit_value_asnumber(args[id]);
 }
 
 double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def)
@@ -116,7 +116,7 @@ double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
     {
         return def;
     }
-    return lit_value_to_number(args[id]);
+    return lit_value_asnumber(args[id]);
 }
 
 bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
@@ -360,7 +360,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
             }
 
             fiber->stack_top -= varargc;
-            lit_push(vm, lit_value_objectvalue(array));
+            lit_vm_push(vm, lit_value_objectvalue(array));
         }
         else
         {
@@ -611,7 +611,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
         }
         else if(lit_value_isnumber(object))
         {
-            return lit_value_asstring(lit_string_numbertostring(state, lit_value_to_number(object)));
+            return lit_value_asstring(lit_string_numbertostring(state, lit_value_asnumber(object)));
         }
         else if(lit_value_isbool(object))
         {

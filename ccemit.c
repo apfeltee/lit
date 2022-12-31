@@ -388,7 +388,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
         LitValue index;
         lit_table_get(private_names, key, &index);
 
-        return lit_value_to_number(index);
+        return lit_value_asnumber(index);
     }
 
     LitState* state = emitter->state;
@@ -396,7 +396,7 @@ static int add_private(LitEmitter* emitter, const char* name, size_t length, siz
 
     lit_privlist_push(state, privates, (LitPrivate){ false, constant });
 
-    lit_table_set(state, private_names, lit_string_copy(state, name, length), lit_number_to_value(state, index));
+    lit_table_set(state, private_names, lit_string_copy(state, name, length), lit_value_numbertovalue(state, index));
     emitter->module->private_count++;
 
     return index;
@@ -412,7 +412,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, size_t length,
         LitValue index;
         lit_table_get(private_names, key, &index);
 
-        int number_index = lit_value_to_number(index);
+        int number_index = lit_value_asnumber(index);
 
         if(!emitter->privates.values[number_index].initialized)
         {

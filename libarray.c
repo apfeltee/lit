@@ -297,7 +297,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
             lit_runtime_error_exiting(vm, "array index must be a number");
         }
         values = &lit_value_asarray(instance)->list;
-        index = lit_value_to_number(argv[0]);
+        index = lit_value_asnumber(argv[0]);
         if(index < 0)
         {
             index = fmax(0, lit_vallist_count(values) + index);
@@ -316,7 +316,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
         return NULL_VALUE;
     }
     values = &lit_value_asarray(instance)->list;
-    index = lit_value_to_number(argv[0]);
+    index = lit_value_asnumber(argv[0]);
     if(index < 0)
     {
         index = fmax(0, lit_vallist_count(values) + index);
@@ -443,7 +443,7 @@ static LitValue objfn_array_indexof(LitVM* vm, LitValue instance, size_t argc, L
     LIT_ENSURE_ARGS(1)
 
         int index = lit_array_indexof(lit_value_asarray(instance), argv[0]);
-    return index == -1 ? NULL_VALUE : lit_number_to_value(vm->state, index);
+    return index == -1 ? NULL_VALUE : lit_value_numbertovalue(vm->state, index);
 }
 
 
@@ -497,14 +497,14 @@ static LitValue objfn_array_iterator(LitVM* vm, LitValue instance, size_t argc, 
     number = 0;
     if(lit_value_isnumber(argv[0]))
     {
-        number = lit_value_to_number(argv[0]);
+        number = lit_value_asnumber(argv[0]);
         if(number >= (int)lit_vallist_count(&array->list) - 1)
         {
             return NULL_VALUE;
         }
         number++;
     }
-    return lit_vallist_count(&array->list) == 0 ? NULL_VALUE : lit_number_to_value(vm->state, number);
+    return lit_vallist_count(&array->list) == 0 ? NULL_VALUE : lit_value_numbertovalue(vm->state, number);
 }
 
 static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -712,7 +712,7 @@ static LitValue objfn_array_length(LitVM* vm, LitValue instance, size_t argc, Li
     (void)vm;
     (void)argc;
     (void)argv;
-    return lit_number_to_value(vm->state, lit_vallist_count(&lit_value_asarray(instance)->list));
+    return lit_value_numbertovalue(vm->state, lit_vallist_count(&lit_value_asarray(instance)->list));
 }
 
 void lit_open_array_library(LitState* state)
