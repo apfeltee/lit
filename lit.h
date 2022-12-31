@@ -1214,16 +1214,7 @@ static inline bool lit_value_isfalsey(LitValue v)
     return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
 }
 
-static inline LitObjectType lit_value_type(LitValue v)
-{
-    LitObject* o;
-    o = lit_value_asobject(v);
-    if(o == NULL)
-    {
-        return LITTYPE_UNDEFINED;
-    }
-    return o->type;
-}
+LitObjectType lit_value_type(LitValue v);
 
 static inline bool lit_value_asbool(LitValue v)
 {

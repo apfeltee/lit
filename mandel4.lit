@@ -7,7 +7,8 @@ for(y = -1.0; y < 1.0; y = y + 0.05)
         var v = 0.0;
         var u2 = u * u;
         var v2 = v * v;
-        for(var k = 1; k < 100 && u2 + v2 < 4.0; k++)
+        var k
+        for(k = 1; k < 100 && u2 + v2 < 4.0; k++)
         {
             v = 2.0 * u * v + y;
             u = u2 - v2 + x;
@@ -16,7 +17,7 @@ for(y = -1.0; y < 1.0; y = y + 0.05)
         }
         if(k < 40)
         {
-            (print)(k % 10);
+            print(k % 10);
         }
         else
         {

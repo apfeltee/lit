@@ -1,0 +1,66 @@
+
+function run()
+{
+    left_edge   = -420
+    right_edge  =  300
+    top_edge    =  300
+    bottom_edge = -300
+    x_step      =    7
+    y_step      =   15
+    max_iter    =  500
+    y0 = top_edge
+    while(y0 > bottom_edge)
+    {
+        x0 = left_edge
+        while(x0 < right_edge)
+        {
+            y = 0
+            x = 0
+            the_char = 32
+            i = 0
+            while (i < max_iter)
+            {
+                x_x = (x * x) / 200
+                y_y = (y * y) / 200
+                if (x_x + y_y > 800)
+                {
+                    the_char = 48 + i
+                    if(i > 9)
+                    {
+                        the_char = 64
+                    }
+                    i = max_iter
+                }
+                y = x * y / 100 + y0
+                x = x_x - y_y + x0
+                i = i + 1
+            }
+            //print(chr(the_char))
+            if((the_char % 20) == 0)
+            {
+                print("/")
+            }
+            else if((the_char % 15) == 0)
+            {
+                print("#")
+            }
+            else if((the_char % 10) == 0)
+            {
+                print("@")
+            }
+            else if((the_char % 5) == 0)
+            {
+                print("$")
+            }
+            else
+            {
+                print("-")
+            }
+            x0 = x0 + x_step
+        }
+        print("\n")
+        y0 = y0 - y_step
+    }
+}
+
+run()

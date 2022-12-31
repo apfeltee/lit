@@ -91,6 +91,7 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
             break;
         default:
             {
+                return NULL_VALUE;
             }
             break;
     }

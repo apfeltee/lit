@@ -32,6 +32,21 @@ bool lit_value_isobject(LitValue v)
     return ((v & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT));
 }
 
+LitObjectType lit_value_type(LitValue v)
+{
+    LitObject* o;
+    if(lit_value_isobject(v))
+    {
+        o = lit_value_asobject(v);
+        if(o == NULL)
+        {
+            return LITTYPE_UNDEFINED;
+        }
+        return o->type;
+    }
+    return LITTYPE_UNDEFINED;
+}
+
 double lit_value_asnumber(LitValue v)
 {
     #if defined(USE_NUMBEROBJECT) && (USE_NUMBEROBJECT == 1)
