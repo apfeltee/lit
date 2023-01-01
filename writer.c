@@ -377,7 +377,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     LitInterpretResult inret;
     LitValue args[1] = {NULL_VALUE};
     mthname = CONST_STRING(state, "toString");
-    fprintf(stderr, "lit_print_value: checking if toString() exists for '%s' ...\n", lit_get_value_type(value));
+    fprintf(stderr, "lit_print_value: checking if toString() exists for '%s' ...\n", lit_value_typename(value));
     if(lit_value_asclass(value) != NULL)
     {
         mthtostring = lit_instance_get_method(state, value, mthname);
@@ -420,7 +420,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
 }
 
 
-const char* lit_get_value_type(LitValue value)
+const char* lit_value_typename(LitValue value)
 {
     if(lit_value_isbool(value))
     {

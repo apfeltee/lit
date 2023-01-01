@@ -4,7 +4,7 @@
 #include "lit.h"
 #include "sds.h"
 
-#define USE_NUMBEROBJECT 0
+
 
 LitValue lit_value_objectvalue_actual(uintptr_t obj)
 {
@@ -46,6 +46,8 @@ LitObjectType lit_value_type(LitValue v)
     }
     return LITTYPE_UNDEFINED;
 }
+
+#define USE_NUMBEROBJECT 0
 
 double lit_value_asnumber(LitValue v)
 {

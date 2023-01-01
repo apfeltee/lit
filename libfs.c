@@ -911,7 +911,7 @@ static void make_handle(LitState* state, LitValue fileval, const char* name, FIL
         args[0] = lit_value_objectvalue(userhnd);
         args[1] = lit_value_objectvalue(descname);
         res = lit_call(state, fileval, args, 2, false);
-        //fprintf(stderr, "make_handle(%s, hnd=%p): res.type=%d, res.result=%s\n", name, hnd, res.type, lit_get_value_type(res.result));
+        //fprintf(stderr, "make_handle(%s, hnd=%p): res.type=%d, res.result=%s\n", name, hnd, res.type, lit_value_typename(res.result));
         lit_set_global(state, varname, res.result);
     }
     state->vm->fiber = oldfiber;
@@ -921,7 +921,7 @@ static void make_stdhandles(LitState* state)
 {
     LitValue fileval;
     fileval = lit_get_global(state, CONST_STRING(state, "File"));
-    fprintf(stderr, "fileval=%s\n", lit_get_value_type(fileval));
+    fprintf(stderr, "fileval=%s\n", lit_value_typename(fileval));
     {
         make_handle(state, fileval, "STDIN", stdin, true, false);
         make_handle(state, fileval, "STDOUT", stdout, false, true);

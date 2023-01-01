@@ -34,7 +34,7 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type,
     obj->next = state->vm->objects;
     state->vm->objects = obj;
     #ifdef LIT_LOG_ALLOCATION
-        printf("%p allocate %ld for %s\n", (void*)obj, size, lit_get_value_type(type));
+        printf("%p allocate %ld for %s\n", (void*)obj, size, lit_value_typename(type));
     #endif
 
     return obj;
@@ -78,7 +78,7 @@ void lit_free_object(LitState* state, LitObject* object)
 #ifdef LIT_LOG_ALLOCATION
     printf("(");
     lit_print_value(lit_value_objectvalue(object));
-    printf(") %p free %s\n", (void*)object, lit_get_value_type(object->type));
+    printf(") %p free %s\n", (void*)object, lit_value_typename(object->type));
 #endif
 
     switch(object->type)

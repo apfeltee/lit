@@ -184,7 +184,7 @@
     }
 
 
-typedef uint64_t LitValue;
+
 
 enum LitOpCode
 {
@@ -471,6 +471,7 @@ enum LitObjectType
 
 };
 
+typedef uint64_t LitValue;
 typedef enum /**/LitOpCode LitOpCode;
 typedef enum /**/LitExpressionType LitExpressionType;
 typedef enum /**/LitOptimizationLevel LitOptimizationLevel;
@@ -534,6 +535,7 @@ typedef struct /**/LitParamList LitParamList;
 typedef struct /**/LitPrivList LitPrivList;
 typedef struct /**/LitLocList LitLocList;
 typedef struct /**/LitDataList LitDataList;
+
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM*, size_t, LitValue*);
 typedef bool (*LitNativePrimitiveFn)(LitVM*, size_t, LitValue*);
@@ -615,24 +617,9 @@ struct LitUintList
     LitDataList list;
 };
 
-
-
-#define USE_DATALIST 1
-
 struct LitValueList
 {
-    #if defined(USE_DATALIST) && (USE_DATALIST == 1)
-        LitDataList list;
-    #else
-        /* how many values *could* this list hold? */
-        size_t capacity;
-
-        /* actual amount of values in this list */
-        size_t count;
-
-        /* the actual values */
-        LitValue* values;
-    #endif
+    LitDataList list;
 };
 
 struct LitChunk
@@ -1406,7 +1393,7 @@ LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mt
 void lit_print_value(LitState* state, LitWriter* wr, LitValue value);
 
 /* returns the static string name of this type. does *not* represent class name, et al. just the LitValueType name! */
-const char* lit_get_value_type(LitValue value);
+const char* lit_value_typename(LitValue value);
 
 /* allocate/reallocate memory. if new_size is 0, frees the pointer, and returns NULL. */
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);

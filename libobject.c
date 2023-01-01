@@ -91,15 +91,17 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
             break;
         default:
             {
-                return NULL_VALUE;
+                //return NULL_VALUE;
             }
             break;
     }
     if(name == NULL)
     {
-        return lit_value_objectvalue(lit_string_format(vm->state, "function #", *((double*)lit_value_asobject(instance))));
+        if(lit_value_isobject(instance))
+        {
+            return lit_value_objectvalue(lit_string_format(vm->state, "function #", *((double*)lit_value_asobject(instance))));
+        }
     }
-
     return lit_value_objectvalue(lit_string_format(vm->state, "function @", lit_value_objectvalue(name)));
 }
 
