@@ -2,9 +2,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "lit.h"
-#include "sds.h"
-
-
 
 LitValue lit_value_objectvalue_actual(uintptr_t obj)
 {
@@ -32,7 +29,7 @@ bool lit_value_isobject(LitValue v)
     return ((v & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT));
 }
 
-LitObjectType lit_value_type(LitValue v)
+LitObjType lit_value_type(LitValue v)
 {
     LitObject* o;
     if(lit_value_isobject(v))

@@ -83,7 +83,7 @@ bool lit_is_callable_function(LitValue value)
 {
     if(lit_value_isobject(value))
     {
-        LitObjectType type = lit_value_type(value);
+        LitObjType type = lit_value_type(value);
         return (
             (type == LITTYPE_CLOSURE) ||
             (type == LITTYPE_FUNCTION) ||

@@ -305,7 +305,7 @@ static void save_chunk(FILE* file, LitChunk* chunk)
 
         if(lit_value_isobject(constant))
         {
-            LitObjectType type = lit_value_asobject(constant)->type;
+            LitObjType type = lit_value_asobject(constant)->type;
             lit_write_uint8_t(file, (uint8_t)(type + 1));
 
             switch(type)
@@ -386,7 +386,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
         }
         else
         {
-            switch((LitObjectType)(type - 1))
+            switch((LitObjType)(type - 1))
             {
                 case LITTYPE_STRING:
                     {

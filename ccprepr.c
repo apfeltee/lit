@@ -183,7 +183,7 @@ bool lit_preproc_run(LitPreprocessor* preprocessor, char* source)
                     }
                     else
                     {
-                        lit_state_raiseerror(preprocessor->state, (LitErrorType)0,
+                        lit_state_raiseerror(preprocessor->state, (LitErrType)0,
                                   lit_format_error(preprocessor->state, 0, LITERROR_UNKNOWN_MACRO, (int)(current - macro_start) - 1, macro_start)
                                   ->chars);
                         return false;
@@ -210,7 +210,7 @@ bool lit_preproc_run(LitPreprocessor* preprocessor, char* source)
     } while(c != '\0');
     if(in_macro || lit_vallist_count(&preprocessor->open_ifs) > 0 || depth > 0)
     {
-        lit_state_raiseerror(preprocessor->state, (LitErrorType)0, lit_format_error(preprocessor->state, 0, LITERROR_UNCLOSED_MACRO)->chars);
+        lit_state_raiseerror(preprocessor->state, (LitErrType)0, lit_format_error(preprocessor->state, 0, LITERROR_UNCLOSED_MACRO)->chars);
         return false;
     }
     lit_vallist_destroy(preprocessor->state, &preprocessor->open_ifs);

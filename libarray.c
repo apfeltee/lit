@@ -2,7 +2,6 @@
 #include "lit.h"
 #include "sds.h"
 
-
 void lit_datalist_init(LitDataList* dl, size_t typsz)
 {
     dl->values = NULL;

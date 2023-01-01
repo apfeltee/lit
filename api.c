@@ -219,7 +219,7 @@ void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
     }
 }
 
-void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error)
+void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjType type, const char* error)
 {
     if(!lit_value_isobject(value) || lit_value_type(value) != type)
     {
@@ -421,7 +421,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
     uint8_t i;
     LitVM* vm;
     LitInterpretResult lir;
-    LitObjectType type;
+    LitObjType type;
     LitClass* klass;
     LitFiber* fiber;
     LitValue* slot;

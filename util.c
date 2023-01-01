@@ -1,8 +1,8 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <limits.h>
 #include "lit.h"
-#include "sds.h"
 
 #if 0
     #define pack754_32(f) (pack754((f), 32, 8))

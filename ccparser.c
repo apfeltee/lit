@@ -8,7 +8,7 @@ static jmp_buf prs_jmpbuffer;
 static LitParseRule rules[LITTOK_EOF + 1];
 
 
-static LitTokenType operators[]=
+static LitTokType operators[]=
 {
     LITTOK_PLUS, LITTOK_MINUS, LITTOK_STAR, LITTOK_PERCENT, LITTOK_SLASH,
     LITTOK_SHARP, LITTOK_BANG, LITTOK_LESS, LITTOK_LESS_EQUAL, LITTOK_GREATER,
@@ -244,7 +244,7 @@ static void prs_end_scope(LitParser* parser)
     parser->compiler->scope_depth--;
 }
 
-static LitParseRule* get_rule(LitTokenType type)
+static LitParseRule* get_rule(LitTokType type)
 {
     return &rules[type];
 }
@@ -327,12 +327,12 @@ static void prs_rollback(LitParser* parser)
 }
 
 
-static bool check(LitParser* parser, LitTokenType type)
+static bool check(LitParser* parser, LitTokType type)
 {
     return parser->current.type == type;
 }
 
-static bool prs_match(LitParser* parser, LitTokenType type)
+static bool prs_match(LitParser* parser, LitTokType type)
 {
     if(parser->current.type == type)
     {
@@ -426,7 +426,7 @@ static void ignore_new_lines(LitParser* parser, bool checksemi)
     match_new_line(parser);
 }
 
-static void consume(LitParser* parser, LitTokenType type, const char* error)
+static void consume(LitParser* parser, LitTokType type, const char* error)
 {
     bool line;
     size_t olen;
@@ -691,7 +691,7 @@ static LitExpression* prule_call(LitParser* parser, LitExpression* prev, bool ca
         {
             break;
         }
-        if(e->type == LITEXPR_VAR)
+        if(e->type == LITEXPR_VAREXPR)
         {
             ee = (LitVarExpr*)e;
             // Vararg ...
@@ -714,7 +714,7 @@ static LitExpression* prule_unary(LitParser* parser, bool can_assign)
     (void)can_assign;
     size_t line;
     LitExpression* expression;
-    LitTokenType op;
+    LitTokType op;
     op = parser->previous.type;
     line = parser->previous.line;
     expression = parse_precedence(parser, LITPREC_UNARY, true, true);
@@ -728,7 +728,7 @@ static LitExpression* prule_binary(LitParser* parser, LitExpression* prev, bool 
     size_t line;
     LitParseRule* rule;
     LitExpression* expression;
-    LitTokenType op;
+    LitTokType op;
     invert = parser->previous.type == LITTOK_BANG;
     if(invert)
     {
@@ -750,7 +750,7 @@ static LitExpression* prule_and(LitParser* parser, LitExpression* prev, bool can
 {
     (void)can_assign;
     size_t line;
-    LitTokenType op;
+    LitTokType op;
     op = parser->previous.type;
     line = parser->previous.line;
     return (LitExpression*)lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, LITPREC_AND, true, true), op);
@@ -760,7 +760,7 @@ static LitExpression* prule_or(LitParser* parser, LitExpression* prev, bool can_
 {
     (void)can_assign;
     size_t line;
-    LitTokenType op;
+    LitTokType op;
     op = parser->previous.type;
     line = parser->previous.line;
     return (LitExpression*)lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, LITPREC_OR, true, true), op);
@@ -770,13 +770,13 @@ static LitExpression* prule_null_filter(LitParser* parser, LitExpression* prev, 
 {
     (void)can_assign;
     size_t line;
-    LitTokenType op;
+    LitTokType op;
     op = parser->previous.type;
     line = parser->previous.line;
     return (LitExpression*)lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, LITPREC_NULL, true, true), op);
 }
 
-static LitTokenType convert_compound_operator(LitTokenType op)
+static LitTokType convert_compound_operator(LitTokType op)
 {
     switch(op)
     {
@@ -841,7 +841,7 @@ static LitTokenType convert_compound_operator(LitTokenType op)
             }
             break;
     }
-    return (LitTokenType)-1;
+    return (LitTokType)-1;
 }
 
 static LitExpression* prule_compound(LitParser* parser, LitExpression* prev, bool can_assign)
@@ -851,7 +851,7 @@ static LitExpression* prule_compound(LitParser* parser, LitExpression* prev, boo
     LitBinaryExpr* binary;
     LitExpression* expression;
     LitParseRule* rule;
-    LitTokenType op;
+    LitTokType op;
     op = parser->previous.type;
     line = parser->previous.line;
     rule = get_rule(op);

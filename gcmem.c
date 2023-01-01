@@ -9,7 +9,7 @@
     static size_t g_objcount = 0;
 #endif
 
-LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjectType type, bool islight)
+LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, bool islight)
 {
     LitObject* obj;
     if(islight)
@@ -111,7 +111,7 @@ void lit_gcmem_markvalue(LitVM* vm, LitValue value)
     }
 }
 
-static void mark_roots(LitVM* vm)
+void lit_gcmem_vmmarkroots(LitVM* vm)
 {
     size_t i;
     LitState* state;
@@ -140,7 +140,7 @@ static void mark_roots(LitVM* vm)
     lit_gcmem_marktable(vm, &vm->globals->values);
 }
 
-static void mark_array(LitVM* vm, LitValueList* array)
+void lit_gcmem_markarray(LitVM* vm, LitValueList* array)
 {
     size_t i;
     for(i = 0; i < lit_vallist_count(array); i++)
@@ -149,7 +149,7 @@ static void mark_array(LitVM* vm, LitValueList* array)
     }
 }
 
-static void blacken_object(LitVM* vm, LitObject* object)
+void lit_gcmem_vmblackobject(LitVM* vm, LitObject* object)
 {
     size_t i;
     LitUserdata* data;
@@ -193,7 +193,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
             {
                 function = (LitFunction*)object;
                 lit_gcmem_markobject(vm, (LitObject*)function->name);
-                mark_array(vm, &function->chunk.constants);
+                lit_gcmem_markarray(vm, &function->chunk.constants);
             }
             break;
         case LITTYPE_FIBER:
@@ -282,7 +282,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
             break;
         case LITTYPE_ARRAY:
             {
-                mark_array(vm, &((LitArray*)object)->list);
+                lit_gcmem_markarray(vm, &((LitArray*)object)->list);
             }
             break;
         case LITTYPE_MAP:
@@ -311,17 +311,17 @@ static void blacken_object(LitVM* vm, LitObject* object)
     }
 }
 
-static void trace_references(LitVM* vm)
+void lit_gcmem_vmtracerefs(LitVM* vm)
 {
     LitObject* object;
     while(vm->gray_count > 0)
     {
         object = vm->gray_stack[--vm->gray_count];
-        blacken_object(vm, object);
+        lit_gcmem_vmblackobject(vm, object);
     }
 }
 
-static void sweep(LitVM* vm)
+void lit_gcmem_vmsweep(LitVM* vm)
 {
     LitObject* unreached;
     LitObject* previous;
@@ -372,10 +372,10 @@ uint64_t lit_gcmem_collectgarbage(LitVM* vm)
     t = clock();
 #endif
 
-    mark_roots(vm);
-    trace_references(vm);
-    lit_table_remove_white(&vm->strings);
-    sweep(vm);
+    lit_gcmem_vmmarkroots(vm);
+    lit_gcmem_vmtracerefs(vm);
+    lit_table_removewhite(&vm->strings);
+    lit_gcmem_vmsweep(vm);
     vm->state->next_gc = vm->state->bytes_allocated * LIT_GC_HEAP_GROW_FACTOR;
     vm->state->allow_gc = true;
     collected = before - vm->state->bytes_allocated;

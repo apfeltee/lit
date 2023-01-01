@@ -188,7 +188,7 @@ void lit_table_add_all(LitState* state, LitTable* from, LitTable* to)
     }
 }
 
-void lit_table_remove_white(LitTable* table)
+void lit_table_removewhite(LitTable* table)
 {
     int i;
     LitTableEntry* entry;

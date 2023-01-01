@@ -103,37 +103,7 @@
 #define TAG_FALSE 2u
 #define TAG_TRUE 3u
 
-#define LIT_EXIT_CODE_ARGUMENT_ERROR 1
-#define LIT_EXIT_CODE_MEM_LEAK 2
-#define LIT_EXIT_CODE_RUNTIME_ERROR 70
-#define LIT_EXIT_CODE_COMPILE_ERROR 65
-
 #define LIT_TESTS_DIRECTORY "tests"
-
-
-#if !defined(LIT_DISABLE_COLOR) && !defined(LIT_ENABLE_COLOR) && !(defined(LIT_OS_WINDOWS) || defined(EMSCRIPTEN))
-    #define LIT_ENABLE_COLOR
-#endif
-
-#ifdef LIT_ENABLE_COLOR
-    #define COLOR_RESET "\x1B[0m"
-    #define COLOR_RED "\x1B[31m"
-    #define COLOR_GREEN "\x1B[32m"
-    #define COLOR_YELLOW "\x1B[33m"
-    #define COLOR_BLUE "\x1B[34m"
-    #define COLOR_MAGENTA "\x1B[35m"
-    #define COLOR_CYAN "\x1B[36m"
-    #define COLOR_WHITE "\x1B[37m"
-#else
-    #define COLOR_RESET ""
-    #define COLOR_RED ""
-    #define COLOR_GREEN ""
-    #define COLOR_YELLOW ""
-    #define COLOR_BLUE ""
-    #define COLOR_MAGENTA ""
-    #define COLOR_CYAN ""
-    #define COLOR_WHITE ""
-#endif
 
 #define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
 #define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
@@ -193,12 +163,12 @@ enum LitOpCode
 #undef OPCODE
 };
 
-enum LitExpressionType
+enum LitExprType
 {
     LITEXPR_LITERAL,
     LITEXPR_BINARY,
     LITEXPR_UNARY,
-    LITEXPR_VAR,
+    LITEXPR_VAREXPR,
     LITEXPR_ASSIGN,
     LITEXPR_CALL,
     LITEXPR_SET,
@@ -210,26 +180,26 @@ enum LitExpressionType
     LITEXPR_THIS,
     LITEXPR_SUPER,
     LITEXPR_RANGE,
-    LITEXPR_IF,
+    LITEXPR_IFEXPR,
     LITEXPR_INTERPOLATION,
     LITEXPR_REFERENCE,
 
-    LITSTMT_EXPRESSION,
-    LITSTMT_BLOCK,
-    LITSTMT_IF,
-    LITSTMT_WHILE,
-    LITSTMT_FOR,
-    LITSTMT_VAR,
-    LITSTMT_CONTINUE,
-    LITSTMT_BREAK,
-    LITSTMT_FUNCTION,
-    LITSTMT_RETURN,
-    LITSTMT_METHOD,
-    LITSTMT_CLASS,
-    LITSTMT_FIELD
+    LITEXPR_EXPRESSION,
+    LITEXPR_BLOCK,
+    LITEXPR_IFSTMT,
+    LITEXPR_WHILE,
+    LITEXPR_FOR,
+    LITEXPR_VARSTMT,
+    LITEXPR_CONTINUE,
+    LITEXPR_BREAK,
+    LITEXPR_FUNCTION,
+    LITEXPR_RETURN,
+    LITEXPR_METHOD,
+    LITEXPR_CLASS,
+    LITEXPR_FIELD
 };
 
-enum LitOptimizationLevel
+enum LitOptLevel
 {
     LITOPTLEVEL_NONE,
     LITOPTLEVEL_REPL,
@@ -326,7 +296,7 @@ enum LitPrecedence
     LITPREC_PRIMARY
 };
 
-enum LitTokenType
+enum LitTokType
 {
     LITTOK_NEW_LINE,
 
@@ -421,7 +391,7 @@ enum LitTokenType
     LITTOK_EOF
 };
 
-enum LitInterpretResultType
+enum LitResult
 {
     LITRESULT_OK,
     LITRESULT_COMPILE_ERROR,
@@ -429,13 +399,13 @@ enum LitInterpretResultType
     LITRESULT_INVALID
 };
 
-enum LitErrorType
+enum LitErrType
 {
     COMPILE_ERROR,
     RUNTIME_ERROR
 };
 
-enum LitFunctionType
+enum LitFuncType
 {
     LITFUNC_REGULAR,
     LITFUNC_SCRIPT,
@@ -444,7 +414,7 @@ enum LitFunctionType
     LITFUNC_CONSTRUCTOR
 };
 
-enum LitObjectType
+enum LitObjType
 {
     LITTYPE_UNDEFINED,
     LITTYPE_NULL,
@@ -468,21 +438,20 @@ enum LitObjectType
     LITTYPE_FIELD,
     LITTYPE_REFERENCE,
     LITTYPE_NUMBER,
-
 };
 
 typedef uint64_t LitValue;
 typedef enum /**/LitOpCode LitOpCode;
-typedef enum /**/LitExpressionType LitExpressionType;
-typedef enum /**/LitOptimizationLevel LitOptimizationLevel;
+typedef enum /**/LitExprType LitExprType;
+typedef enum /**/LitOptLevel LitOptLevel;
 typedef enum /**/LitOptimization LitOptimization;
 typedef enum /**/LitError LitError;
 typedef enum /**/LitPrecedence LitPrecedence;
-typedef enum /**/LitTokenType LitTokenType;
-typedef enum /**/LitInterpretResultType LitInterpretResultType;
-typedef enum /**/LitErrorType LitErrorType;
-typedef enum /**/LitFunctionType LitFunctionType;
-typedef enum /**/LitObjectType LitObjectType;
+typedef enum /**/LitTokType LitTokType;
+typedef enum /**/LitResult LitResult;
+typedef enum /**/LitErrType LitErrType;
+typedef enum /**/LitFuncType LitFuncType;
+typedef enum /**/LitObjType LitObjType;
 typedef struct /**/LitScanner LitScanner;
 typedef struct /**/LitPreprocessor LitPreprocessor;
 typedef struct /**/LitVM LitVM;
@@ -608,7 +577,7 @@ struct LitVarList
 
 struct LitExpression
 {
-    LitExpressionType type;
+    LitExprType type;
     size_t line;
 };
 
@@ -661,7 +630,7 @@ struct LitTable
 struct LitObject
 {
     /* the type of this object */
-    LitObjectType type;
+    LitObjType type;
     LitObject* next;
     bool marked;
     bool mustfree;
@@ -924,7 +893,7 @@ struct LitVM
 struct LitInterpretResult
 {
     /* the result of this interpret/call attempt */
-    LitInterpretResultType type;
+    LitResult type;
     /* the value returned from this interpret/call attempt */
     LitValue result;
 };
@@ -932,7 +901,7 @@ struct LitInterpretResult
 struct LitToken
 {
     const char* start;
-    LitTokenType type;
+    LitTokType type;
     size_t length;
     size_t line;
     LitValue value;
@@ -965,7 +934,7 @@ struct LitCompiler
     LitLocList locals;
     int scope_depth;
     LitFunction* function;
-    LitFunctionType type;
+    LitFuncType type;
     LitCompilerUpvalue upvalues[UINT8_COUNT];
     LitCompiler* enclosing;
     bool skip_return;
@@ -1103,7 +1072,7 @@ int lit_array_indexof(LitArray *array, LitValue value);
 /* remove the value at $index */
 LitValue lit_array_removeat(LitArray *array, size_t index);
 
-LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjectType type, bool islight);
+LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, bool islight);
 
 
 #define lit_value_objectvalue(obj) lit_value_objectvalue_actual((uintptr_t)obj)
@@ -1201,7 +1170,7 @@ static inline bool lit_value_isfalsey(LitValue v)
     return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
 }
 
-LitObjectType lit_value_type(LitValue v);
+LitObjType lit_value_type(LitValue v);
 
 static inline bool lit_value_asbool(LitValue v)
 {
@@ -1423,7 +1392,7 @@ bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value);
 bool lit_table_delete(LitTable* table, LitString* key);
 LitString* lit_table_find_string(LitTable* table, const char* chars, size_t length, uint32_t hash);
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
-void lit_table_remove_white(LitTable* table);
+void lit_table_removewhite(LitTable* table);
 void lit_gcmem_marktable(LitVM* vm, LitTable* table);
 bool lit_is_callable_function(LitValue value);
 
@@ -1519,7 +1488,7 @@ LitInterpretResult lit_state_execfile(LitState* state, const char* file);
 LitInterpretResult lit_state_dumpfile(LitState* state, const char* file);
 bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, const char* output_file);
 
-void lit_state_raiseerror(LitState* state, LitErrorType type, const char* message, ...);
+void lit_state_raiseerror(LitState* state, LitErrType type, const char* message, ...);
 void lit_state_printf(LitState* state, const char* message, ...);
 void lit_enable_compilation_time_measurement();
 
@@ -1589,7 +1558,7 @@ LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint
 void lit_ensure_bool(LitVM* vm, LitValue value, const char* error);
 void lit_ensure_string(LitVM* vm, LitValue value, const char* error);
 void lit_ensure_number(LitVM* vm, LitValue value, const char* error);
-void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjectType type, const char* error);
+void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjType type, const char* error);
 
 
 LitValue lit_get_field(LitState* state, LitTable* table, const char* name);
@@ -1676,12 +1645,12 @@ LitToken lit_scan_token(LitScanner* scanner);
 LitToken lit_scan_rollback(LitScanner* scanner);
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
 void lit_optimize(LitOptimizer* optimizer, LitExprList* statements);
-const char* lit_get_optimization_level_description(LitOptimizationLevel level);
+const char* lit_get_optimization_level_description(LitOptLevel level);
 
 bool lit_is_optimization_enabled(LitOptimization optimization);
 void lit_set_optimization_enabled(LitOptimization optimization, bool enabled);
 void lit_set_all_optimization_enabled(bool enabled);
-void lit_set_optimization_level(LitOptimizationLevel level);
+void lit_set_optimization_level(LitOptLevel level);
 
 const char* lit_get_optimization_name(LitOptimization optimization);
 const char* lit_get_optimization_description(LitOptimization optimization);

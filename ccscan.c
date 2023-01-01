@@ -53,7 +53,7 @@ void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_nam
     scanner->had_error = false;
 }
 
-static LitToken make_token(LitScanner* scanner, LitTokenType type)
+static LitToken make_token(LitScanner* scanner, LitTokType type)
 {
     LitToken token;
     token.type = type;
@@ -105,12 +105,12 @@ static bool match(LitScanner* scanner, char expected)
     return true;
 }
 
-static LitToken match_token(LitScanner* scanner, char c, LitTokenType a, LitTokenType b)
+static LitToken match_token(LitScanner* scanner, char c, LitTokType a, LitTokType b)
 {
     return make_token(scanner, match(scanner, c) ? a : b);
 }
 
-static LitToken match_tokens(LitScanner* scanner, char cr, char cb, LitTokenType a, LitTokenType b, LitTokenType c)
+static LitToken match_tokens(LitScanner* scanner, char cr, char cb, LitTokType a, LitTokType b, LitTokType c)
 {
     return make_token(scanner, match(scanner, cr) ? a : (match(scanner, cb) ? b : c));
 }
@@ -200,7 +200,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
     LitState* state;
     LitByteList bytes;
     LitToken token;
-    LitTokenType string_type;
+    LitTokType string_type;
     state = scanner->state;
     string_type = LITTOK_STRING;
     lit_init_bytes(&bytes);
@@ -409,7 +409,7 @@ static LitToken scan_number(LitScanner* scanner)
     return make_number_token(scanner, false, false);
 }
 
-static LitTokenType check_keyword(LitScanner* scanner, int start, int length, const char* rest, LitTokenType type)
+static LitTokType check_keyword(LitScanner* scanner, int start, int length, const char* rest, LitTokType type)
 {
     if(scanner->current - scanner->start == start + length && memcmp(scanner->start + start, rest, length) == 0)
     {
@@ -418,7 +418,7 @@ static LitTokenType check_keyword(LitScanner* scanner, int start, int length, co
     return LITTOK_IDENTIFIER;
 }
 
-static LitTokenType scan_identtype(LitScanner* scanner)
+static LitTokType scan_identtype(LitScanner* scanner)
 {
     switch(scanner->start[0])
     {

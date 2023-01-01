@@ -503,7 +503,7 @@ LitInterpretResult lit_state_dumpfile(LitState* state, const char* file)
     return result;
 }
 
-void lit_state_raiseerror(LitState* state, LitErrorType type, const char* message, ...)
+void lit_state_raiseerror(LitState* state, LitErrType type, const char* message, ...)
 {
     size_t buffer_size;
     char* buffer;

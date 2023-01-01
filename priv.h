@@ -3,6 +3,29 @@
 
 #include "lit.h"
 
+#if !defined(LIT_DISABLE_COLOR) && !defined(LIT_ENABLE_COLOR) && !(defined(LIT_OS_WINDOWS) || defined(EMSCRIPTEN))
+    #define LIT_ENABLE_COLOR
+#endif
+
+#ifdef LIT_ENABLE_COLOR
+    #define COLOR_RESET "\x1B[0m"
+    #define COLOR_RED "\x1B[31m"
+    #define COLOR_GREEN "\x1B[32m"
+    #define COLOR_YELLOW "\x1B[33m"
+    #define COLOR_BLUE "\x1B[34m"
+    #define COLOR_MAGENTA "\x1B[35m"
+    #define COLOR_CYAN "\x1B[36m"
+    #define COLOR_WHITE "\x1B[37m"
+#else
+    #define COLOR_RESET ""
+    #define COLOR_RED ""
+    #define COLOR_GREEN ""
+    #define COLOR_YELLOW ""
+    #define COLOR_BLUE ""
+    #define COLOR_MAGENTA ""
+    #define COLOR_CYAN ""
+    #define COLOR_WHITE ""
+#endif
 
 typedef struct /**/LitLiteralExpr LitLiteralExpr;
 typedef struct /**/LitBinaryExpr LitBinaryExpr;
@@ -99,7 +122,7 @@ struct LitBinaryExpr
     LitExpression expression;
     LitExpression* left;
     LitExpression* right;
-    LitTokenType op;
+    LitTokType op;
     bool ignore_left;
 };
 
@@ -107,7 +130,7 @@ struct LitUnaryExpr
 {
     LitExpression expression;
     LitExpression* right;
-    LitTokenType op;
+    LitTokType op;
 };
 
 struct LitVarExpr
@@ -364,8 +387,8 @@ void lit_free_expression(LitState* state, LitExpression* expression);
 LitLiteralExpr* lit_create_literal_expression(LitState* state, size_t line, LitValue value);
 
 LitBinaryExpr*
-lit_create_binary_expression(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokenType op);
-LitUnaryExpr* lit_create_unary_expression(LitState* state, size_t line, LitExpression* right, LitTokenType op);
+lit_create_binary_expression(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokType op);
+LitUnaryExpr* lit_create_unary_expression(LitState* state, size_t line, LitExpression* right, LitTokType op);
 LitVarExpr* lit_create_var_expression(LitState* state, size_t line, const char* name, size_t length);
 LitAssignExpression* lit_create_assign_expression(LitState* state, size_t line, LitExpression* to, LitExpression* value);
 LitCallExpression* lit_create_call_expression(LitState* state, size_t line, LitExpression* callee);

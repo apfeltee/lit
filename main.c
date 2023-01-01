@@ -17,7 +17,12 @@
     #endif
 #endif
 
-#include "lit.h"
+#include "priv.h"
+
+#define LIT_EXIT_CODE_ARGUMENT_ERROR 1
+#define LIT_EXIT_CODE_MEM_LEAK 2
+#define LIT_EXIT_CODE_RUNTIME_ERROR 70
+#define LIT_EXIT_CODE_COMPILE_ERROR 65
 
 enum
 {
@@ -145,7 +150,7 @@ static void show_optimization_help()
     printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.\n\n");
     for(i = 0; i < LITOPTLEVEL_TOTAL; i++)
     {
-        printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptimizationLevel)i));
+        printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptLevel)i));
     }
 }
 
@@ -154,7 +159,7 @@ static bool match_arg(const char* arg, const char* a, const char* b)
     return strcmp(arg, a) == 0 || strcmp(arg, b) == 0;
 }
 
-int exitstate(LitState* state, LitInterpretResultType result)
+int exitstate(LitState* state, LitResult result)
 {
     int64_t amount;
     amount = lit_destroy_state(state);
@@ -277,7 +282,7 @@ int main(int argc, char* argv[])
     LitState* state;
     FlagContext_t fx;
     Options_t opts;
-    LitInterpretResultType result;
+    LitResult result;
     replexit = false;
     cmdfailed = false;
     result = LITRESULT_OK;
@@ -358,7 +363,7 @@ int oldmain(int argc, const char* argv[])
     char* files_to_run[128];
     LitState* state;
     LitModule* module;
-    LitInterpretResultType result;
+    LitResult result;
     LitArray* arg_array;
 
     ec = 0;
@@ -425,7 +430,7 @@ int oldmain(int argc, const char* argv[])
 
                 if(c >= '0' && c <= '4')
                 {
-                    lit_set_optimization_level((LitOptimizationLevel)(c - '0'));
+                    lit_set_optimization_level((LitOptLevel)(c - '0'));
                     continue;
                 }
             }

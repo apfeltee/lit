@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <setjmp.h>
-#include "lit.h"
+#include "priv.h"
 
 typedef struct LitExecState LitExecState;
 
