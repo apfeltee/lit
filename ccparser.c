@@ -22,45 +22,110 @@ static void sync(LitParser* parser);
 
 static LitExpression *parse_block(LitParser *parser);
 static LitExpression *parse_precedence(LitParser *parser, LitPrecedence precedence, bool err, bool ignsemi);
-static LitExpression *parse_number(LitParser *parser, bool can_assign);
 static LitExpression *parse_lambda(LitParser *parser, LitLambdaExpression *lambda);
 static void parse_parameters(LitParser *parser, LitParamList *parameters);
-static LitExpression *parse_grouping_or_lambda(LitParser *parser, bool can_assign);
-static LitExpression *parse_call(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_unary(LitParser *parser, bool can_assign);
-static LitExpression *parse_binary(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_and(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_or(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_null_filter(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_compound(LitParser *parser, LitExpression *prev, bool can_assign);
-static LitExpression *parse_literal(LitParser *parser, bool can_assign);
-static LitExpression *parse_string(LitParser *parser, bool can_assign);
-static LitExpression *parse_interpolation(LitParser *parser, bool can_assign);
-static LitExpression *parse_object(LitParser *parser, bool can_assign);
-static LitExpression *parse_variable_expression_base(LitParser *parser, bool can_assign, bool isnew);
-static LitExpression *parse_variable_expression(LitParser *parser, bool can_assign);
-static LitExpression *parse_new_expression(LitParser *parser, bool can_assign);
-static LitExpression *parse_dot(LitParser *parser, LitExpression *previous, bool can_assign);
-static LitExpression *parse_range(LitParser *parser, LitExpression *previous, bool can_assign);
-static LitExpression *parse_ternary_or_question(LitParser *parser, LitExpression *previous, bool can_assign);
-static LitExpression *parse_array(LitParser *parser, bool can_assign);
-static LitExpression *parse_subscript(LitParser *parser, LitExpression *previous, bool can_assign);
-static LitExpression *parse_this(LitParser *parser, bool can_assign);
-static LitExpression *parse_super(LitParser *parser, bool can_assign);
-static LitExpression *parse_reference(LitParser *parser, bool can_assign);
 static LitExpression *parse_expression(LitParser *parser, bool ignsemi);
-static LitExpression *parse_nothing(LitParser *parser, bool canassign);
 static LitExpression *parse_var_declaration(LitParser *parser, bool ignsemi);
 static LitExpression *parse_if(LitParser *parser);
 static LitExpression *parse_for(LitParser *parser);
 static LitExpression *parse_while(LitParser *parser);
-static LitExpression *parse_function(LitParser *parser);
 static LitExpression *parse_return(LitParser *parser);
 static LitExpression *parse_field(LitParser *parser, LitString *name, bool is_static);
 static LitExpression *parse_method(LitParser *parser, bool is_static);
 static LitExpression *parse_class(LitParser *parser);
 static LitExpression *parse_statement(LitParser *parser);
 static LitExpression *parse_declaration(LitParser *parser);
+
+static LitExpression *prule_number(LitParser *parser, bool can_assign);
+static LitExpression *prule_grouping_or_lambda(LitParser *parser, bool can_assign);
+static LitExpression *prule_call(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_unary(LitParser *parser, bool can_assign);
+static LitExpression *prule_binary(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_and(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_or(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_null_filter(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_compound(LitParser *parser, LitExpression *prev, bool can_assign);
+static LitExpression *prule_literal(LitParser *parser, bool can_assign);
+static LitExpression *prule_string(LitParser *parser, bool can_assign);
+static LitExpression *prule_interpolation(LitParser *parser, bool can_assign);
+static LitExpression *prule_object(LitParser *parser, bool can_assign);
+static LitExpression *prule_variable_expression_base(LitParser *parser, bool can_assign, bool isnew);
+static LitExpression *prule_variable_expression(LitParser *parser, bool can_assign);
+static LitExpression *prule_new_expression(LitParser *parser, bool can_assign);
+static LitExpression *prule_dot(LitParser *parser, LitExpression *previous, bool can_assign);
+static LitExpression *prule_range(LitParser *parser, LitExpression *previous, bool can_assign);
+static LitExpression *prule_ternary_or_question(LitParser *parser, LitExpression *previous, bool can_assign);
+static LitExpression *prule_array(LitParser *parser, bool can_assign);
+static LitExpression *prule_subscript(LitParser *parser, LitExpression *previous, bool can_assign);
+static LitExpression *prule_this(LitParser *parser, bool can_assign);
+static LitExpression *prule_super(LitParser *parser, bool can_assign);
+static LitExpression *prule_reference(LitParser *parser, bool can_assign);
+static LitExpression *prule_nothing(LitParser *parser, bool canassign);
+static LitExpression *prule_function(LitParser *parser, bool canassign);
+
+
+static void setup_rules()
+{
+    rules[LITTOK_LEFT_PAREN] = (LitParseRule){ prule_grouping_or_lambda, prule_call, LITPREC_CALL };
+    rules[LITTOK_PLUS] = (LitParseRule){ NULL, prule_binary, LITPREC_TERM };
+    rules[LITTOK_MINUS] = (LitParseRule){ prule_unary, prule_binary, LITPREC_TERM };
+    rules[LITTOK_BANG] = (LitParseRule){ prule_unary, prule_binary, LITPREC_TERM };
+    rules[LITTOK_STAR] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_STAR_STAR] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_SLASH] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_SHARP] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_STAR] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_STAR] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_BAR] = (LitParseRule){ NULL, prule_binary, LITPREC_BOR };
+    rules[LITTOK_AMPERSAND] = (LitParseRule){ NULL, prule_binary, LITPREC_BAND };
+    rules[LITTOK_TILDE] = (LitParseRule){ prule_unary, NULL, LITPREC_UNARY };
+    rules[LITTOK_CARET] = (LitParseRule){ NULL, prule_binary, LITPREC_BOR };
+    rules[LITTOK_LESS_LESS] = (LitParseRule){ NULL, prule_binary, LITPREC_SHIFT };
+    rules[LITTOK_GREATER_GREATER] = (LitParseRule){ NULL, prule_binary, LITPREC_SHIFT };
+    rules[LITTOK_PERCENT] = (LitParseRule){ NULL, prule_binary, LITPREC_FACTOR };
+    rules[LITTOK_IS] = (LitParseRule){ NULL, prule_binary, LITPREC_IS };
+    rules[LITTOK_NUMBER] = (LitParseRule){ prule_number, NULL, LITPREC_NONE };
+    rules[LITTOK_TRUE] = (LitParseRule){ prule_literal, NULL, LITPREC_NONE };
+    rules[LITTOK_FALSE] = (LitParseRule){ prule_literal, NULL, LITPREC_NONE };
+    rules[LITTOK_NULL] = (LitParseRule){ prule_literal, NULL, LITPREC_NONE };
+    rules[LITTOK_BANG_EQUAL] = (LitParseRule){ NULL, prule_binary, LITPREC_EQUALITY };
+    rules[LITTOK_EQUAL_EQUAL] = (LitParseRule){ NULL, prule_binary, LITPREC_EQUALITY };
+    rules[LITTOK_GREATER] = (LitParseRule){ NULL, prule_binary, LITPREC_COMPARISON };
+    rules[LITTOK_GREATER_EQUAL] = (LitParseRule){ NULL, prule_binary, LITPREC_COMPARISON };
+    rules[LITTOK_LESS] = (LitParseRule){ NULL, prule_binary, LITPREC_COMPARISON };
+    rules[LITTOK_LESS_EQUAL] = (LitParseRule){ NULL, prule_binary, LITPREC_COMPARISON };
+    rules[LITTOK_STRING] = (LitParseRule){ prule_string, NULL, LITPREC_NONE };
+    rules[LITTOK_INTERPOLATION] = (LitParseRule){ prule_interpolation, NULL, LITPREC_NONE };
+    rules[LITTOK_IDENTIFIER] = (LitParseRule){ prule_variable_expression, NULL, LITPREC_NONE };
+    rules[LITTOK_NEW] = (LitParseRule){ prule_new_expression, NULL, LITPREC_NONE };
+    rules[LITTOK_PLUS_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_MINUS_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_STAR_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_SLASH_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_SHARP_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_PERCENT_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_CARET_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_BAR_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_AMPERSAND_EQUAL] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_PLUS_PLUS] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_MINUS_MINUS] = (LitParseRule){ NULL, prule_compound, LITPREC_COMPOUND };
+    rules[LITTOK_AMPERSAND_AMPERSAND] = (LitParseRule){ NULL, prule_and, LITPREC_AND };
+    rules[LITTOK_BAR_BAR] = (LitParseRule){ NULL, prule_or, LITPREC_AND };
+    rules[LITTOK_QUESTION_QUESTION] = (LitParseRule){ NULL, prule_null_filter, LITPREC_NULL };
+    rules[LITTOK_DOT] = (LitParseRule){ NULL, prule_dot, LITPREC_CALL };
+    rules[LITTOK_SMALL_ARROW] = (LitParseRule){ NULL, prule_dot, LITPREC_CALL };
+    rules[LITTOK_DOT_DOT] = (LitParseRule){ NULL, prule_range, LITPREC_RANGE };
+    rules[LITTOK_DOT_DOT_DOT] = (LitParseRule){ prule_variable_expression, NULL, LITPREC_ASSIGNMENT };
+    rules[LITTOK_LEFT_BRACKET] = (LitParseRule){ prule_array, prule_subscript, LITPREC_NONE };
+    rules[LITTOK_LEFT_BRACE] = (LitParseRule){ prule_object, NULL, LITPREC_NONE };
+    rules[LITTOK_THIS] = (LitParseRule){ prule_this, NULL, LITPREC_NONE };
+    rules[LITTOK_SUPER] = (LitParseRule){ prule_super, NULL, LITPREC_NONE };
+    rules[LITTOK_QUESTION] = (LitParseRule){ NULL, prule_ternary_or_question, LITPREC_EQUALITY };
+    rules[LITTOK_REF] = (LitParseRule){ prule_reference, NULL, LITPREC_NONE };
+    rules[LITTOK_FUNCTION] = (LitParseRule){prule_function, NULL, LITPREC_NONE};
+    rules[LITTOK_SEMICOLON] = (LitParseRule){prule_nothing, NULL, LITPREC_NONE};
+}
+
 
 const char* token_name(int t)
 {
@@ -152,67 +217,6 @@ const char* token_name(int t)
             break;
     }
     return "?unknown?";
-}
-
-static void setup_rules()
-{
-    rules[LITTOK_LEFT_PAREN] = (LitParseRule){ parse_grouping_or_lambda, parse_call, LITPREC_CALL };
-    rules[LITTOK_PLUS] = (LitParseRule){ NULL, parse_binary, LITPREC_TERM };
-    rules[LITTOK_MINUS] = (LitParseRule){ parse_unary, parse_binary, LITPREC_TERM };
-    rules[LITTOK_BANG] = (LitParseRule){ parse_unary, parse_binary, LITPREC_TERM };
-    rules[LITTOK_STAR] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_STAR_STAR] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_SLASH] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_SHARP] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_STAR] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_STAR] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_BAR] = (LitParseRule){ NULL, parse_binary, LITPREC_BOR };
-    rules[LITTOK_AMPERSAND] = (LitParseRule){ NULL, parse_binary, LITPREC_BAND };
-    rules[LITTOK_TILDE] = (LitParseRule){ parse_unary, NULL, LITPREC_UNARY };
-    rules[LITTOK_CARET] = (LitParseRule){ NULL, parse_binary, LITPREC_BOR };
-    rules[LITTOK_LESS_LESS] = (LitParseRule){ NULL, parse_binary, LITPREC_SHIFT };
-    rules[LITTOK_GREATER_GREATER] = (LitParseRule){ NULL, parse_binary, LITPREC_SHIFT };
-    rules[LITTOK_PERCENT] = (LitParseRule){ NULL, parse_binary, LITPREC_FACTOR };
-    rules[LITTOK_IS] = (LitParseRule){ NULL, parse_binary, LITPREC_IS };
-    rules[LITTOK_NUMBER] = (LitParseRule){ parse_number, NULL, LITPREC_NONE };
-    rules[LITTOK_TRUE] = (LitParseRule){ parse_literal, NULL, LITPREC_NONE };
-    rules[LITTOK_FALSE] = (LitParseRule){ parse_literal, NULL, LITPREC_NONE };
-    rules[LITTOK_NULL] = (LitParseRule){ parse_literal, NULL, LITPREC_NONE };
-    rules[LITTOK_BANG_EQUAL] = (LitParseRule){ NULL, parse_binary, LITPREC_EQUALITY };
-    rules[LITTOK_EQUAL_EQUAL] = (LitParseRule){ NULL, parse_binary, LITPREC_EQUALITY };
-    rules[LITTOK_GREATER] = (LitParseRule){ NULL, parse_binary, LITPREC_COMPARISON };
-    rules[LITTOK_GREATER_EQUAL] = (LitParseRule){ NULL, parse_binary, LITPREC_COMPARISON };
-    rules[LITTOK_LESS] = (LitParseRule){ NULL, parse_binary, LITPREC_COMPARISON };
-    rules[LITTOK_LESS_EQUAL] = (LitParseRule){ NULL, parse_binary, LITPREC_COMPARISON };
-    rules[LITTOK_STRING] = (LitParseRule){ parse_string, NULL, LITPREC_NONE };
-    rules[LITTOK_INTERPOLATION] = (LitParseRule){ parse_interpolation, NULL, LITPREC_NONE };
-    rules[LITTOK_IDENTIFIER] = (LitParseRule){ parse_variable_expression, NULL, LITPREC_NONE };
-    rules[LITTOK_NEW] = (LitParseRule){ parse_new_expression, NULL, LITPREC_NONE };
-    rules[LITTOK_PLUS_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_MINUS_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_STAR_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_SLASH_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_SHARP_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_PERCENT_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_CARET_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_BAR_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_AMPERSAND_EQUAL] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_PLUS_PLUS] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_MINUS_MINUS] = (LitParseRule){ NULL, parse_compound, LITPREC_COMPOUND };
-    rules[LITTOK_AMPERSAND_AMPERSAND] = (LitParseRule){ NULL, parse_and, LITPREC_AND };
-    rules[LITTOK_BAR_BAR] = (LitParseRule){ NULL, parse_or, LITPREC_AND };
-    rules[LITTOK_QUESTION_QUESTION] = (LitParseRule){ NULL, parse_null_filter, LITPREC_NULL };
-    rules[LITTOK_DOT] = (LitParseRule){ NULL, parse_dot, LITPREC_CALL };
-    rules[LITTOK_SMALL_ARROW] = (LitParseRule){ NULL, parse_dot, LITPREC_CALL };
-    rules[LITTOK_DOT_DOT] = (LitParseRule){ NULL, parse_range, LITPREC_RANGE };
-    rules[LITTOK_DOT_DOT_DOT] = (LitParseRule){ parse_variable_expression, NULL, LITPREC_ASSIGNMENT };
-    rules[LITTOK_LEFT_BRACKET] = (LitParseRule){ parse_array, parse_subscript, LITPREC_NONE };
-    rules[LITTOK_LEFT_BRACE] = (LitParseRule){ parse_object, NULL, LITPREC_NONE };
-    rules[LITTOK_THIS] = (LitParseRule){ parse_this, NULL, LITPREC_NONE };
-    rules[LITTOK_SUPER] = (LitParseRule){ parse_super, NULL, LITPREC_NONE };
-    rules[LITTOK_QUESTION] = (LitParseRule){ NULL, parse_ternary_or_question, LITPREC_EQUALITY };
-    rules[LITTOK_REF] = (LitParseRule){ parse_reference, NULL, LITPREC_NONE };
-    rules[LITTOK_SEMICOLON] = (LitParseRule){parse_nothing, NULL, LITPREC_NONE};
 }
 
 
@@ -522,7 +526,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
     return expr;
 }
 
-static LitExpression* parse_number(LitParser* parser, bool can_assign)
+static LitExpression* prule_number(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     return (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
@@ -570,7 +574,7 @@ static void parse_parameters(LitParser* parser, LitParamList* parameters)
     }
 }
 
-static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign)
+static LitExpression* prule_grouping_or_lambda(LitParser* parser, bool can_assign)
 {
     bool stop;
     bool had_default;
@@ -672,7 +676,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
     return expression;
 }
 
-static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_call(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     LitExpression* e;
@@ -705,7 +709,7 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
     return (LitExpression*)expression;
 }
 
-static LitExpression* parse_unary(LitParser* parser, bool can_assign)
+static LitExpression* prule_unary(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -717,7 +721,7 @@ static LitExpression* parse_unary(LitParser* parser, bool can_assign)
     return (LitExpression*)lit_create_unary_expression(parser->state, line, expression, op);
 }
 
-static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_binary(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     bool invert;
@@ -742,7 +746,7 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
     return expression;
 }
 
-static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_and(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -752,7 +756,7 @@ static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can
     return (LitExpression*)lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, LITPREC_AND, true, true), op);
 }
 
-static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_or(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -762,7 +766,7 @@ static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_
     return (LitExpression*)lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, LITPREC_OR, true, true), op);
 }
 
-static LitExpression* parse_null_filter(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_null_filter(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -840,7 +844,7 @@ static LitTokenType convert_compound_operator(LitTokenType op)
     return (LitTokenType)-1;
 }
 
-static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, bool can_assign)
+static LitExpression* prule_compound(LitParser* parser, LitExpression* prev, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -864,7 +868,7 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
     return (LitExpression*)lit_create_assign_expression(parser->state, line, prev, (LitExpression*)binary);
 }
 
-static LitExpression* parse_literal(LitParser* parser, bool can_assign)
+static LitExpression* prule_literal(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -895,19 +899,19 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign)
     return NULL;
 }
 
-static LitExpression* parse_string(LitParser* parser, bool can_assign)
+static LitExpression* prule_string(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     LitExpression* expression;
     expression = (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, expression, can_assign);
+        return prule_subscript(parser, expression, can_assign);
     }
     return expression;
 }
 
-static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
+static LitExpression* prule_interpolation(LitParser* parser, bool can_assign)
 {
     LitInterpolationExpression* expression;
     (void)can_assign;
@@ -931,12 +935,12 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign)
     }
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, (LitExpression*)expression, can_assign);
+        return prule_subscript(parser, (LitExpression*)expression, can_assign);
     }
     return (LitExpression*)expression;
 }
 
-static LitExpression* parse_object(LitParser* parser, bool can_assign)
+static LitExpression* prule_object(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     LitObjectExpression* object;
@@ -961,7 +965,7 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign)
     return (LitExpression*)object;
 }
 
-static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool isnew)
+static LitExpression* prule_variable_expression_base(LitParser* parser, bool can_assign, bool isnew)
 {
     (void)can_assign;
     bool had_args;
@@ -975,7 +979,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
         if(had_args)
         {
             prs_advance(parser);
-            call = (LitCallExpression*)parse_call(parser, expression, false);
+            call = (LitCallExpression*)prule_call(parser, expression, false);
         }
         if(prs_match(parser, LITTOK_LEFT_BRACE))
         {
@@ -983,7 +987,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
             {
                 call = lit_create_call_expression(parser->state, expression->line, expression);
             }
-            call->init = parse_object(parser, false);
+            call->init = prule_object(parser, false);
         }
         else if(!had_args)
         {
@@ -994,7 +998,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
     }
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, expression, can_assign);
+        return prule_subscript(parser, expression, can_assign);
     }
     if(can_assign && prs_match(parser, LITTOK_EQUAL))
     {
@@ -1004,19 +1008,19 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
     return expression;
 }
 
-static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign)
+static LitExpression* prule_variable_expression(LitParser* parser, bool can_assign)
 {
-    return parse_variable_expression_base(parser, can_assign, false);
+    return prule_variable_expression_base(parser, can_assign, false);
 }
 
-static LitExpression* parse_new_expression(LitParser* parser, bool can_assign)
+static LitExpression* prule_new_expression(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     consume(parser, LITTOK_IDENTIFIER, "class name after 'new'");
-    return parse_variable_expression_base(parser, false, true);
+    return prule_variable_expression_base(parser, false, true);
 }
 
-static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool can_assign)
+static LitExpression* prule_dot(LitParser* parser, LitExpression* previous, bool can_assign)
 {
     (void)can_assign;
     bool ignored;
@@ -1039,12 +1043,12 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
     expression = (LitExpression*)lit_create_get_expression(parser->state, line, previous, name, length, false, ignored);
     if(!ignored && prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, expression, can_assign);
+        return prule_subscript(parser, expression, can_assign);
     }
     return expression;
 }
 
-static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bool can_assign)
+static LitExpression* prule_range(LitParser* parser, LitExpression* previous, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -1052,7 +1056,7 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
     return (LitExpression*)lit_create_range_expression(parser->state, line, previous, parse_expression(parser, true));
 }
 
-static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign)
+static LitExpression* prule_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign)
 {
     (void)can_assign;
     bool ignored;
@@ -1073,7 +1077,7 @@ static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression
     return (LitExpression*)lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
 }
 
-static LitExpression* parse_array(LitParser* parser, bool can_assign)
+static LitExpression* prule_array(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     LitExpression* expr;
@@ -1089,8 +1093,8 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign)
         #else
             if(check(parser, LITTOK_COMMA))
             {
-                //parse_null_filter(LitParser *parser, LitExpression *prev, _Bool can_assign)
-                expr = parse_null_filter(parser, NULL, false);
+                //prule_null_filter(LitParser *parser, LitExpression *prev, _Bool can_assign)
+                expr = prule_null_filter(parser, NULL, false);
             }
             else
             {
@@ -1111,12 +1115,12 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign)
     consume(parser, LITTOK_RIGHT_BRACKET, "']' after array");
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, (LitExpression*)array, can_assign);
+        return prule_subscript(parser, (LitExpression*)array, can_assign);
     }
     return (LitExpression*)array;
 }
 
-static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign)
+static LitExpression* prule_subscript(LitParser* parser, LitExpression* previous, bool can_assign)
 {
     size_t line;
     LitExpression* index;
@@ -1127,7 +1131,7 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
     expression = (LitExpression*)lit_create_subscript_expression(parser->state, line, previous, index);
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, expression, can_assign);
+        return prule_subscript(parser, expression, can_assign);
     }
     else if(can_assign && prs_match(parser, LITTOK_EQUAL))
     {
@@ -1136,18 +1140,18 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
     return expression;
 }
 
-static LitExpression* parse_this(LitParser* parser, bool can_assign)
+static LitExpression* prule_this(LitParser* parser, bool can_assign)
 {
     LitExpression* expression;
     expression = (LitExpression*)lit_create_this_expression(parser->state, parser->previous.line);
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
-        return parse_subscript(parser, expression, can_assign);
+        return prule_subscript(parser, expression, can_assign);
     }
     return expression;
 }
 
-static LitExpression* parse_super(LitParser* parser, bool can_assign)
+static LitExpression* prule_super(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     bool ignoring;
@@ -1160,7 +1164,7 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign)
         expression = (LitExpression*)lit_create_super_expression(
         parser->state, line, lit_string_copy(parser->state, "constructor", 11), false);
         consume(parser, LITTOK_LEFT_PAREN, "'(' after 'super'");
-        return parse_call(parser, expression, false);
+        return prule_call(parser, expression, false);
     }
     ignoring = parser->previous.type == LITTOK_SMALL_ARROW;
     consume(parser, LITTOK_IDENTIFIER, ignoring ? "super method name after '->'" : "super method name after '.'");
@@ -1168,18 +1172,18 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign)
     parser->state, line, lit_string_copy(parser->state, parser->previous.start, parser->previous.length), ignoring);
     if(prs_match(parser, LITTOK_LEFT_PAREN))
     {
-        return parse_call(parser, expression, false);
+        return prule_call(parser, expression, false);
     }
     return expression;
 }
 
-static LitExpression *parse_nothing(LitParser *parser, bool canassign)
+static LitExpression *prule_nothing(LitParser *parser, bool canassign)
 {
     (void)canassign;
     return NULL;
 }
 
-static LitExpression* parse_reference(LitParser* parser, bool can_assign)
+static LitExpression* prule_reference(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     size_t line;
@@ -1192,6 +1196,56 @@ static LitExpression* parse_reference(LitParser* parser, bool can_assign)
         return (LitExpression*)lit_create_assign_expression(parser->state, line, (LitExpression*)expression, parse_expression(parser, true));
     }
     return (LitExpression*)expression;
+}
+
+
+
+static LitExpression* parse_statement(LitParser* parser)
+{
+    LitExpression* expression;
+    ignore_new_lines(parser, true);
+    if(setjmp(prs_jmpbuffer))
+    {
+        return NULL;
+    }
+    if(prs_match(parser, LITTOK_VAR) || prs_match(parser, LITTOK_CONST))
+    {
+        return parse_var_declaration(parser, true);
+    }
+    else if(prs_match(parser, LITTOK_IF))
+    {
+        return parse_if(parser);
+    }
+    else if(prs_match(parser, LITTOK_FOR))
+    {
+        return parse_for(parser);
+    }
+    else if(prs_match(parser, LITTOK_WHILE))
+    {
+        return parse_while(parser);
+    }
+    else if(prs_match(parser, LITTOK_CONTINUE))
+    {
+        return (LitExpression*)lit_create_continue_statement(parser->state, parser->previous.line);
+    }
+    else if(prs_match(parser, LITTOK_BREAK))
+    {
+        return (LitExpression*)lit_create_break_statement(parser->state, parser->previous.line);
+    }
+    else if(prs_match(parser, LITTOK_FUNCTION) || prs_match(parser, LITTOK_EXPORT))
+    {
+        return prule_function(parser, false);
+    }
+    else if(prs_match(parser, LITTOK_RETURN))
+    {
+        return parse_return(parser);
+    }
+    else if(prs_match(parser, LITTOK_LEFT_BRACE))
+    {
+        return parse_block(parser);
+    }
+    expression = parse_expression(parser, true);
+    return expression == NULL ? NULL : (LitExpression*)lit_create_expression_statement(parser->state, parser->previous.line, expression);
 }
 
 static LitExpression* parse_expression(LitParser* parser, bool ignsemi)
@@ -1357,32 +1411,52 @@ static LitExpression* parse_while(LitParser* parser)
     return (LitExpression*)lit_create_while_statement(parser->state, line, condition, body);
 }
 
-static LitExpression* parse_function(LitParser* parser)
+static LitExpression* prule_function(LitParser* parser, bool canassign)
 {
-    size_t line;
-    size_t function_length;
     bool isexport;
-    const char* function_name;
+    bool islambda;
+    size_t line;
+    size_t fnamelen;
+    const char* fnamestr;
     LitCompiler compiler;
     LitFunctionStatement* function;
     LitLambdaExpression* lambda;
     LitSetExpression* to;
+    islambda = canassign;
     isexport = parser->previous.type == LITTOK_EXPORT;
+    fnamestr = "<anonymous>";
+    fnamelen = strlen(fnamestr);
     if(isexport)
     {
         consume(parser, LITTOK_FUNCTION, "'function' after 'export'");
     }
     line = parser->previous.line;
-    consume(parser, LITTOK_IDENTIFIER, "function name");
-    function_name = parser->previous.start;
-    function_length = parser->previous.length;
-    if(prs_match(parser, LITTOK_DOT))
+    if(check(parser, LITTOK_IDENTIFIER))
     {
         consume(parser, LITTOK_IDENTIFIER, "function name");
+        fnamestr = parser->previous.start;
+        fnamelen = parser->previous.length;
+    }
+    if(prs_match(parser, LITTOK_DOT) || islambda)
+    //if(prs_match(parser, LITTOK_DOT))
+    {
+        to = NULL;
+        if(check(parser, LITTOK_IDENTIFIER))
+        {
+            consume(parser, LITTOK_IDENTIFIER, "function name");
+        }
         lambda = lit_create_lambda_expression(parser->state, line);
-        to = lit_create_set_expression(
-        parser->state, line, (LitExpression*)lit_create_var_expression(parser->state, line, function_name, function_length),
-        parser->previous.start, parser->previous.length, (LitExpression*)lambda);
+        //if(islambda)
+        {
+            to = lit_create_set_expression(
+                parser->state,
+                line,
+                (LitExpression*)lit_create_var_expression(parser->state, line, fnamestr, fnamelen),
+                parser->previous.start,
+                parser->previous.length,
+                (LitExpression*)lambda
+            );
+        }
         consume(parser, LITTOK_LEFT_PAREN, "'(' after function name");
         prs_init_compiler(parser, &compiler);
         prs_begin_scope(parser);
@@ -1396,9 +1470,13 @@ static LitExpression* parse_function(LitParser* parser)
         lambda->body = parse_statement(parser);
         prs_end_scope(parser);
         prs_end_compiler(parser, &compiler);
+        if(islambda)
+        {
+            return lambda;
+        }
         return (LitExpression*)lit_create_expression_statement(parser->state, line, (LitExpression*)to);
     }
-    function = lit_create_function_statement(parser->state, line, function_name, function_length);
+    function = lit_create_function_statement(parser->state, line, fnamestr, fnamelen);
     function->exported = isexport;
     consume(parser, LITTOK_LEFT_PAREN, "'(' after function name");
     prs_init_compiler(parser, &compiler);
@@ -1632,54 +1710,6 @@ static void sync(LitParser* parser)
             }
         }
     }
-}
-
-static LitExpression* parse_statement(LitParser* parser)
-{
-    LitExpression* expression;
-    ignore_new_lines(parser, true);
-    if(setjmp(prs_jmpbuffer))
-    {
-        return NULL;
-    }
-    if(prs_match(parser, LITTOK_VAR) || prs_match(parser, LITTOK_CONST))
-    {
-        return parse_var_declaration(parser, true);
-    }
-    else if(prs_match(parser, LITTOK_IF))
-    {
-        return parse_if(parser);
-    }
-    else if(prs_match(parser, LITTOK_FOR))
-    {
-        return parse_for(parser);
-    }
-    else if(prs_match(parser, LITTOK_WHILE))
-    {
-        return parse_while(parser);
-    }
-    else if(prs_match(parser, LITTOK_CONTINUE))
-    {
-        return (LitExpression*)lit_create_continue_statement(parser->state, parser->previous.line);
-    }
-    else if(prs_match(parser, LITTOK_BREAK))
-    {
-        return (LitExpression*)lit_create_break_statement(parser->state, parser->previous.line);
-    }
-    else if(prs_match(parser, LITTOK_FUNCTION) || prs_match(parser, LITTOK_EXPORT))
-    {
-        return parse_function(parser);
-    }
-    else if(prs_match(parser, LITTOK_RETURN))
-    {
-        return parse_return(parser);
-    }
-    else if(prs_match(parser, LITTOK_LEFT_BRACE))
-    {
-        return parse_block(parser);
-    }
-    expression = parse_expression(parser, true);
-    return expression == NULL ? NULL : (LitExpression*)lit_create_expression_statement(parser->state, parser->previous.line, expression);
 }
 
 static LitExpression* parse_declaration(LitParser* parser)

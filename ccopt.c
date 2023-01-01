@@ -127,7 +127,7 @@ static void opt_end_scope(LitOptimizer* optimizer)
         if(remove_unused && !variables->values[variables->count - 1].used)
         {
             variable = &variables->values[variables->count - 1];
-            lit_free_statement(optimizer->state, *variable->declaration);
+            lit_free_expression(optimizer->state, *variable->declaration);
             *variable->declaration = NULL;
         }
         variables->count--;
@@ -625,7 +625,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 stmt = (LitBlockStatement*)statement;
                 if(stmt->statements.count == 0)
                 {
-                    lit_free_statement(state, statement);
+                    lit_free_expression(state, statement);
                     *slot = NULL;
                     break;
                 }
@@ -647,7 +647,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                                 step = stmt->statements.values[j];
                                 if(step != NULL)
                                 {
-                                    lit_free_statement(state, step);
+                                    lit_free_expression(state, step);
                                     stmt->statements.values[j] = NULL;
                                 }
                             }
@@ -658,7 +658,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 }
                 if(!found && lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY))
                 {
-                    lit_free_statement(optimizer->state, statement);
+                    lit_free_expression(optimizer->state, statement);
                     *slot = NULL;
                 }
             }
@@ -681,7 +681,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 lit_free_expression(state, stmt->condition);
                 stmt->condition = NULL;
 
-                lit_free_statement(state, stmt->if_branch);
+                lit_free_expression(state, stmt->if_branch);
                 stmt->if_branch = NULL;
             }
 
@@ -699,7 +699,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                             lit_free_expression(state, stmt->elseif_conditions->values[i]);
                             stmt->elseif_conditions->values[i] = NULL;
 
-                            lit_free_statement(state, stmt->elseif_branches->values[i]);
+                            lit_free_expression(state, stmt->elseif_branches->values[i]);
                             stmt->elseif_branches->values[i] = NULL;
 
                             continue;
@@ -714,7 +714,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                                 lit_free_expression(state, stmt->elseif_conditions->values[i]);
                                 stmt->elseif_conditions->values[i] = NULL;
 
-                                lit_free_statement(state, stmt->elseif_branches->values[i]);
+                                lit_free_expression(state, stmt->elseif_branches->values[i]);
                                 stmt->elseif_branches->values[i] = NULL;
                             }
                         }
@@ -737,7 +737,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
                 if(optimized != NULL_VALUE && lit_value_isfalsey(optimized))
                 {
-                    lit_free_statement(optimizer->state, statement);
+                    lit_free_expression(optimizer->state, statement);
                     *slot = NULL;
                     break;
                 }
@@ -747,7 +747,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
             if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
             {
-                lit_free_statement(optimizer->state, statement);
+                lit_free_expression(optimizer->state, statement);
                 *slot = NULL;
             }
 
@@ -769,7 +769,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 opt_end_scope(optimizer);
                 if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
                 {
-                    lit_free_statement(optimizer->state, statement);
+                    lit_free_expression(optimizer->state, statement);
                     *slot = NULL;
                     break;
                 }

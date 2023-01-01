@@ -87,7 +87,7 @@ void internal_free_statements(LitState* state, LitExprList* statements)
 
     for(size_t i = 0; i < statements->count; i++)
     {
-        lit_free_statement(state, statements->values[i]);
+        lit_free_expression(state, statements->values[i]);
     }
 
     lit_exprlist_destroy(state, statements);
@@ -183,7 +183,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
             {
                 LitLambdaExpression* expr = (LitLambdaExpression*)expression;
                 lit_paramlist_freevalues(state, &expr->parameters);
-                lit_free_statement(state, expr->body);
+                lit_free_expression(state, expr->body);
                 lit_reallocate(state, expression, sizeof(LitLambdaExpression), 0);
             }
             break;
@@ -246,6 +246,101 @@ void lit_free_expression(LitState* state, LitExpression* expression)
             {
                 lit_free_expression(state, ((LitReferenceExpression*)expression)->to);
                 lit_reallocate(state, expression, sizeof(LitReferenceExpression), 0);
+            }
+            break;
+        case LITSTMT_EXPRESSION:
+            {
+                lit_free_expression(state, ((LitExpressionStatement*)expression)->expression);
+                lit_reallocate(state, expression, sizeof(LitExpressionStatement), 0);
+            }
+            break;
+        case LITSTMT_BLOCK:
+            {
+                internal_free_statements(state, &((LitBlockStatement*)expression)->statements);
+                lit_reallocate(state, expression, sizeof(LitBlockStatement), 0);
+            }
+            break;
+        case LITSTMT_VAR:
+            {
+                lit_free_expression(state, ((LitVarStatement*)expression)->init);
+                lit_reallocate(state, expression, sizeof(LitVarStatement), 0);
+            }
+            break;
+        case LITSTMT_IF:
+            {
+                LitIfStatement* stmt = (LitIfStatement*)expression;
+                lit_free_expression(state, stmt->condition);
+                lit_free_expression(state, stmt->if_branch);
+                lit_free_allocated_expressions(state, stmt->elseif_conditions);
+                lit_free_allocated_statements(state, stmt->elseif_branches);
+                lit_free_expression(state, stmt->else_branch);
+                lit_reallocate(state, expression, sizeof(LitIfStatement), 0);
+            }
+            break;
+        case LITSTMT_WHILE:
+            {
+                LitWhileStatement* stmt = (LitWhileStatement*)expression;
+                lit_free_expression(state, stmt->condition);
+                lit_free_expression(state, stmt->body);
+                lit_reallocate(state, expression, sizeof(LitWhileStatement), 0);
+            }
+            break;
+        case LITSTMT_FOR:
+            {
+                LitForStatement* stmt = (LitForStatement*)expression;
+                lit_free_expression(state, stmt->increment);
+                lit_free_expression(state, stmt->condition);
+                lit_free_expression(state, stmt->init);
+
+                lit_free_expression(state, stmt->var);
+                lit_free_expression(state, stmt->body);
+                lit_reallocate(state, expression, sizeof(LitForStatement), 0);
+            }
+            break;
+        case LITSTMT_CONTINUE:
+            {
+                lit_reallocate(state, expression, sizeof(LitContinueStatement), 0);
+            }
+            break;
+        case LITSTMT_BREAK:
+            {
+                lit_reallocate(state, expression, sizeof(LitBreakStatement), 0);
+            }
+            break;
+        case LITSTMT_FUNCTION:
+            {
+                LitFunctionStatement* stmt = (LitFunctionStatement*)expression;
+                lit_free_expression(state, stmt->body);
+                lit_paramlist_freevalues(state, &stmt->parameters);
+                lit_reallocate(state, expression, sizeof(LitFunctionStatement), 0);
+            }
+            break;
+        case LITSTMT_RETURN:
+            {
+                lit_free_expression(state, ((LitReturnStatement*)expression)->expression);
+                lit_reallocate(state, expression, sizeof(LitReturnStatement), 0);
+            }
+            break;
+        case LITSTMT_METHOD:
+            {
+                LitMethodStatement* stmt = (LitMethodStatement*)expression;
+                lit_paramlist_freevalues(state, &stmt->parameters);
+                lit_free_expression(state, stmt->body);
+                lit_reallocate(state, expression, sizeof(LitMethodStatement), 0);
+            }
+            break;
+        case LITSTMT_CLASS:
+            {
+                internal_free_statements(state, &((LitClassStatement*)expression)->fields);
+                lit_reallocate(state, expression, sizeof(LitClassStatement), 0);
+            }
+            break;
+        case LITSTMT_FIELD:
+            {
+                LitFieldStatement* stmt = (LitFieldStatement*)expression;
+                lit_free_expression(state, stmt->getter);
+                lit_free_expression(state, stmt->setter);
+                lit_reallocate(state, expression, sizeof(LitFieldStatement), 0);
             }
             break;
         default:
@@ -431,116 +526,7 @@ LitReferenceExpression* lit_create_reference_expression(LitState* state, size_t 
     return expression;
 }
 
-void lit_free_statement(LitState* state, LitExpression* statement)
-{
-    if(statement == NULL)
-    {
-        return;
-    }
-    switch(statement->type)
-    {
-        case LITSTMT_EXPRESSION:
-            {
-                lit_free_expression(state, ((LitExpressionStatement*)statement)->expression);
-                lit_reallocate(state, statement, sizeof(LitExpressionStatement), 0);
-            }
-            break;
-        case LITSTMT_BLOCK:
-            {
-                internal_free_statements(state, &((LitBlockStatement*)statement)->statements);
-                lit_reallocate(state, statement, sizeof(LitBlockStatement), 0);
-            }
-            break;
-        case LITSTMT_VAR:
-            {
-                lit_free_expression(state, ((LitVarStatement*)statement)->init);
-                lit_reallocate(state, statement, sizeof(LitVarStatement), 0);
-            }
-            break;
-        case LITSTMT_IF:
-            {
-                LitIfStatement* stmt = (LitIfStatement*)statement;
-                lit_free_expression(state, stmt->condition);
-                lit_free_statement(state, stmt->if_branch);
-                lit_free_allocated_expressions(state, stmt->elseif_conditions);
-                lit_free_allocated_statements(state, stmt->elseif_branches);
-                lit_free_statement(state, stmt->else_branch);
-                lit_reallocate(state, statement, sizeof(LitIfStatement), 0);
-            }
-            break;
-        case LITSTMT_WHILE:
-            {
-                LitWhileStatement* stmt = (LitWhileStatement*)statement;
-                lit_free_expression(state, stmt->condition);
-                lit_free_statement(state, stmt->body);
-                lit_reallocate(state, statement, sizeof(LitWhileStatement), 0);
-            }
-            break;
-        case LITSTMT_FOR:
-            {
-                LitForStatement* stmt = (LitForStatement*)statement;
-                lit_free_expression(state, stmt->increment);
-                lit_free_expression(state, stmt->condition);
-                lit_free_expression(state, stmt->init);
 
-                lit_free_statement(state, stmt->var);
-                lit_free_statement(state, stmt->body);
-                lit_reallocate(state, statement, sizeof(LitForStatement), 0);
-            }
-            break;
-        case LITSTMT_CONTINUE:
-            {
-                lit_reallocate(state, statement, sizeof(LitContinueStatement), 0);
-            }
-            break;
-        case LITSTMT_BREAK:
-            {
-                lit_reallocate(state, statement, sizeof(LitBreakStatement), 0);
-            }
-            break;
-        case LITSTMT_FUNCTION:
-            {
-                LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
-                lit_free_statement(state, stmt->body);
-                lit_paramlist_freevalues(state, &stmt->parameters);
-                lit_reallocate(state, statement, sizeof(LitFunctionStatement), 0);
-            }
-            break;
-        case LITSTMT_RETURN:
-            {
-                lit_free_expression(state, ((LitReturnStatement*)statement)->expression);
-                lit_reallocate(state, statement, sizeof(LitReturnStatement), 0);
-            }
-            break;
-        case LITSTMT_METHOD:
-            {
-                LitMethodStatement* stmt = (LitMethodStatement*)statement;
-                lit_paramlist_freevalues(state, &stmt->parameters);
-                lit_free_statement(state, stmt->body);
-                lit_reallocate(state, statement, sizeof(LitMethodStatement), 0);
-            }
-            break;
-        case LITSTMT_CLASS:
-            {
-                internal_free_statements(state, &((LitClassStatement*)statement)->fields);
-                lit_reallocate(state, statement, sizeof(LitClassStatement), 0);
-            }
-            break;
-        case LITSTMT_FIELD:
-            {
-                LitFieldStatement* stmt = (LitFieldStatement*)statement;
-                lit_free_statement(state, stmt->getter);
-                lit_free_statement(state, stmt->setter);
-                lit_reallocate(state, statement, sizeof(LitFieldStatement), 0);
-            }
-            break;
-        default:
-            {
-                lit_state_raiseerror(state, COMPILE_ERROR, "Unknown statement type %d", (int)statement->type);
-            }
-            break;
-    }
-}
 
 static LitExpression* allocate_statement(LitState* state, uint64_t line, size_t size, LitExpressionType type)
 {
@@ -727,7 +713,7 @@ void lit_free_allocated_statements(LitState* state, LitExprList* statements)
     }
     for(i = 0; i < statements->count; i++)
     {
-        lit_free_statement(state, statements->values[i]);
+        lit_free_expression(state, statements->values[i]);
     }
     lit_exprlist_destroy(state, statements);
     lit_reallocate(state, statements, sizeof(LitExprList), 0);

@@ -3,8 +3,7 @@
 #include "lit.h"
 #include "priv.h"
 
-static void emit_expression(LitEmitter* emitter, LitExpression* expression);
-static bool emit_statement(LitEmitter* emitter, LitExpression* statement);
+static bool emit_expression(LitEmitter* emitter, LitExpression* expression);
 static void resolve_statement(LitEmitter* emitter, LitExpression* statement);
 
 static inline void lit_uintlist_init(LitUintList* array)
@@ -648,15 +647,60 @@ static void resolve_statement(LitEmitter* emitter, LitExpression* statement)
     }
 }
 
-static void emit_expression(LitEmitter* emitter, LitExpression* expr)
+static bool emit_expression(LitEmitter* emitter, LitExpression* expr)
 {
-    /*
+    LitClassStatement* clstmt;
+    LitCompiler compiler;
+    LitExpression* expression;
+    LitExpression* e;
+    LitExpressionStatement* stmtexpr;
+    LitField* field;
+    LitFieldStatement* fieldstmt;
+    LitFunction* function;
+    LitFunction* getter;
+    LitFunction* setter;
+    LitFunctionStatement* funcstmt;
+    LitLocal* local;
+    LitLocList* locals;
+    LitMethodStatement* mthstmt;
+    LitExpression* blockstmt;
+    LitExpression* s;
+    LitExprList* statements;
+    LitString* name;
+    LitVarStatement* var;
+    LitVarStatement* varstmt;
+    LitForStatement* forstmt;
+    LitWhileStatement* whilestmt;
+    LitIfStatement* ifstmt;
+    bool constructor;
+    bool isexport;
+    bool isprivate;
+    bool islocal;
+    bool vararg;
+    int depth;
+    int ii;
+    int index;
+    size_t start;
+    size_t else_jump;
+    size_t exit_jump;
+    size_t body_jump;
+    size_t end_jump;
+    size_t i;
+    size_t increment_start;
+    size_t localcnt;
+    size_t iterator;
+    size_t line;
+    size_t sequence;
+    uint16_t local_count;
+    uint8_t super;
+    uint64_t* end_jumps;
+
+    
     if(expr == NULL)
     {
-        emit_op(emitter, 0, OP_NULL);
-        return;
+        return false;
     }
-    */
+
     switch(expr->type)
     {
         case LITEXPR_LITERAL:
@@ -1053,7 +1097,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                 }
                 if(callexpr->init == NULL)
                 {
-                    return;
+                    return false;
                 }
                 LitObjectExpression* init = (LitObjectExpression*)callexpr->init;
                 for(size_t i = 0; i < init->values.count; i++)
@@ -1119,7 +1163,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                         compiler.skip_return = true;
                         ((LitExpressionStatement*)lambdaexpr->body)->pop = false;
                     }
-                    emit_statement(emitter, lambdaexpr->body);
+                    emit_expression(emitter, lambdaexpr->body);
                     if(single_expression)
                     {
                         emit_op(emitter, emitter->last_line, OP_RETURN);
@@ -1272,87 +1316,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expr)
                 emitter->emit_reference = old;
             }
             break;
-        default:
-            {
-                error(emitter, expr->line, LITERROR_UNKNOWN_EXPRESSION, (int)expr->type);
-            }
-            break;
-    }
-}
-
-static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
-{
-    LitClassStatement* clstmt;
-    LitCompiler compiler;
-    LitExpression* expression;
-    LitExpression* e;
-    LitExpressionStatement* stmtexpr;
-    LitField* field;
-    LitFieldStatement* fieldstmt;
-    LitFunction* function;
-    LitFunction* getter;
-    LitFunction* setter;
-    LitFunctionStatement* funcstmt;
-    LitLocal* local;
-    LitLocList* locals;
-    LitMethodStatement* mthstmt;
-    LitExpression* blockstmt;
-    LitExpression* s;
-    LitExprList* statements;
-    LitString* name;
-    LitVarStatement* var;
-    LitVarStatement* varstmt;
-    LitForStatement* forstmt;
-    LitWhileStatement* whilestmt;
-    LitIfStatement* ifstmt;
-    bool constructor;
-    bool isexport;
-    bool isprivate;
-    bool islocal;
-    bool vararg;
-    int depth;
-    int ii;
-    int index;
-    size_t start;
-    size_t else_jump;
-    size_t exit_jump;
-    size_t body_jump;
-    size_t end_jump;
-    size_t i;
-    size_t increment_start;
-    size_t localcnt;
-    size_t iterator;
-    size_t line;
-    size_t sequence;
-    uint16_t local_count;
-    uint8_t super;
-    uint64_t* end_jumps;
-    if(statement == NULL)
-    {
-        return false;
-    }
-    switch(statement->type)
-    {
         case LITSTMT_EXPRESSION:
             {
-                stmtexpr = (LitExpressionStatement*)statement;
+                stmtexpr = (LitExpressionStatement*)expr;
                 emit_expression(emitter, stmtexpr->expression);
                 if(stmtexpr->pop)
                 {
-                    emit_op(emitter, statement->line, OP_POP);
+                    emit_op(emitter, expr->line, OP_POP);
                 }
             }
             break;
         case LITSTMT_BLOCK:
             {
-                statements = &((LitBlockStatement*)statement)->statements;
+                statements = &((LitBlockStatement*)expr)->statements;
                 begin_scope(emitter);
                 {
                     for(i = 0; i < statements->count; i++)
                     {
                         blockstmt = statements->values[i];
 
-                        if(emit_statement(emitter, blockstmt))
+                        if(emit_expression(emitter, blockstmt))
                         {
                             break;
                         }
@@ -1363,11 +1346,11 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             break;
         case LITSTMT_VAR:
             {
-                varstmt = (LitVarStatement*)statement;
-                line = statement->line;
+                varstmt = (LitVarStatement*)expr;
+                line = expr->line;
                 isprivate = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
-                index = isprivate ? resolve_private(emitter, varstmt->name, varstmt->length, statement->line) :
-                                      add_local(emitter, varstmt->name, varstmt->length, statement->line, varstmt->constant);
+                index = isprivate ? resolve_private(emitter, varstmt->name, varstmt->length, expr->line) :
+                                      add_local(emitter, varstmt->name, varstmt->length, expr->line, varstmt->constant);
                 if(varstmt->init == NULL)
                 {
                     emit_op(emitter, line, OP_NULL);
@@ -1384,29 +1367,29 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 {
                     mark_local_initialized(emitter, index);
                 }
-                emit_byte_or_short(emitter, statement->line, isprivate ? OP_SET_PRIVATE : OP_SET_LOCAL,
+                emit_byte_or_short(emitter, expr->line, isprivate ? OP_SET_PRIVATE : OP_SET_LOCAL,
                                    isprivate ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
                 if(isprivate)
                 {
                     // Privates don't live on stack, so we need to pop them manually
-                    emit_op(emitter, statement->line, OP_POP);
+                    emit_op(emitter, expr->line, OP_POP);
                 }
             }
             break;
         case LITSTMT_IF:
             {
-                ifstmt = (LitIfStatement*)statement;
+                ifstmt = (LitIfStatement*)expr;
                 else_jump = 0;
                 end_jump = 0;
                 if(ifstmt->condition == NULL)
                 {
-                    else_jump = emit_jump(emitter, OP_JUMP, statement->line);
+                    else_jump = emit_jump(emitter, OP_JUMP, expr->line);
                 }
                 else
                 {
                     emit_expression(emitter, ifstmt->condition);
-                    else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-                    emit_statement(emitter, ifstmt->if_branch);
+                    else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expr->line);
+                    emit_expression(emitter, ifstmt->if_branch);
                     end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
                 }
                 /* important: end_jumps must be N*sizeof(uint64_t) - merely allocating N isn't enough! */
@@ -1424,7 +1407,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                         patch_jump(emitter, else_jump, e->line);
                         emit_expression(emitter, e);
                         else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-                        emit_statement(emitter, ifstmt->elseif_branches->values[i]);
+                        emit_expression(emitter, ifstmt->elseif_branches->values[i]);
 
                         end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
                     }
@@ -1432,7 +1415,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 if(ifstmt->else_branch != NULL)
                 {
                     patch_jump(emitter, else_jump, ifstmt->else_branch->line);
-                    emit_statement(emitter, ifstmt->else_branch);
+                    emit_expression(emitter, ifstmt->else_branch);
                 }
                 else
                 {
@@ -1458,13 +1441,13 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             break;
         case LITSTMT_WHILE:
             {
-                whilestmt = (LitWhileStatement*)statement;
+                whilestmt = (LitWhileStatement*)expr;
                 start = emitter->chunk->count;
                 emitter->loop_start = start;
                 emitter->compiler->loop_depth++;
                 emit_expression(emitter, whilestmt->condition);
-                exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-                emit_statement(emitter, whilestmt->body);
+                exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expr->line);
+                emit_expression(emitter, whilestmt->body);
                 patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
                 emit_loop(emitter, start, emitter->last_line);
                 patch_jump(emitter, exit_jump, emitter->last_line);
@@ -1474,14 +1457,14 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             break;
         case LITSTMT_FOR:
             {
-                forstmt = (LitForStatement*)statement;
+                forstmt = (LitForStatement*)expr;
                 begin_scope(emitter);
                 emitter->compiler->loop_depth++;
                 if(forstmt->c_style)
                 {
                     if(forstmt->var != NULL)
                     {
-                        emit_statement(emitter, forstmt->var);
+                        emit_expression(emitter, forstmt->var);
                     }
                     else if(forstmt->init != NULL)
                     {
@@ -1513,12 +1496,12 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                             statements = &((LitBlockStatement*)forstmt->body)->statements;
                             for(i = 0; i < statements->count; i++)
                             {
-                                emit_statement(emitter, statements->values[i]);
+                                emit_expression(emitter, statements->values[i]);
                             }
                         }
                         else
                         {
-                            emit_statement(emitter, forstmt->body);
+                            emit_expression(emitter, forstmt->body);
                         }
                     }
                     patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
@@ -1531,11 +1514,11 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 }
                 else
                 {
-                    sequence = add_local(emitter, "seq ", 4, statement->line, false);
+                    sequence = add_local(emitter, "seq ", 4, expr->line, false);
                     mark_local_initialized(emitter, sequence);
                     emit_expression(emitter, forstmt->condition);
                     emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
-                    iterator = add_local(emitter, "iter ", 5, statement->line, false);
+                    iterator = add_local(emitter, "iter ", 5, expr->line, false);
                     mark_local_initialized(emitter, iterator);
                     emit_op(emitter, emitter->last_line, OP_NULL);
                     emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
@@ -1553,7 +1536,7 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     begin_scope(emitter);
                     // var i = seq.iteratorValue(iter)
                     var = (LitVarStatement*)forstmt->var;
-                    localcnt = add_local(emitter, var->name, var->length, statement->line, false);
+                    localcnt = add_local(emitter, var->name, var->length, expr->line, false);
                     mark_local_initialized(emitter, localcnt);
                     emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
                     emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
@@ -1568,12 +1551,12 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                             statements = &((LitBlockStatement*)forstmt->body)->statements;
                             for(i = 0; i < statements->count; i++)
                             {
-                                emit_statement(emitter, statements->values[i]);
+                                emit_expression(emitter, statements->values[i]);
                             }
                         }
                         else
                         {
-                            emit_statement(emitter, forstmt->body);
+                            emit_expression(emitter, forstmt->body);
                         }
                     }
                     patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
@@ -1591,9 +1574,9 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
         {
             if(emitter->compiler->loop_depth == 0)
             {
-                error(emitter, statement->line, LITERROR_LOOP_JUMP_MISSUSE, "continue");
+                error(emitter, expr->line, LITERROR_LOOP_JUMP_MISSUSE, "continue");
             }
-            lit_uintlist_push(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, statement->line));
+            lit_uintlist_push(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, expr->line));
             break;
         }
 
@@ -1601,9 +1584,9 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             {
                 if(emitter->compiler->loop_depth == 0)
                 {
-                    error(emitter, statement->line, LITERROR_LOOP_JUMP_MISSUSE, "break");
+                    error(emitter, expr->line, LITERROR_LOOP_JUMP_MISSUSE, "break");
                 }
-                emit_op(emitter, statement->line, OP_POP_LOCALS);
+                emit_op(emitter, expr->line, OP_POP_LOCALS);
                 depth = emitter->compiler->scope_depth;
                 local_count = 0;
                 locals = &emitter->compiler->locals;
@@ -1620,21 +1603,21 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                         local_count++;
                     }
                 }
-                emit_short(emitter, statement->line, local_count);
-                lit_uintlist_push(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
+                emit_short(emitter, expr->line, local_count);
+                lit_uintlist_push(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, expr->line));
             }
             break;
         case LITSTMT_FUNCTION:
             {
-                funcstmt = (LitFunctionStatement*)statement;
+                funcstmt = (LitFunctionStatement*)expr;
                 isexport = funcstmt->exported;
                 isprivate = !isexport && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
                 islocal = !(isexport || isprivate);
                 index = 0;
                 if(!isexport)
                 {
-                    index = isprivate ? resolve_private(emitter, funcstmt->name, funcstmt->length, statement->line) :
-                                      add_local(emitter, funcstmt->name, funcstmt->length, statement->line, false);
+                    index = isprivate ? resolve_private(emitter, funcstmt->name, funcstmt->length, expr->line) :
+                                      add_local(emitter, funcstmt->name, funcstmt->length, expr->line, false);
                 }
                 name = lit_string_copy(emitter->state, funcstmt->name, funcstmt->length);
                 if(islocal)
@@ -1647,8 +1630,8 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 }
                 init_compiler(emitter, &compiler, LITFUNC_REGULAR);
                 begin_scope(emitter);
-                vararg = emit_parameters(emitter, &funcstmt->parameters, statement->line);
-                emit_statement(emitter, funcstmt->body);
+                vararg = emit_parameters(emitter, &funcstmt->parameters, expr->line);
+                emit_expression(emitter, funcstmt->body);
                 end_scope(emitter, emitter->last_line);
                 function = end_compiler(emitter, name);
                 function->arg_count = funcstmt->parameters.count;
@@ -1687,9 +1670,9 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             {
                 if(emitter->compiler->type == LITFUNC_CONSTRUCTOR)
                 {
-                    error(emitter, statement->line, LITERROR_RETURN_FROM_CONSTRUCTOR);
+                    error(emitter, expr->line, LITERROR_RETURN_FROM_CONSTRUCTOR);
                 }
-                expression = ((LitReturnStatement*)statement)->expression;
+                expression = ((LitReturnStatement*)expr)->expression;
                 if(expression == NULL)
                 {
                     emit_op(emitter, emitter->last_line, OP_NULL);
@@ -1708,17 +1691,17 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             break;
         case LITSTMT_METHOD:
             {
-                mthstmt = (LitMethodStatement*)statement;
+                mthstmt = (LitMethodStatement*)expr;
                 constructor = lit_string_getlength(mthstmt->name) == 11 && memcmp(mthstmt->name->chars, "constructor", 11) == 0;
                 if(constructor && mthstmt->is_static)
                 {
-                    error(emitter, statement->line, LITERROR_STATIC_CONSTRUCTOR);
+                    error(emitter, expr->line, LITERROR_STATIC_CONSTRUCTOR);
                 }
                 init_compiler(emitter, &compiler,
                               constructor ? LITFUNC_CONSTRUCTOR : (mthstmt->is_static ? LITFUNC_STATIC_METHOD : LITFUNC_METHOD));
                 begin_scope(emitter);
-                vararg = emit_parameters(emitter, &mthstmt->parameters, statement->line);
-                emit_statement(emitter, mthstmt->body);
+                vararg = emit_parameters(emitter, &mthstmt->parameters, expr->line);
+                emit_expression(emitter, mthstmt->body);
                 end_scope(emitter, emitter->last_line);
                 function = end_compiler(emitter, lit_value_asstring(lit_string_format(emitter->state, "@:@", lit_value_objectvalue(emitter->class_name), lit_value_objectvalue(mthstmt->name))));
                 function->arg_count = mthstmt->parameters.count;
@@ -1738,20 +1721,20 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     emit_constant(emitter, emitter->last_line, lit_value_objectvalue(function));
                 }
                 emit_op(emitter, emitter->last_line, mthstmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
-                emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, lit_value_objectvalue(mthstmt->name)));
+                emit_short(emitter, emitter->last_line, add_constant(emitter, expr->line, lit_value_objectvalue(mthstmt->name)));
 
             }
             break;
         case LITSTMT_CLASS:
             {
-                clstmt = (LitClassStatement*)statement;
+                clstmt = (LitClassStatement*)expr;
                 emitter->class_name = clstmt->name;
                 if(clstmt->parent != NULL)
                 {
                     emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
                     emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, lit_value_objectvalue(clstmt->parent)));
                 }
-                emit_op(emitter, statement->line, OP_CLASS);
+                emit_op(emitter, expr->line, OP_CLASS);
                 emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, lit_value_objectvalue(clstmt->name)));
                 if(clstmt->parent != NULL)
                 {
@@ -1769,14 +1752,14 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     {
                         var = (LitVarStatement*)s;
                         emit_expression(emitter, var->init);
-                        emit_op(emitter, statement->line, OP_STATIC_FIELD);
-                        emit_short(emitter, statement->line,
-                                   add_constant(emitter, statement->line,
+                        emit_op(emitter, expr->line, OP_STATIC_FIELD);
+                        emit_short(emitter, expr->line,
+                                   add_constant(emitter, expr->line,
                                                 lit_value_objectvalue(lit_string_copy(emitter->state, var->name, var->length))));
                     }
                     else
                     {
-                        emit_statement(emitter, s);
+                        emit_expression(emitter, s);
                     }
                 }
                 emit_op(emitter, emitter->last_line, OP_POP);
@@ -1790,14 +1773,14 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
             break;
         case LITSTMT_FIELD:
             {
-                fieldstmt = (LitFieldStatement*)statement;
+                fieldstmt = (LitFieldStatement*)expr;
                 getter = NULL;
                 setter = NULL;
                 if(fieldstmt->getter != NULL)
                 {
                     init_compiler(emitter, &compiler, fieldstmt->is_static ? LITFUNC_STATIC_METHOD : LITFUNC_METHOD);
                     begin_scope(emitter);
-                    emit_statement(emitter, fieldstmt->getter);
+                    emit_expression(emitter, fieldstmt->getter);
                     end_scope(emitter, emitter->last_line);
                     getter = end_compiler(emitter,
                         lit_value_asstring(lit_string_format(emitter->state, "@:get @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
@@ -1805,9 +1788,9 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                 if(fieldstmt->setter != NULL)
                 {
                     init_compiler(emitter, &compiler, fieldstmt->is_static ? LITFUNC_STATIC_METHOD : LITFUNC_METHOD);
-                    mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false));
+                    mark_local_initialized(emitter, add_local(emitter, "value", 5, expr->line, false));
                     begin_scope(emitter);
-                    emit_statement(emitter, fieldstmt->setter);
+                    emit_expression(emitter, fieldstmt->setter);
                     end_scope(emitter, emitter->last_line);
                     setter = end_compiler(emitter,
                         lit_value_asstring(lit_string_format(emitter->state, "@:set @", lit_value_objectvalue(emitter->class_name), fieldstmt->name)));
@@ -1815,18 +1798,18 @@ static bool emit_statement(LitEmitter* emitter, LitExpression* statement)
                     setter->max_slots++;
                 }
                 field = lit_create_field(emitter->state, (LitObject*)getter, (LitObject*)setter);
-                emit_constant(emitter, statement->line, lit_value_objectvalue(field));
-                emit_op(emitter, statement->line, fieldstmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
-                emit_short(emitter, statement->line, add_constant(emitter, statement->line, lit_value_objectvalue(fieldstmt->name)));
+                emit_constant(emitter, expr->line, lit_value_objectvalue(field));
+                emit_op(emitter, expr->line, fieldstmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
+                emit_short(emitter, expr->line, add_constant(emitter, expr->line, lit_value_objectvalue(fieldstmt->name)));
             }
             break;
         default:
             {
-                error(emitter, statement->line, LITERROR_UNKNOWN_STATEMENT, (int)statement->type);
+                error(emitter, expr->line, LITERROR_UNKNOWN_EXPRESSION, (int)expr->type);
             }
             break;
     }
-    emitter->previous_was_expression_statement = statement->type == LITSTMT_EXPRESSION;
+    emitter->previous_was_expression_statement = expr->type == LITSTMT_EXPRESSION;
     return false;
 }
 
@@ -1873,7 +1856,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* mod
     for(i = 0; i < statements->count; i++)
     {
         exstmt = statements->values[i];
-        if(emit_statement(emitter, exstmt))
+        if(emit_expression(emitter, exstmt))
         {
             break;
         }

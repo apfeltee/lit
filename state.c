@@ -230,7 +230,7 @@ static void free_statements(LitState* state, LitExprList* statements)
     size_t i;
     for(i = 0; i < statements->count; i++)
     {
-        lit_free_statement(state, statements->values[i]);
+        lit_free_expression(state, statements->values[i]);
     }
     lit_exprlist_destroy(state, statements);
 }
