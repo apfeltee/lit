@@ -421,7 +421,7 @@ void lit_init_vm(LitState* state, LitVM* vm)
 void lit_free_vm(LitVM* vm)
 {
     lit_table_destroy(vm->state, &vm->strings);
-    lit_free_objects(vm->state, vm->objects);
+    lit_object_destroylistof(vm->state, vm->objects);
     reset_vm(vm->state, vm);
 }
 
@@ -597,7 +597,7 @@ static bool call(LitVM* vm, LitFunction* function, LitClosure* closure, uint8_t 
         newcapacity = (fiber->frame_capacity * 2);
         newsize = (sizeof(LitCallFrame) * newcapacity);
         osize = (sizeof(LitCallFrame) * fiber->frame_capacity);
-        fiber->frames = (LitCallFrame*)lit_reallocate(vm->state, fiber->frames, osize, newsize);
+        fiber->frames = (LitCallFrame*)lit_gcmem_memrealloc(vm->state, fiber->frames, osize, newsize);
         fiber->frame_capacity = newcapacity;
     }
 

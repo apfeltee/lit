@@ -284,7 +284,7 @@ static bool ensure_fiber(LitVM* vm, LitFiber* fiber)
         newcapacity = (fiber->frame_capacity * 2) + 1;
         osize = (sizeof(LitCallFrame) * fiber->frame_capacity);
         newsize = (sizeof(LitCallFrame) * newcapacity);
-        fiber->frames = (LitCallFrame*)lit_reallocate(vm->state, fiber->frames, osize, newsize);
+        fiber->frames = (LitCallFrame*)lit_gcmem_memrealloc(vm->state, fiber->frames, osize, newsize);
         fiber->frame_capacity = newcapacity;
     }
 

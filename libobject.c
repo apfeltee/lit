@@ -2,39 +2,243 @@
 #include <memory.h>
 #include <math.h>
 #include "lit.h"
+#include "sds.h"
 
-bool lit_is_callable_function(LitValue value)
+LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot)
 {
-    if(lit_value_isobject(value))
-    {
-        LitObjectType type = lit_value_type(value);
-        return (
-            (type == LITTYPE_CLOSURE) ||
-            (type == LITTYPE_FUNCTION) ||
-            (type == LITTYPE_NATIVE_FUNCTION) ||
-            (type == LITTYPE_NATIVE_PRIMITIVE) ||
-            (type == LITTYPE_NATIVE_METHOD) ||
-            (type == LITTYPE_PRIMITIVE_METHOD) ||
-            (type == LITTYPE_BOUND_METHOD)
-        );
-    }
-
-    return false;
+    LitUpvalue* upvalue;
+    upvalue = (LitUpvalue*)lit_gcmem_allocobject(state, sizeof(LitUpvalue), LITTYPE_UPVALUE, false);
+    upvalue->location = slot;
+    upvalue->closed = NULL_VALUE;
+    upvalue->next = NULL;
+    return upvalue;
 }
 
-
-LitFunction* lit_create_function(LitState* state, LitModule* module)
+LitModule* lit_create_module(LitState* state, LitString* name)
 {
+    LitModule* module;
+    module = (LitModule*)lit_gcmem_allocobject(state, sizeof(LitModule), LITTYPE_MODULE, false);
+    module->name = name;
+    module->return_value = NULL_VALUE;
+    module->main_function = NULL;
+    module->privates = NULL;
+    module->ran = false;
+    module->main_fiber = NULL;
+    module->private_count = 0;
+    module->private_names = lit_create_map(state);
+    return module;
+}
+
+LitUserdata* lit_create_userdata(LitState* state, size_t size, bool ispointeronly)
+{
+    LitUserdata* userdata;
+    userdata = (LitUserdata*)lit_gcmem_allocobject(state, sizeof(LitUserdata), LITTYPE_USERDATA, false);
+    userdata->data = NULL;
+    if(size > 0)
+    {
+        if(!ispointeronly)
+        {
+            userdata->data = lit_gcmem_memrealloc(state, NULL, 0, size);
+        }
+    }
+    userdata->size = size;
+    userdata->cleanup_fn = NULL;
+    userdata->canfree = true;
+    return userdata;
+}
+
+LitRange* lit_create_range(LitState* state, double from, double to)
+{
+    LitRange* range;
+    range = (LitRange*)lit_gcmem_allocobject(state, sizeof(LitRange), LITTYPE_RANGE, false);
+    range->from = from;
+    range->to = to;
+    return range;
+}
+
+LitReference* lit_create_reference(LitState* state, LitValue* slot)
+{
+    LitReference* reference;
+    reference = (LitReference*)lit_gcmem_allocobject(state, sizeof(LitReference), LITTYPE_REFERENCE, false);
+    reference->slot = slot;
+    return reference;
+}
+
+void lit_object_destroy(LitState* state, LitObject* object)
+{
+    LitString* string;
     LitFunction* function;
-    function = (LitFunction*)lit_allocate_object(state, sizeof(LitFunction), LITTYPE_FUNCTION, false);
-    lit_init_chunk(&function->chunk);
-    function->name = NULL;
-    function->arg_count = 0;
-    function->upvalue_count = 0;
-    function->max_slots = 0;
-    function->module = module;
-    function->vararg = false;
-    return function;
+    LitFiber* fiber;
+    LitModule* module;
+    LitClosure* closure;
+#ifdef LIT_LOG_ALLOCATION
+    printf("(");
+    lit_print_value(lit_value_objectvalue(object));
+    printf(") %p free %s\n", (void*)object, lit_value_typename(object->type));
+#endif
+
+    switch(object->type)
+    {
+        case LITTYPE_NUMBER:
+            {
+                LitNumber* n = (LitNumber*)object;
+                if(object->mustfree)
+                {
+                    LIT_FREE(state, sizeof(LitNumber), object);
+                }
+            }
+            break;
+        case LITTYPE_STRING:
+            {
+                string = (LitString*)object;
+                //LIT_FREE_ARRAY(state, sizeof(char), string->chars, string->length + 1);
+                sdsfree(string->chars);
+                string->chars = NULL;
+                LIT_FREE(state, sizeof(LitString), object);
+            }
+            break;
+
+        case LITTYPE_FUNCTION:
+            {
+                function = (LitFunction*)object;
+                lit_free_chunk(state, &function->chunk);
+                LIT_FREE(state, sizeof(LitFunction), object);
+            }
+            break;
+        case LITTYPE_NATIVE_FUNCTION:
+            {
+                LIT_FREE(state, sizeof(LitNativeFunction), object);
+            }
+            break;
+        case LITTYPE_NATIVE_PRIMITIVE:
+            {
+                LIT_FREE(state, sizeof(LitNativePrimFunction), object);
+            }
+            break;
+        case LITTYPE_NATIVE_METHOD:
+            {
+                LIT_FREE(state, sizeof(LitNativeMethod), object);
+            }
+            break;
+        case LITTYPE_PRIMITIVE_METHOD:
+            {
+                LIT_FREE(state, sizeof(LitPrimitiveMethod), object);
+            }
+            break;
+        case LITTYPE_FIBER:
+            {
+                fiber = (LitFiber*)object;
+                LIT_FREE_ARRAY(state, sizeof(LitCallFrame), fiber->frames, fiber->frame_capacity);
+                LIT_FREE_ARRAY(state, sizeof(LitValue), fiber->stack, fiber->stack_capacity);
+                LIT_FREE(state, sizeof(LitFiber), object);
+            }
+            break;
+        case LITTYPE_MODULE:
+            {
+                module = (LitModule*)object;
+                LIT_FREE_ARRAY(state, sizeof(LitValue), module->privates, module->private_count);
+                LIT_FREE(state, sizeof(LitModule), object);
+            }
+            break;
+        case LITTYPE_CLOSURE:
+            {
+                closure = (LitClosure*)object;
+                LIT_FREE_ARRAY(state, sizeof(LitUpvalue*), closure->upvalues, closure->upvalue_count);
+                LIT_FREE(state, sizeof(LitClosure), object);
+            }
+            break;
+        case LITTYPE_UPVALUE:
+            {
+                LIT_FREE(state, sizeof(LitUpvalue), object);
+            }
+            break;
+        case LITTYPE_CLASS:
+            {
+                LitClass* klass = (LitClass*)object;
+                lit_table_destroy(state, &klass->methods);
+                lit_table_destroy(state, &klass->static_fields);
+                LIT_FREE(state, sizeof(LitClass), object);
+            }
+            break;
+
+        case LITTYPE_INSTANCE:
+            {
+                lit_table_destroy(state, &((LitInstance*)object)->fields);
+                LIT_FREE(state, sizeof(LitInstance), object);
+            }
+            break;
+        case LITTYPE_BOUND_METHOD:
+            {
+                LIT_FREE(state, sizeof(LitBoundMethod), object);
+            }
+            break;
+        case LITTYPE_ARRAY:
+            {
+                lit_vallist_destroy(state, &((LitArray*)object)->list);
+                LIT_FREE(state, sizeof(LitArray), object);
+            }
+            break;
+        case LITTYPE_MAP:
+            {
+                lit_table_destroy(state, &((LitMap*)object)->values);
+                LIT_FREE(state, sizeof(LitMap), object);
+            }
+            break;
+        case LITTYPE_USERDATA:
+            {
+                LitUserdata* data = (LitUserdata*)object;
+                if(data->cleanup_fn != NULL)
+                {
+                    data->cleanup_fn(state, data, false);
+                }
+                if(data->size > 0)
+                {
+                    if(data->canfree)
+                    {
+                        lit_gcmem_memrealloc(state, data->data, data->size, 0);
+                    }
+                }
+                LIT_FREE(state, sizeof(LitUserdata), data);
+                //free(data);
+            }
+            break;
+        case LITTYPE_RANGE:
+            {
+                LIT_FREE(state, sizeof(LitRange), object);
+            }
+            break;
+        case LITTYPE_FIELD:
+            {
+                LIT_FREE(state, sizeof(LitField), object);
+            }
+            break;
+        case LITTYPE_REFERENCE:
+            {
+                LIT_FREE(state, sizeof(LitReference), object);
+            }
+            break;
+        default:
+            {
+                fprintf(stderr, "internal error: trying to free something else!\n");
+                UNREACHABLE
+            }
+            break;
+    }
+}
+
+void lit_object_destroylistof(LitState* state, LitObject* objects)
+{
+    LitObject* object = objects;
+
+    while(object != NULL)
+    {
+        LitObject* next = object->next;
+        lit_object_destroy(state, object);
+        object = next;
+    }
+
+    free(state->vm->gray_stack);
+    state->vm->gray_capacity = 0;
 }
 
 LitValue lit_get_function_name(LitVM* vm, LitValue instance)
@@ -104,287 +308,6 @@ LitValue lit_get_function_name(LitVM* vm, LitValue instance)
     }
     return lit_value_objectvalue(lit_string_format(vm->state, "function @", lit_value_objectvalue(name)));
 }
-
-LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot)
-{
-    LitUpvalue* upvalue;
-    upvalue = (LitUpvalue*)lit_allocate_object(state, sizeof(LitUpvalue), LITTYPE_UPVALUE, false);
-    upvalue->location = slot;
-    upvalue->closed = NULL_VALUE;
-    upvalue->next = NULL;
-    return upvalue;
-}
-
-LitClosure* lit_create_closure(LitState* state, LitFunction* function)
-{
-    size_t i;
-    LitClosure* closure;
-    LitUpvalue** upvalues;
-    closure = (LitClosure*)lit_allocate_object(state, sizeof(LitClosure), LITTYPE_CLOSURE, false);
-    lit_state_pushroot(state, (LitObject*)closure);
-    upvalues = LIT_ALLOCATE(state, sizeof(LitUpvalue*), function->upvalue_count);
-    lit_state_poproot(state);
-    for(i = 0; i < function->upvalue_count; i++)
-    {
-        upvalues[i] = NULL;
-    }
-    closure->function = function;
-    closure->upvalues = upvalues;
-    closure->upvalue_count = function->upvalue_count;
-    return closure;
-}
-
-LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name)
-{
-    LitNativeFunction* native;
-    native = (LitNativeFunction*)lit_allocate_object(state, sizeof(LitNativeFunction), LITTYPE_NATIVE_FUNCTION, false);
-    native->function = function;
-    native->name = name;
-    return native;
-}
-
-LitNativePrimFunction* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function, LitString* name)
-{
-    LitNativePrimFunction* native;
-    native = (LitNativePrimFunction*)lit_allocate_object(state, sizeof(LitNativePrimFunction), LITTYPE_NATIVE_PRIMITIVE, false);
-    native->function = function;
-    native->name = name;
-    return native;
-}
-
-LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method, LitString* name)
-{
-    LitNativeMethod* native;
-    native = (LitNativeMethod*)lit_allocate_object(state, sizeof(LitNativeMethod), LITTYPE_NATIVE_METHOD, false);
-    native->method = method;
-    native->name = name;
-    return native;
-}
-
-LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method, LitString* name)
-{
-    LitPrimitiveMethod* native;
-    native = (LitPrimitiveMethod*)lit_allocate_object(state, sizeof(LitPrimitiveMethod), LITTYPE_PRIMITIVE_METHOD, false);
-    native->method = method;
-    native->name = name;
-    return native;
-}
-
-LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function)
-{
-    size_t stack_capacity;
-    LitValue* stack;
-    LitCallFrame* frame;
-    LitCallFrame* frames;
-    LitFiber* fiber;
-    // Allocate in advance, just in case GC is triggered
-    stack_capacity = function == NULL ? 1 : (size_t)lit_closest_power_of_two(function->max_slots + 1);
-    stack = LIT_ALLOCATE(state, sizeof(LitValue), stack_capacity);
-    frames = LIT_ALLOCATE(state, sizeof(LitCallFrame), LIT_INITIAL_CALL_FRAMES);
-    fiber = (LitFiber*)lit_allocate_object(state, sizeof(LitFiber), LITTYPE_FIBER, false);
-    if(module != NULL)
-    {
-        if(module->main_fiber == NULL)
-        {
-            module->main_fiber = fiber;
-        }
-    }
-    fiber->stack = stack;
-    fiber->stack_capacity = stack_capacity;
-    fiber->stack_top = fiber->stack;
-    fiber->frames = frames;
-    fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;
-    fiber->parent = NULL;
-    fiber->frame_count = 1;
-    fiber->arg_count = 0;
-    fiber->module = module;
-    fiber->catcher = false;
-    fiber->error = NULL_VALUE;
-    fiber->open_upvalues = NULL;
-    fiber->abort = false;
-    frame = &fiber->frames[0];
-    frame->closure = NULL;
-    frame->function = function;
-    frame->slots = fiber->stack;
-    frame->result_ignored = false;
-    frame->return_to_c = false;
-    if(function != NULL)
-    {
-        frame->ip = function->chunk.code;
-    }
-    return fiber;
-}
-
-void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, size_t needed)
-{
-    size_t i;
-    size_t capacity;
-    LitValue* old_stack;
-    LitUpvalue* upvalue;
-    if(fiber->stack_capacity >= needed)
-    {
-        return;
-    }
-    capacity = (size_t)lit_closest_power_of_two((int)needed);
-    old_stack = fiber->stack;
-    fiber->stack = (LitValue*)lit_reallocate(state, fiber->stack, sizeof(LitValue) * fiber->stack_capacity, sizeof(LitValue) * capacity);
-    fiber->stack_capacity = capacity;
-    if(fiber->stack != old_stack)
-    {
-        for(i = 0; i < fiber->frame_capacity; i++)
-        {
-            LitCallFrame* frame = &fiber->frames[i];
-            frame->slots = fiber->stack + (frame->slots - old_stack);
-        }
-        for(upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next)
-        {
-            upvalue->location = fiber->stack + (upvalue->location - old_stack);
-        }
-        fiber->stack_top = fiber->stack + (fiber->stack_top - old_stack);
-    }
-}
-
-LitModule* lit_create_module(LitState* state, LitString* name)
-{
-    LitModule* module;
-    module = (LitModule*)lit_allocate_object(state, sizeof(LitModule), LITTYPE_MODULE, false);
-    module->name = name;
-    module->return_value = NULL_VALUE;
-    module->main_function = NULL;
-    module->privates = NULL;
-    module->ran = false;
-    module->main_fiber = NULL;
-    module->private_count = 0;
-    module->private_names = lit_create_map(state);
-    return module;
-}
-
-LitClass* lit_create_class(LitState* state, LitString* name)
-{
-    LitClass* klass;
-    klass = (LitClass*)lit_allocate_object(state, sizeof(LitClass), LITTYPE_CLASS, false);
-    klass->name = name;
-    klass->init_method = NULL;
-    klass->super = NULL;
-    lit_table_init(state, &klass->methods);
-    lit_table_init(state, &klass->static_fields);
-    return klass;
-}
-
-LitInstance* lit_create_instance(LitState* state, LitClass* klass)
-{
-    LitInstance* instance;
-    instance = (LitInstance*)lit_allocate_object(state, sizeof(LitInstance), LITTYPE_INSTANCE, false);
-    instance->klass = klass;
-    lit_table_init(state, &instance->fields);
-    instance->fields.count = 0;
-    return instance;
-}
-
-LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitValue method)
-{
-    LitBoundMethod* bound_method;
-    bound_method = (LitBoundMethod*)lit_allocate_object(state, sizeof(LitBoundMethod), LITTYPE_BOUND_METHOD, false);
-    bound_method->receiver = receiver;
-    bound_method->method = method;
-    return bound_method;
-}
-
-LitArray* lit_create_array(LitState* state)
-{
-    LitArray* array;
-    array = (LitArray*)lit_allocate_object(state, sizeof(LitArray), LITTYPE_ARRAY, false);
-    lit_vallist_init(&array->list);
-    return array;
-}
-
-LitMap* lit_create_map(LitState* state)
-{
-    LitMap* map;
-    map = (LitMap*)lit_allocate_object(state, sizeof(LitMap), LITTYPE_MAP, false);
-    lit_table_init(state, &map->values);
-    map->index_fn = NULL;
-    return map;
-}
-
-bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value)
-{
-    if(value == NULL_VALUE)
-    {
-        lit_map_delete(map, key);
-        return false;
-    }
-    return lit_table_set(state, &map->values, key, value);
-}
-
-bool lit_map_get(LitMap* map, LitString* key, LitValue* value)
-{
-    return lit_table_get(&map->values, key, value);
-}
-
-bool lit_map_delete(LitMap* map, LitString* key)
-{
-    return lit_table_delete(&map->values, key);
-}
-
-void lit_map_add_all(LitState* state, LitMap* from, LitMap* to)
-{
-    int i;
-    LitTableEntry* entry;
-    for(i = 0; i <= from->values.capacity; i++)
-    {
-        entry = &from->values.entries[i];
-        if(entry->key != NULL)
-        {
-            lit_table_set(state, &to->values, entry->key, entry->value);
-        }
-    }
-}
-
-LitUserdata* lit_create_userdata(LitState* state, size_t size, bool ispointeronly)
-{
-    LitUserdata* userdata;
-    userdata = (LitUserdata*)lit_allocate_object(state, sizeof(LitUserdata), LITTYPE_USERDATA, false);
-    userdata->data = NULL;
-    if(size > 0)
-    {
-        if(!ispointeronly)
-        {
-            userdata->data = lit_reallocate(state, NULL, 0, size);
-        }
-    }
-    userdata->size = size;
-    userdata->cleanup_fn = NULL;
-    userdata->canfree = true;
-    return userdata;
-}
-
-LitRange* lit_create_range(LitState* state, double from, double to)
-{
-    LitRange* range;
-    range = (LitRange*)lit_allocate_object(state, sizeof(LitRange), LITTYPE_RANGE, false);
-    range->from = from;
-    range->to = to;
-    return range;
-}
-
-LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter)
-{
-    LitField* field;
-    field = (LitField*)lit_allocate_object(state, sizeof(LitField), LITTYPE_FIELD, false);
-    field->getter = getter;
-    field->setter = setter;
-    return field;
-}
-
-LitReference* lit_create_reference(LitState* state, LitValue* slot)
-{
-    LitReference* reference;
-    reference = (LitReference*)lit_allocate_object(state, sizeof(LitReference), LITTYPE_REFERENCE, false);
-    reference->slot = slot;
-    return reference;
-}
-
 
 static LitValue objfn_object_class(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {

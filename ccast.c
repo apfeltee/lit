@@ -104,7 +104,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
     {
         case LITEXPR_LITERAL:
         {
-            lit_reallocate(state, expression, sizeof(LitLiteralExpr), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitLiteralExpr), 0);
             break;
         }
 
@@ -119,21 +119,21 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
             lit_free_expression(state, expr->right);
 
-            lit_reallocate(state, expression, sizeof(LitBinaryExpr), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitBinaryExpr), 0);
             break;
         }
 
         case LITEXPR_UNARY:
         {
             lit_free_expression(state, ((LitUnaryExpr*)expression)->right);
-            lit_reallocate(state, expression, sizeof(LitUnaryExpr), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitUnaryExpr), 0);
 
             break;
         }
 
         case LITEXPR_VAR:
         {
-            lit_reallocate(state, expression, sizeof(LitVarExpr), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitVarExpr), 0);
             break;
         }
 
@@ -144,7 +144,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
             lit_free_expression(state, expr->to);
             lit_free_expression(state, expr->value);
 
-            lit_reallocate(state, expression, sizeof(LitAssignExpression), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitAssignExpression), 0);
             break;
         }
 
@@ -157,14 +157,14 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
             free_expressions(state, &expr->args);
 
-            lit_reallocate(state, expression, sizeof(LitCallExpression), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitCallExpression), 0);
             break;
         }
 
         case LITEXPR_GET:
         {
             lit_free_expression(state, ((LitGetExpression*)expression)->where);
-            lit_reallocate(state, expression, sizeof(LitGetExpression), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitGetExpression), 0);
             break;
         }
 
@@ -175,7 +175,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
             lit_free_expression(state, expr->where);
             lit_free_expression(state, expr->value);
 
-            lit_reallocate(state, expression, sizeof(LitSetExpression), 0);
+            lit_gcmem_memrealloc(state, expression, sizeof(LitSetExpression), 0);
             break;
         }
 
@@ -184,13 +184,13 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitLambdaExpression* expr = (LitLambdaExpression*)expression;
                 lit_paramlist_freevalues(state, &expr->parameters);
                 lit_free_expression(state, expr->body);
-                lit_reallocate(state, expression, sizeof(LitLambdaExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitLambdaExpression), 0);
             }
             break;
         case LITEXPR_ARRAY:
             {
                 free_expressions(state, &((LitArrayExpression*)expression)->values);
-                lit_reallocate(state, expression, sizeof(LitArrayExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitArrayExpression), 0);
             }
             break;
         case LITEXPR_OBJECT:
@@ -198,7 +198,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitObjectExpression* map = (LitObjectExpression*)expression;
                 lit_vallist_destroy(state, &map->keys);
                 free_expressions(state, &map->values);
-                lit_reallocate(state, expression, sizeof(LitObjectExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitObjectExpression), 0);
             }
             break;
         case LITEXPR_SUBSCRIPT:
@@ -206,17 +206,17 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitSubscriptExpression* expr = (LitSubscriptExpression*)expression;
                 lit_free_expression(state, expr->array);
                 lit_free_expression(state, expr->index);
-                lit_reallocate(state, expression, sizeof(LitSubscriptExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitSubscriptExpression), 0);
             }
             break;
         case LITEXPR_THIS:
             {
-                lit_reallocate(state, expression, sizeof(LitThisExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitThisExpression), 0);
             }
             break;
         case LITEXPR_SUPER:
             {
-                lit_reallocate(state, expression, sizeof(LitSuperExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitSuperExpression), 0);
             }
             break;
         case LITEXPR_RANGE:
@@ -224,7 +224,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitRangeExpression* expr = (LitRangeExpression*)expression;
                 lit_free_expression(state, expr->from);
                 lit_free_expression(state, expr->to);
-                lit_reallocate(state, expression, sizeof(LitRangeExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitRangeExpression), 0);
             }
             break;
         case LITEXPR_IF:
@@ -233,37 +233,37 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 lit_free_expression(state, expr->condition);
                 lit_free_expression(state, expr->if_branch);
                 lit_free_expression(state, expr->else_branch);
-                lit_reallocate(state, expression, sizeof(LitIfExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitIfExpression), 0);
             }
             break;
         case LITEXPR_INTERPOLATION:
             {
                 free_expressions(state, &((LitInterpolationExpression*)expression)->expressions);
-                lit_reallocate(state, expression, sizeof(LitInterpolationExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitInterpolationExpression), 0);
             }
             break;
         case LITEXPR_REFERENCE:
             {
                 lit_free_expression(state, ((LitReferenceExpression*)expression)->to);
-                lit_reallocate(state, expression, sizeof(LitReferenceExpression), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitReferenceExpression), 0);
             }
             break;
         case LITSTMT_EXPRESSION:
             {
                 lit_free_expression(state, ((LitExpressionStatement*)expression)->expression);
-                lit_reallocate(state, expression, sizeof(LitExpressionStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitExpressionStatement), 0);
             }
             break;
         case LITSTMT_BLOCK:
             {
                 internal_free_statements(state, &((LitBlockStatement*)expression)->statements);
-                lit_reallocate(state, expression, sizeof(LitBlockStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitBlockStatement), 0);
             }
             break;
         case LITSTMT_VAR:
             {
                 lit_free_expression(state, ((LitVarStatement*)expression)->init);
-                lit_reallocate(state, expression, sizeof(LitVarStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitVarStatement), 0);
             }
             break;
         case LITSTMT_IF:
@@ -274,7 +274,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 lit_free_allocated_expressions(state, stmt->elseif_conditions);
                 lit_free_allocated_statements(state, stmt->elseif_branches);
                 lit_free_expression(state, stmt->else_branch);
-                lit_reallocate(state, expression, sizeof(LitIfStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitIfStatement), 0);
             }
             break;
         case LITSTMT_WHILE:
@@ -282,7 +282,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitWhileStatement* stmt = (LitWhileStatement*)expression;
                 lit_free_expression(state, stmt->condition);
                 lit_free_expression(state, stmt->body);
-                lit_reallocate(state, expression, sizeof(LitWhileStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitWhileStatement), 0);
             }
             break;
         case LITSTMT_FOR:
@@ -294,17 +294,17 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
                 lit_free_expression(state, stmt->var);
                 lit_free_expression(state, stmt->body);
-                lit_reallocate(state, expression, sizeof(LitForStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitForStatement), 0);
             }
             break;
         case LITSTMT_CONTINUE:
             {
-                lit_reallocate(state, expression, sizeof(LitContinueStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitContinueStatement), 0);
             }
             break;
         case LITSTMT_BREAK:
             {
-                lit_reallocate(state, expression, sizeof(LitBreakStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitBreakStatement), 0);
             }
             break;
         case LITSTMT_FUNCTION:
@@ -312,13 +312,13 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitFunctionStatement* stmt = (LitFunctionStatement*)expression;
                 lit_free_expression(state, stmt->body);
                 lit_paramlist_freevalues(state, &stmt->parameters);
-                lit_reallocate(state, expression, sizeof(LitFunctionStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitFunctionStatement), 0);
             }
             break;
         case LITSTMT_RETURN:
             {
                 lit_free_expression(state, ((LitReturnStatement*)expression)->expression);
-                lit_reallocate(state, expression, sizeof(LitReturnStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitReturnStatement), 0);
             }
             break;
         case LITSTMT_METHOD:
@@ -326,13 +326,13 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitMethodStatement* stmt = (LitMethodStatement*)expression;
                 lit_paramlist_freevalues(state, &stmt->parameters);
                 lit_free_expression(state, stmt->body);
-                lit_reallocate(state, expression, sizeof(LitMethodStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitMethodStatement), 0);
             }
             break;
         case LITSTMT_CLASS:
             {
                 internal_free_statements(state, &((LitClassStatement*)expression)->fields);
-                lit_reallocate(state, expression, sizeof(LitClassStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitClassStatement), 0);
             }
             break;
         case LITSTMT_FIELD:
@@ -340,7 +340,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
                 LitFieldStatement* stmt = (LitFieldStatement*)expression;
                 lit_free_expression(state, stmt->getter);
                 lit_free_expression(state, stmt->setter);
-                lit_reallocate(state, expression, sizeof(LitFieldStatement), 0);
+                lit_gcmem_memrealloc(state, expression, sizeof(LitFieldStatement), 0);
             }
             break;
         default:
@@ -354,7 +354,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 static LitExpression* allocate_expression(LitState* state, uint64_t line, size_t size, LitExpressionType type)
 {
     LitExpression* object;
-    object = (LitExpression*)lit_reallocate(state, NULL, 0, size);
+    object = (LitExpression*)lit_gcmem_memrealloc(state, NULL, 0, size);
     object->type = type;
     object->line = line;
     return object;
@@ -531,7 +531,7 @@ LitReferenceExpression* lit_create_reference_expression(LitState* state, size_t 
 static LitExpression* allocate_statement(LitState* state, uint64_t line, size_t size, LitExpressionType type)
 {
     LitExpression* object;
-    object = (LitExpression*)lit_reallocate(state, NULL, 0, size);
+    object = (LitExpression*)lit_gcmem_memrealloc(state, NULL, 0, size);
     object->type = type;
     object->line = line;
     return object;
@@ -676,7 +676,7 @@ LitFieldStatement* lit_create_field_statement(LitState* state, size_t line, LitS
 LitExprList* lit_allocate_expressions(LitState* state)
 {
     LitExprList* expressions;
-    expressions = (LitExprList*)lit_reallocate(state, NULL, 0, sizeof(LitExprList));
+    expressions = (LitExprList*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(LitExprList));
     lit_exprlist_init(expressions);
     return expressions;
 }
@@ -693,13 +693,13 @@ void lit_free_allocated_expressions(LitState* state, LitExprList* expressions)
         lit_free_expression(state, expressions->values[i]);
     }
     lit_exprlist_destroy(state, expressions);
-    lit_reallocate(state, expressions, sizeof(LitExprList), 0);
+    lit_gcmem_memrealloc(state, expressions, sizeof(LitExprList), 0);
 }
 
 LitExprList* lit_allocate_statements(LitState* state)
 {
     LitExprList* statements;
-    statements = (LitExprList*)lit_reallocate(state, NULL, 0, sizeof(LitExprList));
+    statements = (LitExprList*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(LitExprList));
     lit_exprlist_init(statements);
     return statements;
 }
@@ -716,5 +716,5 @@ void lit_free_allocated_statements(LitState* state, LitExprList* statements)
         lit_free_expression(state, statements->values[i]);
     }
     lit_exprlist_destroy(state, statements);
-    lit_reallocate(state, statements, sizeof(LitExprList), 0);
+    lit_gcmem_memrealloc(state, statements, sizeof(LitExprList), 0);
 }

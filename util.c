@@ -177,3 +177,16 @@ unsigned int lit_util_numbertouint32(double n)
 }
 
 
+// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2Float
+int lit_util_closestpowof2(int n)
+{
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+    return n;
+}
+

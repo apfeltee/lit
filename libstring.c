@@ -313,7 +313,7 @@ int lit_util_ucharoffset(char* str, int index)
 LitString* lit_string_makeempty(LitState* state, size_t length, bool reuse)
 {
     LitString* string;
-    string = (LitString*)lit_allocate_object(state, sizeof(LitString), LITTYPE_STRING, false);
+    string = (LitString*)lit_gcmem_allocobject(state, sizeof(LitString), LITTYPE_STRING, false);
     if(!reuse)
     {
         string->chars = sdsempty();

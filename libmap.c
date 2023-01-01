@@ -202,18 +202,6 @@ void lit_table_remove_white(LitTable* table)
     }
 }
 
-void lit_mark_table(LitVM* vm, LitTable* table)
-{
-    int i;
-    LitTableEntry* entry;
-    for(i = 0; i <= table->capacity; i++)
-    {
-        entry = &table->entries[i];
-        lit_mark_object(vm, (LitObject*)entry->key);
-        lit_mark_value(vm, entry->value);
-    }
-}
-
 
 int util_table_iterator(LitTable* table, int number)
 {
@@ -244,6 +232,49 @@ LitValue util_table_iterator_key(LitTable* table, int index)
         return NULL_VALUE;
     }
     return lit_value_objectvalue(table->entries[index].key);
+}
+
+LitMap* lit_create_map(LitState* state)
+{
+    LitMap* map;
+    map = (LitMap*)lit_gcmem_allocobject(state, sizeof(LitMap), LITTYPE_MAP, false);
+    lit_table_init(state, &map->values);
+    map->index_fn = NULL;
+    return map;
+}
+
+bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value)
+{
+    if(value == NULL_VALUE)
+    {
+        lit_map_delete(map, key);
+        return false;
+    }
+    return lit_table_set(state, &map->values, key, value);
+}
+
+bool lit_map_get(LitMap* map, LitString* key, LitValue* value)
+{
+    return lit_table_get(&map->values, key, value);
+}
+
+bool lit_map_delete(LitMap* map, LitString* key)
+{
+    return lit_table_delete(&map->values, key);
+}
+
+void lit_map_add_all(LitState* state, LitMap* from, LitMap* to)
+{
+    int i;
+    LitTableEntry* entry;
+    for(i = 0; i <= from->values.capacity; i++)
+    {
+        entry = &from->values.entries[i];
+        if(entry->key != NULL)
+        {
+            lit_table_set(state, &to->values, entry->key, entry->value);
+        }
+    }
 }
 
 static LitValue objfn_map_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)

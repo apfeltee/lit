@@ -3,14 +3,13 @@
 #include <stdio.h>
 #include <time.h>
 #include "lit.h"
-#include "sds.h"
 
 #if 0
     static LitObject g_stackmem[1024 * (1024 * 4)];
     static size_t g_objcount = 0;
 #endif
 
-LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type, bool islight)
+LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjectType type, bool islight)
 {
     LitObject* obj;
     if(islight)
@@ -26,7 +25,7 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type,
     }
     else
     {
-        obj = (LitObject*)lit_reallocate(state, NULL, 0, size);
+        obj = (LitObject*)lit_gcmem_memrealloc(state, NULL, 0, size);
         obj->mustfree = true;
     }
     obj->type = type;
@@ -40,18 +39,18 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type,
     return obj;
 }
 
-void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size)
+void* lit_gcmem_memrealloc(LitState* state, void* pointer, size_t old_size, size_t new_size)
 {
     void* ptr;
     state->bytes_allocated += (int64_t)new_size - (int64_t)old_size;
     if(new_size > old_size)
     {
 #ifdef LIT_STRESS_TEST_GC
-        lit_collect_garbage(state->vm);
+        lit_gcmem_collectgarbage(state->vm);
 #endif
         if(state->bytes_allocated > state->next_gc)
         {
-            lit_collect_garbage(state->vm);
+            lit_gcmem_collectgarbage(state->vm);
         }
     }
     if(new_size == 0)
@@ -68,184 +67,19 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
     return ptr;
 }
 
-void lit_free_object(LitState* state, LitObject* object)
+void lit_gcmem_marktable(LitVM* vm, LitTable* table)
 {
-    LitString* string;
-    LitFunction* function;
-    LitFiber* fiber;
-    LitModule* module;
-    LitClosure* closure;
-#ifdef LIT_LOG_ALLOCATION
-    printf("(");
-    lit_print_value(lit_value_objectvalue(object));
-    printf(") %p free %s\n", (void*)object, lit_value_typename(object->type));
-#endif
-
-    switch(object->type)
+    int i;
+    LitTableEntry* entry;
+    for(i = 0; i <= table->capacity; i++)
     {
-        case LITTYPE_NUMBER:
-            {
-                LitNumber* n = (LitNumber*)object;
-                if(object->mustfree)
-                {
-                    LIT_FREE(state, sizeof(LitNumber), object);
-                }
-            }
-            break;
-        case LITTYPE_STRING:
-            {
-                string = (LitString*)object;
-                //LIT_FREE_ARRAY(state, sizeof(char), string->chars, string->length + 1);
-                sdsfree(string->chars);
-                string->chars = NULL;
-                LIT_FREE(state, sizeof(LitString), object);
-            }
-            break;
-
-        case LITTYPE_FUNCTION:
-            {
-                function = (LitFunction*)object;
-                lit_free_chunk(state, &function->chunk);
-                LIT_FREE(state, sizeof(LitFunction), object);
-            }
-            break;
-        case LITTYPE_NATIVE_FUNCTION:
-            {
-                LIT_FREE(state, sizeof(LitNativeFunction), object);
-            }
-            break;
-        case LITTYPE_NATIVE_PRIMITIVE:
-            {
-                LIT_FREE(state, sizeof(LitNativePrimFunction), object);
-            }
-            break;
-        case LITTYPE_NATIVE_METHOD:
-            {
-                LIT_FREE(state, sizeof(LitNativeMethod), object);
-            }
-            break;
-        case LITTYPE_PRIMITIVE_METHOD:
-            {
-                LIT_FREE(state, sizeof(LitPrimitiveMethod), object);
-            }
-            break;
-        case LITTYPE_FIBER:
-            {
-                fiber = (LitFiber*)object;
-                LIT_FREE_ARRAY(state, sizeof(LitCallFrame), fiber->frames, fiber->frame_capacity);
-                LIT_FREE_ARRAY(state, sizeof(LitValue), fiber->stack, fiber->stack_capacity);
-                LIT_FREE(state, sizeof(LitFiber), object);
-            }
-            break;
-        case LITTYPE_MODULE:
-            {
-                module = (LitModule*)object;
-                LIT_FREE_ARRAY(state, sizeof(LitValue), module->privates, module->private_count);
-                LIT_FREE(state, sizeof(LitModule), object);
-            }
-            break;
-        case LITTYPE_CLOSURE:
-            {
-                closure = (LitClosure*)object;
-                LIT_FREE_ARRAY(state, sizeof(LitUpvalue*), closure->upvalues, closure->upvalue_count);
-                LIT_FREE(state, sizeof(LitClosure), object);
-            }
-            break;
-        case LITTYPE_UPVALUE:
-            {
-                LIT_FREE(state, sizeof(LitUpvalue), object);
-            }
-            break;
-        case LITTYPE_CLASS:
-            {
-                LitClass* klass = (LitClass*)object;
-                lit_table_destroy(state, &klass->methods);
-                lit_table_destroy(state, &klass->static_fields);
-                LIT_FREE(state, sizeof(LitClass), object);
-            }
-            break;
-
-        case LITTYPE_INSTANCE:
-            {
-                lit_table_destroy(state, &((LitInstance*)object)->fields);
-                LIT_FREE(state, sizeof(LitInstance), object);
-            }
-            break;
-        case LITTYPE_BOUND_METHOD:
-            {
-                LIT_FREE(state, sizeof(LitBoundMethod), object);
-            }
-            break;
-        case LITTYPE_ARRAY:
-            {
-                lit_vallist_destroy(state, &((LitArray*)object)->list);
-                LIT_FREE(state, sizeof(LitArray), object);
-            }
-            break;
-        case LITTYPE_MAP:
-            {
-                lit_table_destroy(state, &((LitMap*)object)->values);
-                LIT_FREE(state, sizeof(LitMap), object);
-            }
-            break;
-        case LITTYPE_USERDATA:
-            {
-                LitUserdata* data = (LitUserdata*)object;
-                if(data->cleanup_fn != NULL)
-                {
-                    data->cleanup_fn(state, data, false);
-                }
-                if(data->size > 0)
-                {
-                    if(data->canfree)
-                    {
-                        lit_reallocate(state, data->data, data->size, 0);
-                    }
-                }
-                LIT_FREE(state, sizeof(LitUserdata), data);
-                //free(data);
-            }
-            break;
-        case LITTYPE_RANGE:
-            {
-                LIT_FREE(state, sizeof(LitRange), object);
-            }
-            break;
-        case LITTYPE_FIELD:
-            {
-                LIT_FREE(state, sizeof(LitField), object);
-            }
-            break;
-        case LITTYPE_REFERENCE:
-            {
-                LIT_FREE(state, sizeof(LitReference), object);
-            }
-            break;
-        default:
-            {
-                fprintf(stderr, "internal error: trying to free something else!\n");
-                UNREACHABLE
-            }
-            break;
+        entry = &table->entries[i];
+        lit_gcmem_markobject(vm, (LitObject*)entry->key);
+        lit_gcmem_markvalue(vm, entry->value);
     }
 }
 
-void lit_free_objects(LitState* state, LitObject* objects)
-{
-    LitObject* object = objects;
-
-    while(object != NULL)
-    {
-        LitObject* next = object->next;
-        lit_free_object(state, object);
-        object = next;
-    }
-
-    free(state->vm->gray_stack);
-    state->vm->gray_capacity = 0;
-}
-
-void lit_mark_object(LitVM* vm, LitObject* object)
+void lit_gcmem_markobject(LitVM* vm, LitObject* object)
 {
     if(object == NULL || object->marked)
     {
@@ -269,11 +103,11 @@ void lit_mark_object(LitVM* vm, LitObject* object)
     vm->gray_stack[vm->gray_count++] = object;
 }
 
-void lit_mark_value(LitVM* vm, LitValue value)
+void lit_gcmem_markvalue(LitVM* vm, LitValue value)
 {
     if(lit_value_isobject(value))
     {
-        lit_mark_object(vm, lit_value_asobject(value));
+        lit_gcmem_markobject(vm, lit_value_asobject(value));
     }
 }
 
@@ -284,26 +118,26 @@ static void mark_roots(LitVM* vm)
     state = vm->state;
     for(i = 0; i < state->root_count; i++)
     {
-        lit_mark_value(vm, state->roots[i]);
+        lit_gcmem_markvalue(vm, state->roots[i]);
     }
-    lit_mark_object(vm, (LitObject*)vm->fiber);
-    lit_mark_object(vm, (LitObject*)state->classvalue_class);
-    lit_mark_object(vm, (LitObject*)state->objectvalue_class);
-    lit_mark_object(vm, (LitObject*)state->numbervalue_class);
-    lit_mark_object(vm, (LitObject*)state->stringvalue_class);
-    lit_mark_object(vm, (LitObject*)state->boolvalue_class);
-    lit_mark_object(vm, (LitObject*)state->functionvalue_class);
-    lit_mark_object(vm, (LitObject*)state->fibervalue_class);
-    lit_mark_object(vm, (LitObject*)state->modulevalue_class);
-    lit_mark_object(vm, (LitObject*)state->arrayvalue_class);
-    lit_mark_object(vm, (LitObject*)state->mapvalue_class);
-    lit_mark_object(vm, (LitObject*)state->rangevalue_class);
-    lit_mark_object(vm, (LitObject*)state->api_name);
-    lit_mark_object(vm, (LitObject*)state->api_function);
-    lit_mark_object(vm, (LitObject*)state->api_fiber);
-    lit_mark_table(vm, &state->preprocessor->defined);
-    lit_mark_table(vm, &vm->modules->values);
-    lit_mark_table(vm, &vm->globals->values);
+    lit_gcmem_markobject(vm, (LitObject*)vm->fiber);
+    lit_gcmem_markobject(vm, (LitObject*)state->classvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->objectvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->numbervalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->stringvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->boolvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->functionvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->fibervalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->modulevalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->arrayvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->mapvalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->rangevalue_class);
+    lit_gcmem_markobject(vm, (LitObject*)state->api_name);
+    lit_gcmem_markobject(vm, (LitObject*)state->api_function);
+    lit_gcmem_markobject(vm, (LitObject*)state->api_fiber);
+    lit_gcmem_marktable(vm, &state->preprocessor->defined);
+    lit_gcmem_marktable(vm, &vm->modules->values);
+    lit_gcmem_marktable(vm, &vm->globals->values);
 }
 
 static void mark_array(LitVM* vm, LitValueList* array)
@@ -311,7 +145,7 @@ static void mark_array(LitVM* vm, LitValueList* array)
     size_t i;
     for(i = 0; i < lit_vallist_count(array); i++)
     {
-        lit_mark_value(vm, lit_vallist_get(array, i));
+        lit_gcmem_markvalue(vm, lit_vallist_get(array, i));
     }
 }
 
@@ -358,7 +192,7 @@ static void blacken_object(LitVM* vm, LitObject* object)
         case LITTYPE_FUNCTION:
             {
                 function = (LitFunction*)object;
-                lit_mark_object(vm, (LitObject*)function->name);
+                lit_gcmem_markobject(vm, (LitObject*)function->name);
                 mark_array(vm, &function->chunk.constants);
             }
             break;
@@ -367,83 +201,83 @@ static void blacken_object(LitVM* vm, LitObject* object)
                 fiber = (LitFiber*)object;
                 for(LitValue* slot = fiber->stack; slot < fiber->stack_top; slot++)
                 {
-                    lit_mark_value(vm, *slot);
+                    lit_gcmem_markvalue(vm, *slot);
                 }
                 for(i = 0; i < fiber->frame_count; i++)
                 {
                     frame = &fiber->frames[i];
                     if(frame->closure != NULL)
                     {
-                        lit_mark_object(vm, (LitObject*)frame->closure);
+                        lit_gcmem_markobject(vm, (LitObject*)frame->closure);
                     }
                     else
                     {
-                        lit_mark_object(vm, (LitObject*)frame->function);
+                        lit_gcmem_markobject(vm, (LitObject*)frame->function);
                     }
                 }
                 for(upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next)
                 {
-                    lit_mark_object(vm, (LitObject*)upvalue);
+                    lit_gcmem_markobject(vm, (LitObject*)upvalue);
                 }
-                lit_mark_value(vm, fiber->error);
-                lit_mark_object(vm, (LitObject*)fiber->module);
-                lit_mark_object(vm, (LitObject*)fiber->parent);
+                lit_gcmem_markvalue(vm, fiber->error);
+                lit_gcmem_markobject(vm, (LitObject*)fiber->module);
+                lit_gcmem_markobject(vm, (LitObject*)fiber->parent);
             }
             break;
         case LITTYPE_MODULE:
             {
                 module = (LitModule*)object;
-                lit_mark_value(vm, module->return_value);
-                lit_mark_object(vm, (LitObject*)module->name);
-                lit_mark_object(vm, (LitObject*)module->main_function);
-                lit_mark_object(vm, (LitObject*)module->main_fiber);
-                lit_mark_object(vm, (LitObject*)module->private_names);
+                lit_gcmem_markvalue(vm, module->return_value);
+                lit_gcmem_markobject(vm, (LitObject*)module->name);
+                lit_gcmem_markobject(vm, (LitObject*)module->main_function);
+                lit_gcmem_markobject(vm, (LitObject*)module->main_fiber);
+                lit_gcmem_markobject(vm, (LitObject*)module->private_names);
                 for(i = 0; i < module->private_count; i++)
                 {
-                    lit_mark_value(vm, module->privates[i]);
+                    lit_gcmem_markvalue(vm, module->privates[i]);
                 }
             }
             break;
         case LITTYPE_CLOSURE:
             {
                 closure = (LitClosure*)object;
-                lit_mark_object(vm, (LitObject*)closure->function);
+                lit_gcmem_markobject(vm, (LitObject*)closure->function);
                 // Check for NULL is needed for a really specific gc-case
                 if(closure->upvalues != NULL)
                 {
                     for(i = 0; i < closure->upvalue_count; i++)
                     {
-                        lit_mark_object(vm, (LitObject*)closure->upvalues[i]);
+                        lit_gcmem_markobject(vm, (LitObject*)closure->upvalues[i]);
                     }
                 }
             }
             break;
         case LITTYPE_UPVALUE:
             {
-                lit_mark_value(vm, ((LitUpvalue*)object)->closed);
+                lit_gcmem_markvalue(vm, ((LitUpvalue*)object)->closed);
             }
             break;
         case LITTYPE_CLASS:
             {
                 klass = (LitClass*)object;
-                lit_mark_object(vm, (LitObject*)klass->name);
-                lit_mark_object(vm, (LitObject*)klass->super);
-                lit_mark_table(vm, &klass->methods);
-                lit_mark_table(vm, &klass->static_fields);
+                lit_gcmem_markobject(vm, (LitObject*)klass->name);
+                lit_gcmem_markobject(vm, (LitObject*)klass->super);
+                lit_gcmem_marktable(vm, &klass->methods);
+                lit_gcmem_marktable(vm, &klass->static_fields);
             }
             break;
         case LITTYPE_INSTANCE:
             {
                 LitInstance* instance = (LitInstance*)object;
-                lit_mark_object(vm, (LitObject*)instance->klass);
-                lit_mark_table(vm, &instance->fields);
+                lit_gcmem_markobject(vm, (LitObject*)instance->klass);
+                lit_gcmem_marktable(vm, &instance->fields);
             }
             break;
         case LITTYPE_BOUND_METHOD:
             {
                 bound_method = (LitBoundMethod*)object;
-                lit_mark_value(vm, bound_method->receiver);
-                lit_mark_value(vm, bound_method->method);
+                lit_gcmem_markvalue(vm, bound_method->receiver);
+                lit_gcmem_markvalue(vm, bound_method->method);
             }
             break;
         case LITTYPE_ARRAY:
@@ -453,19 +287,19 @@ static void blacken_object(LitVM* vm, LitObject* object)
             break;
         case LITTYPE_MAP:
             {
-                lit_mark_table(vm, &((LitMap*)object)->values);
+                lit_gcmem_marktable(vm, &((LitMap*)object)->values);
             }
             break;
         case LITTYPE_FIELD:
             {
                 field = (LitField*)object;
-                lit_mark_object(vm, (LitObject*)field->getter);
-                lit_mark_object(vm, (LitObject*)field->setter);
+                lit_gcmem_markobject(vm, (LitObject*)field->getter);
+                lit_gcmem_markobject(vm, (LitObject*)field->setter);
             }
             break;
         case LITTYPE_REFERENCE:
             {
-                lit_mark_value(vm, *((LitReference*)object)->slot);
+                lit_gcmem_markvalue(vm, *((LitReference*)object)->slot);
             }
             break;
         default:
@@ -514,12 +348,12 @@ static void sweep(LitVM* vm)
             {
                 vm->objects = object;
             }
-            lit_free_object(vm->state, unreached);
+            lit_object_destroy(vm->state, unreached);
         }
     }
 }
 
-uint64_t lit_collect_garbage(LitVM* vm)
+uint64_t lit_gcmem_collectgarbage(LitVM* vm)
 {
     clock_t t;
     uint64_t before;
@@ -553,16 +387,49 @@ uint64_t lit_collect_garbage(LitVM* vm)
     return collected;
 }
 
-// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2Float
-int lit_closest_power_of_two(int n)
+static LitValue objfn_gc_memory_used(LitVM* vm, LitValue instance, size_t arg_count, LitValue* args)
 {
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n++;
-    return n;
+    (void)instance;
+    (void)arg_count;
+    (void)args;
+    return lit_value_numbertovalue(vm->state, vm->state->bytes_allocated);
 }
+
+static LitValue objfn_gc_next_round(LitVM* vm, LitValue instance, size_t arg_count, LitValue* args)
+{
+    (void)instance;
+    (void)arg_count;
+    (void)args;
+    return lit_value_numbertovalue(vm->state, vm->state->next_gc);
+}
+
+static LitValue objfn_gc_trigger(LitVM* vm, LitValue instance, size_t arg_count, LitValue* args)
+{
+    (void)instance;
+    (void)arg_count;
+    (void)args;
+    int64_t collected;
+    vm->state->allow_gc = true;
+    collected = lit_gcmem_collectgarbage(vm);
+    vm->state->allow_gc = false;
+
+    return lit_value_numbertovalue(vm->state, collected);
+}
+
+void lit_open_gc_library(LitState* state)
+{
+    LitClass* klass;
+    klass = lit_create_classobject(state, "GC");
+    {
+        lit_class_bindgetset(state, klass, "memoryUsed", objfn_gc_memory_used, NULL, true);
+        lit_class_bindgetset(state, klass, "nextRound", objfn_gc_next_round, NULL, true);
+        lit_class_bindstaticmethod(state, klass, "trigger", objfn_gc_trigger);
+    }
+    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    if(klass->super == NULL)
+    {
+        lit_class_inheritfrom(state, klass, state->objectvalue_class);
+    };
+}
+
 

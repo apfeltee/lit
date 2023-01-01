@@ -143,16 +143,16 @@
     ((capacity) < 8 ? 8 : (capacity)*2)
 
 #define LIT_GROW_ARRAY(state, previous, typesz, old_count, count) \
-    lit_reallocate(state, previous, typesz * (old_count), typesz * (count))
+    lit_gcmem_memrealloc(state, previous, typesz * (old_count), typesz * (count))
 
 #define LIT_FREE_ARRAY(state, typesz, pointer, old_count) \
-    lit_reallocate(state, pointer, typesz * (old_count), 0)
+    lit_gcmem_memrealloc(state, pointer, typesz * (old_count), 0)
 
 #define LIT_ALLOCATE(state, typesz, count) \
-    lit_reallocate(state, NULL, 0, typesz * (count))
+    lit_gcmem_memrealloc(state, NULL, 0, typesz * (count))
 
 #define LIT_FREE(state, typesz, pointer) \
-    lit_reallocate(state, pointer, typesz, 0)
+    lit_gcmem_memrealloc(state, pointer, typesz, 0)
 
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
@@ -1103,7 +1103,7 @@ int lit_array_indexof(LitArray *array, LitValue value);
 /* remove the value at $index */
 LitValue lit_array_removeat(LitArray *array, size_t index);
 
-LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type, bool islight);
+LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjectType type, bool islight);
 
 
 #define lit_value_objectvalue(obj) lit_value_objectvalue_actual((uintptr_t)obj)
@@ -1396,24 +1396,24 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value);
 const char* lit_value_typename(LitValue value);
 
 /* allocate/reallocate memory. if new_size is 0, frees the pointer, and returns NULL. */
-void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
+void* lit_gcmem_memrealloc(LitState* state, void* pointer, size_t old_size, size_t new_size);
 
 /* releases given objects, and their subobjects. */
-void lit_free_objects(LitState* state, LitObject* objects);
+void lit_object_destroylistof(LitState* state, LitObject* objects);
 
 /* run garbage collector */
-uint64_t lit_collect_garbage(LitVM* vm);
+uint64_t lit_gcmem_collectgarbage(LitVM* vm);
 
 /* mark an object for collection. */
-void lit_mark_object(LitVM* vm, LitObject* object);
+void lit_gcmem_markobject(LitVM* vm, LitObject* object);
 
 /* mark a value for collection. */
-void lit_mark_value(LitVM* vm, LitValue value);
+void lit_gcmem_markvalue(LitVM* vm, LitValue value);
 
 /* free a object */
-void lit_free_object(LitState* state, LitObject* object);
+void lit_object_destroy(LitState* state, LitObject* object);
 
-int lit_closest_power_of_two(int n);
+int lit_util_closestpowof2(int n);
 
 void lit_table_init(LitState* state, LitTable* table);
 void lit_table_destroy(LitState* state, LitTable* table);
@@ -1424,7 +1424,7 @@ bool lit_table_delete(LitTable* table, LitString* key);
 LitString* lit_table_find_string(LitTable* table, const char* chars, size_t length, uint32_t hash);
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
 void lit_table_remove_white(LitTable* table);
-void lit_mark_table(LitVM* vm, LitTable* table);
+void lit_gcmem_marktable(LitVM* vm, LitTable* table);
 bool lit_is_callable_function(LitValue value);
 
 /**

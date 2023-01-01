@@ -344,7 +344,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
     uint8_t type;
     lit_init_chunk(chunk);
     count = lit_read_euint32_t(file);
-    chunk->code = (uint8_t*)lit_reallocate(state, NULL, 0, sizeof(uint8_t) * count);
+    chunk->code = (uint8_t*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(uint8_t) * count);
     chunk->count = count;
     chunk->capacity = count;
     for(i = 0; i < count; i++)
@@ -354,7 +354,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
     count = lit_read_euint32_t(file);
     if(count > 0)
     {
-        chunk->lines = (uint16_t*)lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
+        chunk->lines = (uint16_t*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(uint16_t) * count);
         chunk->line_count = count;
         chunk->line_capacity = count;
         for(i = 0; i < count; i++)
@@ -368,7 +368,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
     }
     count = lit_read_euint32_t(file);
     /*
-    chunk->constants.values = (LitValue*)lit_reallocate(state, NULL, 0, sizeof(LitValue) * count);
+    chunk->constants.values = (LitValue*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(LitValue) * count);
     chunk->constants.count = count;
     chunk->constants.capacity = count;
     */

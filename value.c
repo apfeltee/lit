@@ -65,7 +65,7 @@ LitValue lit_value_numbertovalue(LitState* state, double num)
         #if 1
             LitObject* o;
             LitNumber* nobj;
-            o = lit_allocate_object(state, sizeof(LitNumber), LITTYPE_NUMBER, true);
+            o = lit_gcmem_allocobject(state, sizeof(LitNumber), LITTYPE_NUMBER, true);
             o->type = LITTYPE_NUMBER;
             nobj = (LitNumber*)o;
             nobj->num = num;
@@ -91,4 +91,25 @@ bool lit_value_isnumber(LitValue v)
     #else
         return (((v)&QNAN) != QNAN);
     #endif
+}
+
+
+bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
+{
+    LitInterpretResult inret;
+    LitValue args[3];
+    if(lit_value_isinstance(a))
+    {
+        args[0] = b;
+        inret = lit_instance_call_method(state, a, CONST_STRING(state, "=="), args, 1);
+        if(inret.type == LITRESULT_OK)
+        {
+            if(lit_bool_to_value(state, inret.result) == TRUE_VALUE)
+            {
+                return true;
+            }
+            return false;
+        }
+    }
+    return (a == b);
 }

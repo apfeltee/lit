@@ -158,6 +158,15 @@ void lit_vallist_push(LitState* state, LitValueList* vl, LitValue value)
 
 /* ---- Array object instance functions */
 
+LitArray* lit_create_array(LitState* state)
+{
+    LitArray* array;
+    array = (LitArray*)lit_gcmem_allocobject(state, sizeof(LitArray), LITTYPE_ARRAY, false);
+    lit_vallist_init(&array->list);
+    return array;
+}
+
+
 size_t lit_array_count(LitArray* arr)
 {
     return lit_vallist_count(&arr->list);
@@ -328,25 +337,6 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
     return lit_vallist_get(values, index);
 }
 
-bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
-{
-    LitInterpretResult inret;
-    LitValue args[3];
-    if(lit_value_isinstance(a))
-    {
-        args[0] = b;
-        inret = lit_instance_call_method(state, a, CONST_STRING(state, "=="), args, 1);
-        if(inret.type == LITRESULT_OK)
-        {
-            if(lit_bool_to_value(state, inret.result) == TRUE_VALUE)
-            {
-                return true;
-            }
-            return false;
-        }
-    }
-    return (a == b);
-}
 
 static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {

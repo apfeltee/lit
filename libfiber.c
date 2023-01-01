@@ -1,6 +1,80 @@
 
 #include "lit.h"
 
+LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function)
+{
+    size_t stack_capacity;
+    LitValue* stack;
+    LitCallFrame* frame;
+    LitCallFrame* frames;
+    LitFiber* fiber;
+    // Allocate in advance, just in case GC is triggered
+    stack_capacity = function == NULL ? 1 : (size_t)lit_util_closestpowof2(function->max_slots + 1);
+    stack = LIT_ALLOCATE(state, sizeof(LitValue), stack_capacity);
+    frames = LIT_ALLOCATE(state, sizeof(LitCallFrame), LIT_INITIAL_CALL_FRAMES);
+    fiber = (LitFiber*)lit_gcmem_allocobject(state, sizeof(LitFiber), LITTYPE_FIBER, false);
+    if(module != NULL)
+    {
+        if(module->main_fiber == NULL)
+        {
+            module->main_fiber = fiber;
+        }
+    }
+    fiber->stack = stack;
+    fiber->stack_capacity = stack_capacity;
+    fiber->stack_top = fiber->stack;
+    fiber->frames = frames;
+    fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;
+    fiber->parent = NULL;
+    fiber->frame_count = 1;
+    fiber->arg_count = 0;
+    fiber->module = module;
+    fiber->catcher = false;
+    fiber->error = NULL_VALUE;
+    fiber->open_upvalues = NULL;
+    fiber->abort = false;
+    frame = &fiber->frames[0];
+    frame->closure = NULL;
+    frame->function = function;
+    frame->slots = fiber->stack;
+    frame->result_ignored = false;
+    frame->return_to_c = false;
+    if(function != NULL)
+    {
+        frame->ip = function->chunk.code;
+    }
+    return fiber;
+}
+
+void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, size_t needed)
+{
+    size_t i;
+    size_t capacity;
+    LitValue* old_stack;
+    LitUpvalue* upvalue;
+    if(fiber->stack_capacity >= needed)
+    {
+        return;
+    }
+    capacity = (size_t)lit_util_closestpowof2((int)needed);
+    old_stack = fiber->stack;
+    fiber->stack = (LitValue*)lit_gcmem_memrealloc(state, fiber->stack, sizeof(LitValue) * fiber->stack_capacity, sizeof(LitValue) * capacity);
+    fiber->stack_capacity = capacity;
+    if(fiber->stack != old_stack)
+    {
+        for(i = 0; i < fiber->frame_capacity; i++)
+        {
+            LitCallFrame* frame = &fiber->frames[i];
+            frame->slots = fiber->stack + (frame->slots - old_stack);
+        }
+        for(upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next)
+        {
+            upvalue->location = fiber->stack + (upvalue->location - old_stack);
+        }
+        fiber->stack_top = fiber->stack + (fiber->stack_top - old_stack);
+    }
+}
+
 static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;

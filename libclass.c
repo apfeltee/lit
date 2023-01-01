@@ -1,6 +1,18 @@
 
 #include "lit.h"
 
+LitClass* lit_create_class(LitState* state, LitString* name)
+{
+    LitClass* klass;
+    klass = (LitClass*)lit_gcmem_allocobject(state, sizeof(LitClass), LITTYPE_CLASS, false);
+    klass->name = name;
+    klass->init_method = NULL;
+    klass->super = NULL;
+    lit_table_init(state, &klass->methods);
+    lit_table_init(state, &klass->static_fields);
+    return klass;
+}
+
 LitClass* lit_create_classobject(LitState* state, const char* name)
 {
     LitString* nm;
@@ -9,6 +21,25 @@ LitClass* lit_create_classobject(LitState* state, const char* name)
     cl = lit_create_class(state, nm);
     cl->name = nm;
     return cl;
+}
+
+LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter)
+{
+    LitField* field;
+    field = (LitField*)lit_gcmem_allocobject(state, sizeof(LitField), LITTYPE_FIELD, false);
+    field->getter = getter;
+    field->setter = setter;
+    return field;
+}
+
+LitInstance* lit_create_instance(LitState* state, LitClass* klass)
+{
+    LitInstance* instance;
+    instance = (LitInstance*)lit_gcmem_allocobject(state, sizeof(LitInstance), LITTYPE_INSTANCE, false);
+    instance->klass = klass;
+    lit_table_init(state, &instance->fields);
+    instance->fields.count = 0;
+    return instance;
 }
 
 void lit_class_bindconstructor(LitState* state, LitClass* cl, LitNativeMethodFn fn)
