@@ -33,7 +33,7 @@ LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, 
     obj->next = state->vm->objects;
     state->vm->objects = obj;
     #ifdef LIT_LOG_ALLOCATION
-        printf("%p allocate %ld for %s\n", (void*)obj, size, lit_value_typename(type));
+        printf("%p allocate %ld for %s\n", (void*)obj, size, lit_tostring_typename(type));
     #endif
 
     return obj;
@@ -90,7 +90,7 @@ void lit_gcmem_markobject(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_MARKING
     printf("%p mark ", (void*)object);
-    lit_print_value(lit_value_objectvalue(object));
+    lit_tostring_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
 
@@ -165,7 +165,7 @@ void lit_gcmem_vmblackobject(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_BLACKING
     printf("%p blacken ", (void*)object);
-    lit_print_value(lit_value_objectvalue(object));
+    lit_tostring_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
     switch(object->type)

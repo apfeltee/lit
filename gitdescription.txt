@@ -1,1 +1,0 @@
-lit is a interpreted scripting language

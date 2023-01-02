@@ -485,17 +485,6 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
     prefix_rule = get_rule(parser->previous.type)->prefix;
     if(prefix_rule == NULL)
     {
-        #if 0
-        if(parser->previous.type == LITTOK_SEMICOLON)
-        {
-            if(parser->current.type == LITTOK_NEW_LINE)
-            {
-                prs_advance(parser);
-                return parse_precedence(parser, precedence, err);
-            }
-            return NULL;
-        }
-        #endif
         //if(parser->previous.type != parser->current.type)
         {
             // todo: file start
@@ -574,6 +563,9 @@ static void parse_parameters(LitParser* parser, LitParamList* parameters)
     }
 }
 
+/*
+* this is extremely not working at all.
+*/
 static LitExpression* prule_grouping_or_lambda(LitParser* parser, bool can_assign)
 {
     bool stop;

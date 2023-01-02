@@ -1,0 +1,15 @@
+[0x401de3] lit_make_state(2, 1, 2, 2)                                                                                = 0x15ae2a0
+[0x401df9] lit_open_libraries(0x15ae2a0, 2, 0, 2)                                                                    = 7
+[0x401ead] lit_create_array(0x15ae2a0, 0x7ffec91923b8, 0, 0x7ffec91923b8)                                            = 0x15bc310
+[0x401632] strlen(0x7ffec919776c, 0x7ffec919776c, 0x7ffec919776c, 0)                                                 = 9
+[0x401648] lit_string_copy(0x15ae2a0, 0x7ffec919776c, 9, 0x7ffec919776c)                                             = 0x15bc380
+[0x401650] lit_value_objectvalue_actual(0x15bc380, 255, 0, 255)                                                      = 0xfffc0000015bc380
+[0x401f06] lit_vallist_push(0x15ae2a0, 0x15bc328, 0xfffc0000015bc380, 0x15bc328)                                     = 0x15bc328
+[0x401f2a] lit_value_objectvalue_actual(0x15bc310, 0x15bc060, 1, 0x15ae01e)                                          = 0xfffc0000015bc310
+[0x40166e] strlen(0x403730, 0x403730, 1, 0x15ae01e)                                                                  = 4
+[0x401684] lit_string_copy(0x15ae2a0, 0x403730, 4, 0x403730)                                                         = 0x15bc3d0
+[0x401f5b] lit_set_global(0x15ae2a0, 0x15bc3d0, 0xfffc0000015bc310, 0x15bc3d0)                                       = 0x15ae2a0
+[0x401fcb] lit_state_execfile(0x15ae2a0, 0x7ffec919776c, 0x7ffec919776c, 2)                                          = 0
+[0x401a3c] lit_destroy_state(0x15ae2a0, 0, 0, 0x4028000000000000)                                                    = 8
+[0x401a6e] fprintf(0x7fcb2b28e5c0, 0x40363e, 8, 1)                                                                   = 27
+[0xffffffffffffffff] +++ exited (status 0) +++

@@ -522,7 +522,7 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                     }
                     else
                     {
-                        //fprintf(stderr, "format: not a string, but a '%s'\n", lit_value_typename(val));
+                        //fprintf(stderr, "format: not a string, but a '%s'\n", lit_tostring_typename(val));
                         //string = lit_to_string(state, val);
                         goto default_ending_copying;
                     }

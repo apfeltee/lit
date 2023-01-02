@@ -1,7 +1,7 @@
 
 #include <string.h>
 #include <math.h>
-#include "lit.h"
+#include "priv.h"
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -104,7 +104,7 @@ double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id
     if(arg_count <= id || !lit_value_isnumber(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
     return lit_value_asnumber(args[id]);
 }
@@ -124,7 +124,7 @@ bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
     if(arg_count <= id || !lit_value_isbool(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a boolean as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
     return lit_value_asbool(args[id]);
@@ -145,7 +145,7 @@ const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8
     if(arg_count <= id || !lit_value_isstring(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
     return lit_value_asstring(args[id])->chars;
@@ -167,7 +167,7 @@ LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count,
     if(arg_count <= id || !lit_value_isstring(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
     return lit_value_asstring(args[id]);
@@ -178,7 +178,7 @@ LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, ui
     if(arg_count <= id || !lit_value_isinstance(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected an instance as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
     return lit_value_asinstance(args[id]);
@@ -189,7 +189,7 @@ LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint
     if(arg_count <= id || !lit_value_isreference(args[id]))
     {
         lit_runtime_error_exiting(vm, "expected a reference as argument #%i, got a %s", (int)id,
-                                  id >= arg_count ? "null" : lit_value_typename(args[id]));
+                                  id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
     return lit_value_asreference(args[id])->slot;

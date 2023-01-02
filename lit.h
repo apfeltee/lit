@@ -153,16 +153,6 @@
         return NULL_VALUE;                                                               \
     }
 
-
-
-
-enum LitOpCode
-{
-#define OPCODE(name, effect) OP_##name,
-#include "opcodes.inc"
-#undef OPCODE
-};
-
 enum LitExprType
 {
     LITEXPR_LITERAL,
@@ -441,7 +431,6 @@ enum LitObjType
 };
 
 typedef uint64_t LitValue;
-typedef enum /**/LitOpCode LitOpCode;
 typedef enum /**/LitExprType LitExprType;
 typedef enum /**/LitOptLevel LitOptLevel;
 typedef enum /**/LitOptimization LitOptimization;
@@ -494,6 +483,7 @@ typedef struct /**/LitEmulatedFile LitEmulatedFile;
 typedef struct /**/LitVariable LitVariable;
 typedef struct /**/LitWriter LitWriter;
 typedef struct /**/LitLocal LitLocal;
+typedef struct /**/LitConfig LitConfig;
 
 /* ARRAYTYPES */
 typedef struct /**/LitVarList LitVarList;
@@ -537,6 +527,7 @@ struct LitDataList
 struct LitWriter
 {
     LitState* state;
+
     /* the main pointer, that either holds a pointer to a LitString, or a FILE */
     void* uptr;
 
@@ -827,8 +818,17 @@ struct LitReference
     LitValue* slot;
 };
 
+struct LitConfig
+{
+    bool dumpbytecode;
+    bool dumpast;
+    bool runafterdump;
+};
+
 struct LitState
 {
+    LitConfig config;
+    LitWriter stdoutwriter;
     /* how much was allocated in total? */
     int64_t bytes_allocated;
     int64_t next_gc;
@@ -1049,6 +1049,16 @@ unsigned int lit_util_floattouint(double val);
 int lit_util_numbertoint32(double n);
 int lit_util_doubletoint(double n);
 unsigned int lit_util_numbertouint32(double n);
+int lit_util_ucharoffset(char* str, int index);
+int lit_util_encodenumbytes(int value);
+int lit_util_decodenumbytes(uint8_t byte);
+char* lit_util_readfile(const char* path, size_t* dlen);
+/* get hash sum of given string */
+uint32_t lit_util_hashstring(const char* key, size_t length);
+int lit_util_closestpowof2(int n);
+char* lit_util_copystring(const char* string);
+char* lit_util_patchfilename(char* file_name);
+
 
 void util_custom_quick_sort(LitVM *vm, LitValue *l, int length, LitValue callee);
 int util_table_iterator(LitTable *table, int number);
@@ -1074,7 +1084,7 @@ LitValue lit_array_removeat(LitArray *array, size_t index);
 
 LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, bool islight);
 
-
+bool lit_value_compare(LitState* state, const LitValue a, const LitValue b);
 #define lit_value_objectvalue(obj) lit_value_objectvalue_actual((uintptr_t)obj)
 
 LitValue lit_value_objectvalue_actual(uintptr_t obj);
@@ -1352,17 +1362,17 @@ void lit_state_poproots(LitState* state, uint8_t amount);
 
 LitClass* lit_state_getclassfor(LitState* state, LitValue value);
 
-char* lit_util_patchfilename(char* file_name);
 
 /* call a function in an instance */
 LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
 LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname);
 
 /* print a value to LitWriter */
-void lit_print_value(LitState* state, LitWriter* wr, LitValue value);
-
+void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value);
+void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value);
+void lit_tostring_ast(LitState* state, LitWriter* wr, LitExprList* exlist);
 /* returns the static string name of this type. does *not* represent class name, et al. just the LitValueType name! */
-const char* lit_value_typename(LitValue value);
+const char* lit_tostring_typename(LitValue value);
 
 /* allocate/reallocate memory. if new_size is 0, frees the pointer, and returns NULL. */
 void* lit_gcmem_memrealloc(LitState* state, void* pointer, size_t old_size, size_t new_size);
@@ -1382,7 +1392,7 @@ void lit_gcmem_markvalue(LitVM* vm, LitValue value);
 /* free a object */
 void lit_object_destroy(LitState* state, LitObject* object);
 
-int lit_util_closestpowof2(int n);
+
 
 void lit_table_init(LitState* state, LitTable* table);
 void lit_table_destroy(LitState* state, LitTable* table);
@@ -1428,8 +1438,6 @@ LitValue lit_string_numbertostring(LitState* state, double value);
 /* registers a string in the string table. */
 void lit_state_regstring(LitState* state, LitString* string);
 
-/* get hash sum of given string */
-uint32_t lit_util_hashstring(const char* key, size_t length);
 
 /*
 * create a new string instance.
@@ -1575,7 +1583,7 @@ void lit_trace_frame(LitFiber* fiber, LitWriter* wr);
 
 
 bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitExprList* statements);
-char* lit_util_readfile(const char* path, size_t* dlen);
+
 bool lit_file_exists(const char* path);
 bool lit_dir_exists(const char* path);
 
@@ -1614,9 +1622,9 @@ void lit_open_file_library(LitState* state);
 void lit_open_gc_library(LitState* state);
 
 
-int lit_util_decodenumbytes(uint8_t byte);
+
 int lit_ustring_length(LitString* string);
-int lit_util_encodenumbytes(int value);
+
 int lit_ustring_decode(const uint8_t* bytes, uint32_t length);
 int lit_ustring_encode(int value, uint8_t* bytes);
 
@@ -1624,7 +1632,6 @@ LitString* lit_ustring_codepointat(LitState* state, LitString* string, uint32_t 
 LitString* lit_ustring_fromcodepoint(LitState* state, int value);
 LitString* lit_ustring_fromrange(LitState* state, LitString* source, int start, uint32_t count);
 
-int lit_util_ucharoffset(char* str, int index);
 
 static inline bool lit_is_digit(char c)
 {

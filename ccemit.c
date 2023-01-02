@@ -138,17 +138,15 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
         // Egor-fail proofing
         line = emitter->last_line;
     }
-
     lit_write_chunk(emitter->state, emitter->chunk, a, line);
     lit_write_chunk(emitter->state, emitter->chunk, b, line);
-
     emitter->last_line = line;
 }
 
 static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op)
 {
-    LitCompiler* compiler = emitter->compiler;
-
+    LitCompiler* compiler;
+    compiler = emitter->compiler;
     emit_byte(emitter, line, (uint8_t)op);
     compiler->slots += stack_effects[(int)op];
 
@@ -160,11 +158,10 @@ static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op)
 
 static void emit_ops(LitEmitter* emitter, uint16_t line, LitOpCode a, LitOpCode b)
 {
-    LitCompiler* compiler = emitter->compiler;
-
+    LitCompiler* compiler;
+    compiler = emitter->compiler;
     emit_bytes(emitter, line, (uint8_t)a, (uint8_t)b);
     compiler->slots += stack_effects[(int)a] + stack_effects[(int)b];
-
     if(compiler->slots > (int)compiler->function->max_slots)
     {
         compiler->function->max_slots = (size_t)compiler->slots;
@@ -173,11 +170,10 @@ static void emit_ops(LitEmitter* emitter, uint16_t line, LitOpCode a, LitOpCode 
 
 static void emit_varying_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint8_t arg)
 {
-    LitCompiler* compiler = emitter->compiler;
-
+    LitCompiler* compiler;
+    compiler = emitter->compiler;
     emit_bytes(emitter, line, (uint8_t)op, arg);
     compiler->slots -= arg;
-
     if(compiler->slots > (int)compiler->function->max_slots)
     {
         compiler->function->max_slots = (size_t)compiler->slots;

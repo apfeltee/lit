@@ -31,22 +31,35 @@ LitState* lit_make_state()
 {
     LitState* state;
     state = (LitState*)malloc(sizeof(LitState));
-    state->classvalue_class = NULL;
-    state->objectvalue_class = NULL;
-    state->numbervalue_class = NULL;
-    state->stringvalue_class = NULL;
-    state->boolvalue_class = NULL;
-    state->functionvalue_class = NULL;
-    state->fibervalue_class = NULL;
-    state->modulevalue_class = NULL;
-    state->arrayvalue_class = NULL;
-    state->mapvalue_class = NULL;
-    state->rangevalue_class = NULL;
+
+    {
+        state->config.dumpbytecode = false;
+        state->config.dumpast = false;
+        state->config.runafterdump = true;
+    }
+    {
+        state->classvalue_class = NULL;
+        state->objectvalue_class = NULL;
+        state->numbervalue_class = NULL;
+        state->stringvalue_class = NULL;
+        state->boolvalue_class = NULL;
+        state->functionvalue_class = NULL;
+        state->fibervalue_class = NULL;
+        state->modulevalue_class = NULL;
+        state->arrayvalue_class = NULL;
+        state->mapvalue_class = NULL;
+        state->rangevalue_class = NULL;
+    }
     state->bytes_allocated = 0;
     state->next_gc = 256 * 1024;
     state->allow_gc = false;
-    state->error_fn = lit_util_default_error;
-    state->print_fn = lit_util_default_printf;
+    /* io stuff */
+    {
+        state->error_fn = lit_util_default_error;
+        state->print_fn = lit_util_default_printf;
+        lit_writer_init_file(state, &state->stdoutwriter, stdout, true);
+    }
+
     state->had_error = false;
     state->roots = NULL;
     state->root_count = 0;
@@ -235,10 +248,6 @@ static void free_statements(LitState* state, LitExprList* statements)
     lit_exprlist_destroy(state, statements);
 }
 
-LitInterpretResult lit_state_execsource(LitState* state, const char* module_name, const char* code, size_t len)
-{
-    return lit_state_internexecsource(state, lit_string_copy(state, module_name, strlen(module_name)), code, len);
-}
 
 LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, const char* code, size_t len)
 {
@@ -279,6 +288,10 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
             free_statements(state, &statements);
             return NULL;
         }
+        if(state->config.dumpast)
+        {
+            lit_tostring_ast(state, &state->stdoutwriter, &statements);
+        }
         if(measure_compilation_time)
         {
             printf("Parsing:        %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
@@ -313,6 +326,12 @@ LitModule* lit_state_getmodule(LitState* state, const char* name)
     return NULL;
 }
 
+LitInterpretResult lit_state_execsource(LitState* state, const char* module_name, const char* code, size_t len)
+{
+    return lit_state_internexecsource(state, lit_string_copy(state, module_name, strlen(module_name)), code, len);
+}
+
+
 LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module_name, const char* code, size_t len)
 {
     intptr_t istack;
@@ -326,6 +345,7 @@ LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module
     {
         return (LitInterpretResult){ LITRESULT_COMPILE_ERROR, NULL_VALUE };
     }
+    
     result = lit_interpret_module(state, module);
     fiber = module->main_fiber;
     if(!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack)
@@ -340,44 +360,6 @@ LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module
     return result;
 }
 
-char* lit_util_patchfilename(char* file_name)
-{
-    int i;
-    int name_length;
-    char c;
-    name_length = strlen(file_name);
-    // Check, if our file_name ends with .lit or lbc, and remove it
-    if(name_length > 4 && (memcmp(file_name + name_length - 4, ".lit", 4) == 0 || memcmp(file_name + name_length - 4, ".lbc", 4) == 0))
-    {
-        file_name[name_length - 4] = '\0';
-        name_length -= 4;
-    }
-    // Check, if our file_name starts with ./ and remove it (useless, and makes the module name be ..main)
-    if(name_length > 2 && memcmp(file_name, "./", 2) == 0)
-    {
-        file_name += 2;
-        name_length -= 2;
-    }
-    for(i = 0; i < name_length; i++)
-    {
-        c = file_name[i];
-        if(c == '/' || c == '\\')
-        {
-            file_name[i] = '.';
-        }
-    }
-    return file_name;
-}
-
-char* lit_util_copystring(const char* string)
-{
-    size_t length;
-    char* new_string;
-    length = strlen(string) + 1;
-    new_string = (char*)malloc(length);
-    memcpy(new_string, string, length);
-    return new_string;
-}
 
 bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, const char* output_file)
 {

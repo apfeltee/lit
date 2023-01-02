@@ -91,7 +91,7 @@ bool lit_value_isnumber(LitValue v)
 }
 
 
-bool lit_compare_values(LitState* state, const LitValue a, const LitValue b)
+bool lit_value_compare(LitState* state, const LitValue a, const LitValue b)
 {
     LitInterpretResult inret;
     LitValue args[3];

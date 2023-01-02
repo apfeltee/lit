@@ -242,7 +242,7 @@ bool lit_set_native_exit_jump(void);
         { \
             if(!lit_value_isnull(b)) \
             { \
-                vmexec_raiseerrorfmt("Attempt to use op %s with a number and a %s", op_string, lit_value_typename(b)); \
+                vmexec_raiseerrorfmt("Attempt to use op %s with a number and a %s", op_string, lit_tostring_typename(b)); \
             } \
         } \
         vmexec_drop(fiber); \
@@ -267,7 +267,7 @@ bool lit_set_native_exit_jump(void);
     if((!lit_value_isnumber(a) ) || (!lit_value_isnumber(b))) \
     { \
         vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, \
-                           lit_value_typename(a), lit_value_typename(b)); \
+                           lit_tostring_typename(a), lit_tostring_typename(b)); \
     } \
     vmexec_drop(fiber); \
     *(fiber->stack_top - 1) = (lit_value_numbertovalue(vm->state, (int)lit_value_asnumber(a) op(int) lit_value_asnumber(b)));
@@ -440,14 +440,14 @@ void lit_trace_vm_stack(LitVM* vm, LitWriter* wr)
     for(slot = fiber->stack; slot < top; slot++)
     {
         lit_writer_writeformat(wr, "[ ");
-        lit_print_value(vm->state, wr, *slot);
+        lit_tostring_value(vm->state, wr, *slot);
         lit_writer_writeformat(wr, " ]");
     }
     lit_writer_writeformat(wr, "%s", COLOR_RESET);
     for(slot = top; slot < fiber->stack_top; slot++)
     {
         lit_writer_writeformat(wr, "[ ");
-        lit_print_value(vm->state, wr, *slot);
+        lit_tostring_value(vm->state, wr, *slot);
         lit_writer_writeformat(wr, " ]");
     }
     lit_writer_writeformat(wr, "\n");
@@ -833,7 +833,7 @@ static bool call_value(LitVM* vm, LitFiber* fiber, LitExecState* est, LitValue c
         fromval = vmexec_peek(fiber, 0);
     }
     fname = "unknown";
-    fprintf(stderr, "fromval type=%d %s\n", lit_value_type(fromval), lit_value_typename(fromval));
+    fprintf(stderr, "fromval type=%d %s\n", lit_value_type(fromval), lit_tostring_typename(fromval));
     if(lit_value_isfunction(fromval))
     {
         fname = find_funcname_fromvalue(vm, est, fromval);
@@ -848,7 +848,7 @@ static bool call_value(LitVM* vm, LitFiber* fiber, LitExecState* est, LitValue c
     }
     else
     {
-        lit_runtime_error(vm, "attempt to call '%s' which is neither function nor class, but is %s", fname, lit_value_typename(callee));
+        lit_runtime_error(vm, "attempt to call '%s' which is neither function nor class, but is %s", fname, lit_tostring_typename(callee));
     }
     return true;
 }
@@ -1252,7 +1252,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 LitValue b = vmexec_peek(fiber, 0);
                 if((!lit_value_isnumber(a) && !lit_value_isnull(a)) || (!lit_value_isnumber(b) && !lit_value_isnull(b)))
                 {
-                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", "<<", lit_value_typename(a), lit_value_typename(b));
+                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", "<<", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 vmexec_drop(fiber);
                 #if 0
@@ -1282,7 +1282,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 LitValue b = vmexec_peek(fiber, 0);
                 if((!lit_value_isnumber(a) && !lit_value_isnull(a)) || (!lit_value_isnumber(b) && !lit_value_isnull(b)))
                 {
-                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", ">>", lit_value_typename(a), lit_value_typename(b));
+                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", ">>", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 vmexec_drop(fiber);
 
@@ -1783,7 +1783,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    vmexec_raiseerrorfmt("Expected an object or a map as the operand, got %s", lit_value_typename(operand));
+                    vmexec_raiseerrorfmt("Expected an object or a map as the operand, got %s", lit_tostring_typename(operand));
                 }
                 vmexec_dropn(fiber, 2);
                 continue;
@@ -1971,7 +1971,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    lit_print_value(state, &state->debugwriter, object);
+                    lit_tostring_value(state, &state->debugwriter, object);
                     printf("\n");
                     vmexec_raiseerror("You can only reference fields of real instances");
                 }

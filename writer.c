@@ -141,7 +141,7 @@ static void print_array(LitState* state, LitWriter* wr, LitArray* array, size_t 
             }
             else
             {
-                lit_print_value(state, wr, lit_vallist_get(&array->list, i));
+                lit_tostring_value(state, wr, lit_vallist_get(&array->list, i));
             }
             if(i + 1 < size)
             {
@@ -185,7 +185,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
                 }
                 else
                 {
-                    lit_print_value(state, wr, entry->value);
+                    lit_tostring_value(state, wr, entry->value);
                 }
                 had_before = true;
             }
@@ -201,7 +201,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
     }
 }
 
-static void print_object(LitState* state, LitWriter* wr, LitValue value)
+void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
 {
     size_t size;
     LitMap* map;
@@ -266,11 +266,11 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                     upvalue = lit_value_asupvalue(value);
                     if(upvalue->location == NULL)
                     {
-                        lit_print_value(state, wr, upvalue->closed);
+                        lit_tostring_value(state, wr, upvalue->closed);
                     }
                     else
                     {
-                        print_object(state, wr, *upvalue->location);
+                        lit_tostring_object(state, wr, *upvalue->location);
                     }
                 }
                 break;
@@ -297,7 +297,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    lit_print_value(state, wr, lit_value_asboundmethod(value)->method);
+                    lit_tostring_value(state, wr, lit_value_asboundmethod(value)->method);
                     return;
                 }
                 break;
@@ -349,7 +349,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
                     }
                     else
                     {
-                        lit_print_value(state, wr, *slot);
+                        lit_tostring_value(state, wr, *slot);
                     }
                 }
                 break;
@@ -367,7 +367,7 @@ static void print_object(LitState* state, LitWriter* wr, LitValue value)
 
 //LitInterpretResult lit_call_instance_method(LitState* state, LitInstance* instance, LitString* mthname, LitValue* argv, size_t argc)
 //
-void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
+void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value)
 {
     /*
     LitValue mthtostring;
@@ -377,21 +377,21 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     LitInterpretResult inret;
     LitValue args[1] = {NULL_VALUE};
     mthname = CONST_STRING(state, "toString");
-    fprintf(stderr, "lit_print_value: checking if toString() exists for '%s' ...\n", lit_value_typename(value));
+    fprintf(stderr, "lit_tostring_value: checking if toString() exists for '%s' ...\n", lit_tostring_typename(value));
     if(lit_value_asclass(value) != NULL)
     {
         mthtostring = lit_instance_get_method(state, value, mthname);
         if(!lit_value_isnull(mthtostring))
         {
-            fprintf(stderr, "lit_print_value: we got toString()! now checking if calling it works ...\n");
+            fprintf(stderr, "lit_tostring_value: we got toString()! now checking if calling it works ...\n");
             inret = lit_instance_call_method(state, value, mthname, args, 0);
             if(inret.type == LITRESULT_OK)
             {
-                fprintf(stderr, "lit_print_value: calling toString() succeeded! but is it a string? ...\n");
+                fprintf(stderr, "lit_tostring_value: calling toString() succeeded! but is it a string? ...\n");
                 tstrval = inret.result;
                 if(!lit_value_isnull(tstrval))
                 {
-                    fprintf(stderr, "lit_print_value: toString() returned a string! so that's what we'll use.\n");
+                    fprintf(stderr, "lit_tostring_value: toString() returned a string! so that's what we'll use.\n");
                     tstring = lit_value_asstring(tstrval);
                     printf("%.*s", (int)lit_string_getlength(tstring), tstring->chars);
                     return;
@@ -399,7 +399,7 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
             }
         }
     }
-    fprintf(stderr, "lit_print_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
+    fprintf(stderr, "lit_tostring_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
     */
     if(lit_value_isbool(value))
     {
@@ -415,12 +415,12 @@ void lit_print_value(LitState* state, LitWriter* wr, LitValue value)
     }
     else if(lit_value_isobject(value))
     {
-        print_object(state, wr, value);
+        lit_tostring_object(state, wr, value);
     }
 }
 
 
-const char* lit_value_typename(LitValue value)
+const char* lit_tostring_typename(LitValue value)
 {
     if(lit_value_isbool(value))
     {
@@ -441,4 +441,7 @@ const char* lit_value_typename(LitValue value)
     return "unknown";
 }
 
-
+void lit_tostring_ast(LitState* state, LitWriter* wr, LitExprList* exlist)
+{
+    
+}

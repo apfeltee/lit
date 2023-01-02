@@ -352,7 +352,7 @@ static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, L
         {
             for(i=0; i<lit_vallist_count(&self->list); i++)
             {
-                if(!lit_compare_values(vm->state, lit_vallist_get(&self->list, i), lit_vallist_get(&other->list, i)))
+                if(!lit_value_compare(vm->state, lit_vallist_get(&self->list, i), lit_vallist_get(&other->list, i)))
                 {
                     return FALSE_VALUE;
                 }

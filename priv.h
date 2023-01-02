@@ -27,6 +27,15 @@
     #define COLOR_WHITE ""
 #endif
 
+
+enum LitOpCode
+{
+#define OPCODE(name, effect) OP_##name,
+#include "opcodes.inc"
+#undef OPCODE
+};
+
+typedef enum /**/LitOpCode LitOpCode;
 typedef struct /**/LitLiteralExpr LitLiteralExpr;
 typedef struct /**/LitBinaryExpr LitBinaryExpr;
 typedef struct /**/LitUnaryExpr LitUnaryExpr;
