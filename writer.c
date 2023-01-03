@@ -1,6 +1,7 @@
+
 #include <stdarg.h>
 #include <stdio.h>
-#include "lit.h"
+#include "priv.h"
 #include "sds.h"
 
 static void litwr_cb_writebyte(LitWriter* wr, int byte)
@@ -141,7 +142,7 @@ static void print_array(LitState* state, LitWriter* wr, LitArray* array, size_t 
             }
             else
             {
-                lit_tostring_value(state, wr, lit_vallist_get(&array->list, i));
+                lit_towriter_value(state, wr, lit_vallist_get(&array->list, i));
             }
             if(i + 1 < size)
             {
@@ -185,7 +186,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
                 }
                 else
                 {
-                    lit_tostring_value(state, wr, entry->value);
+                    lit_towriter_value(state, wr, entry->value);
                 }
                 had_before = true;
             }
@@ -201,7 +202,7 @@ static void print_map(LitState* state, LitWriter* wr, LitMap* map, size_t size)
     }
 }
 
-void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
+void lit_towriter_object(LitState* state, LitWriter* wr, LitValue value)
 {
     size_t size;
     LitMap* map;
@@ -266,11 +267,11 @@ void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
                     upvalue = lit_value_asupvalue(value);
                     if(upvalue->location == NULL)
                     {
-                        lit_tostring_value(state, wr, upvalue->closed);
+                        lit_towriter_value(state, wr, upvalue->closed);
                     }
                     else
                     {
-                        lit_tostring_object(state, wr, *upvalue->location);
+                        lit_towriter_object(state, wr, *upvalue->location);
                     }
                 }
                 break;
@@ -297,7 +298,7 @@ void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
                 break;
             case LITTYPE_BOUND_METHOD:
                 {
-                    lit_tostring_value(state, wr, lit_value_asboundmethod(value)->method);
+                    lit_towriter_value(state, wr, lit_value_asboundmethod(value)->method);
                     return;
                 }
                 break;
@@ -349,7 +350,7 @@ void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
                     }
                     else
                     {
-                        lit_tostring_value(state, wr, *slot);
+                        lit_towriter_value(state, wr, *slot);
                     }
                 }
                 break;
@@ -367,7 +368,7 @@ void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value)
 
 //LitInterpretResult lit_call_instance_method(LitState* state, LitInstance* instance, LitString* mthname, LitValue* argv, size_t argc)
 //
-void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value)
+void lit_towriter_value(LitState* state, LitWriter* wr, LitValue value)
 {
     /*
     LitValue mthtostring;
@@ -377,21 +378,21 @@ void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value)
     LitInterpretResult inret;
     LitValue args[1] = {NULL_VALUE};
     mthname = CONST_STRING(state, "toString");
-    fprintf(stderr, "lit_tostring_value: checking if toString() exists for '%s' ...\n", lit_tostring_typename(value));
+    fprintf(stderr, "lit_towriter_value: checking if toString() exists for '%s' ...\n", lit_tostring_typename(value));
     if(lit_value_asclass(value) != NULL)
     {
         mthtostring = lit_instance_get_method(state, value, mthname);
         if(!lit_value_isnull(mthtostring))
         {
-            fprintf(stderr, "lit_tostring_value: we got toString()! now checking if calling it works ...\n");
+            fprintf(stderr, "lit_towriter_value: we got toString()! now checking if calling it works ...\n");
             inret = lit_instance_call_method(state, value, mthname, args, 0);
             if(inret.type == LITRESULT_OK)
             {
-                fprintf(stderr, "lit_tostring_value: calling toString() succeeded! but is it a string? ...\n");
+                fprintf(stderr, "lit_towriter_value: calling toString() succeeded! but is it a string? ...\n");
                 tstrval = inret.result;
                 if(!lit_value_isnull(tstrval))
                 {
-                    fprintf(stderr, "lit_tostring_value: toString() returned a string! so that's what we'll use.\n");
+                    fprintf(stderr, "lit_towriter_value: toString() returned a string! so that's what we'll use.\n");
                     tstring = lit_value_asstring(tstrval);
                     printf("%.*s", (int)lit_string_getlength(tstring), tstring->chars);
                     return;
@@ -399,7 +400,7 @@ void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value)
             }
         }
     }
-    fprintf(stderr, "lit_tostring_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
+    fprintf(stderr, "lit_towriter_value: nope, no toString(), or it didn't return a string. falling back to manual stringification\n");
     */
     if(lit_value_isbool(value))
     {
@@ -415,7 +416,7 @@ void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value)
     }
     else if(lit_value_isobject(value))
     {
-        lit_tostring_object(state, wr, value);
+        lit_towriter_object(state, wr, value);
     }
 }
 
@@ -441,7 +442,439 @@ const char* lit_tostring_typename(LitValue value)
     return "unknown";
 }
 
-void lit_tostring_ast(LitState* state, LitWriter* wr, LitExprList* exlist)
+const char* lit_tostring_exprtype(LitExprType t)
 {
+    switch(t)
+    {
+        case LITEXPR_LITERAL: return "LITERAL";
+        case LITEXPR_BINARY: return "BINARY";
+        case LITEXPR_UNARY: return "UNARY";
+        case LITEXPR_VAREXPR: return "VAREXPR";
+        case LITEXPR_ASSIGN: return "ASSIGN";
+        case LITEXPR_CALL: return "CALL";
+        case LITEXPR_SET: return "SET";
+        case LITEXPR_GET: return "GET";
+        case LITEXPR_LAMBDA: return "LAMBDA";
+        case LITEXPR_ARRAY: return "ARRAY";
+        case LITEXPR_OBJECT: return "OBJECT";
+        case LITEXPR_SUBSCRIPT: return "SUBSCRIPT";
+        case LITEXPR_THIS: return "THIS";
+        case LITEXPR_SUPER: return "SUPER";
+        case LITEXPR_RANGE: return "RANGE";
+        case LITEXPR_IFEXPR: return "IFEXPR";
+        case LITEXPR_INTERPOLATION: return "INTERPOLATION";
+        case LITEXPR_REFERENCE: return "REFERENCE";
+        case LITEXPR_EXPRESSION: return "EXPRESSION";
+        case LITEXPR_BLOCK: return "BLOCK";
+        case LITEXPR_IFSTMT: return "IFSTMT";
+        case LITEXPR_WHILE: return "WHILE";
+        case LITEXPR_FOR: return "FOR";
+        case LITEXPR_VARSTMT: return "VARSTMT";
+        case LITEXPR_CONTINUE: return "CONTINUE";
+        case LITEXPR_BREAK: return "BREAK";
+        case LITEXPR_FUNCTION: return "FUNCTION";
+        case LITEXPR_RETURN: return "RETURN";
+        case LITEXPR_METHOD: return "METHOD";
+        case LITEXPR_CLASS: return "CLASS";
+        case LITEXPR_FIELD: return "FIELD";
+        default:
+            break;
+    }
+    return "unknown";
+}
+
+const char* lit_tostring_optok(LitTokType t)
+{
+    switch(t)
+    {
+        case LITTOK_NEW_LINE: return "NEW_LINE";
+        case LITTOK_LEFT_PAREN: return "(";
+        case LITTOK_RIGHT_PAREN: return ")";
+        case LITTOK_LEFT_BRACE: return "{";
+        case LITTOK_RIGHT_BRACE: return "}";
+        case LITTOK_LEFT_BRACKET: return "[";
+        case LITTOK_RIGHT_BRACKET: return "]";
+        case LITTOK_COMMA: return ",";
+        case LITTOK_SEMICOLON: return ";";
+        case LITTOK_COLON: return ":";
+        case LITTOK_BAR_EQUAL: return "|=";
+        case LITTOK_BAR: return "|";
+        case LITTOK_BAR_BAR: return "||";
+        case LITTOK_AMPERSAND_EQUAL: return "&=";
+        case LITTOK_AMPERSAND: return "&";
+        case LITTOK_AMPERSAND_AMPERSAND: return "&&";
+        case LITTOK_BANG: return "!";
+        case LITTOK_BANG_EQUAL: return "!=";
+        case LITTOK_EQUAL: return "=";
+        case LITTOK_EQUAL_EQUAL: return "==";
+        case LITTOK_GREATER: return ">";
+        case LITTOK_GREATER_EQUAL: return ">=";
+        case LITTOK_GREATER_GREATER: return ">>";
+        case LITTOK_LESS: return "<";
+        case LITTOK_LESS_EQUAL: return "<=";
+        case LITTOK_LESS_LESS: return "<<";
+        case LITTOK_PLUS: return "+";
+        case LITTOK_PLUS_EQUAL: return "+=";
+        case LITTOK_PLUS_PLUS: return "++";
+        case LITTOK_MINUS: return "-";
+        case LITTOK_MINUS_EQUAL: return "-=";
+        case LITTOK_MINUS_MINUS: return "--";
+        case LITTOK_STAR: return "*";
+        case LITTOK_STAR_EQUAL: return "*=";
+        case LITTOK_STAR_STAR: return "**";
+        case LITTOK_SLASH: return "/";
+        case LITTOK_SLASH_EQUAL: return "/=";
+        case LITTOK_QUESTION: return "?";
+        case LITTOK_QUESTION_QUESTION: return "??";
+        case LITTOK_PERCENT: return "%";
+        case LITTOK_PERCENT_EQUAL: return "%=";
+        case LITTOK_ARROW: return "=>";
+        case LITTOK_SMALL_ARROW: return "->";
+        case LITTOK_TILDE: return "~";
+        case LITTOK_CARET: return "^";
+        case LITTOK_CARET_EQUAL: return "^=";
+        case LITTOK_DOT: return ".";
+        case LITTOK_DOT_DOT: return "..";
+        case LITTOK_DOT_DOT_DOT: return "...";
+        case LITTOK_SHARP: return "#";
+        case LITTOK_SHARP_EQUAL: return "#=";
+        case LITTOK_IDENTIFIER: return "IDENTIFIER";
+        case LITTOK_STRING: return "STRING";
+        case LITTOK_INTERPOLATION: return "INTERPOLATION";
+        case LITTOK_NUMBER: return "NUMBER";
+        case LITTOK_CLASS: return "CLASS";
+        case LITTOK_ELSE: return "ELSE";
+        case LITTOK_FALSE: return "FALSE";
+        case LITTOK_FOR: return "FOR";
+        case LITTOK_FUNCTION: return "FUNCTION";
+        case LITTOK_IF: return "IF";
+        case LITTOK_NULL: return "NULL";
+        case LITTOK_RETURN: return "RETURN";
+        case LITTOK_SUPER: return "SUPER";
+        case LITTOK_THIS: return "THIS";
+        case LITTOK_TRUE: return "TRUE";
+        case LITTOK_VAR: return "VAR";
+        case LITTOK_WHILE: return "WHILE";
+        case LITTOK_CONTINUE: return "CONTINUE";
+        case LITTOK_BREAK: return "BREAK";
+        case LITTOK_NEW: return "NEW";
+        case LITTOK_EXPORT: return "EXPORT";
+        case LITTOK_IS: return "IS";
+        case LITTOK_STATIC: return "STATIC";
+        case LITTOK_OPERATOR: return "OPERATOR";
+        case LITTOK_GET: return "GET";
+        case LITTOK_SET: return "SET";
+        case LITTOK_IN: return "IN";
+        case LITTOK_CONST: return "CONST";
+        case LITTOK_REF: return "REF";
+        case LITTOK_ERROR: return "ERROR";
+        case LITTOK_EOF: return "EOF";
+        default:
+            break;
+    }
+    return "unknown";
+}
+
+#define as_type(varname, fromname, tname) \
+    tname* varname = (tname*)fromname
+
+void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
+{
+    size_t i;
+    if(expr == NULL)
+    {
+        return;
+    }
+    //fprintf(stderr, "dumping expression type %d %s:", expr->type, lit_tostring_exprtype(expr->type));
     
+    switch(expr->type)
+    {
+        case LITEXPR_LITERAL:
+            {
+                as_type(exlit, expr, LitLiteralExpr);
+                lit_towriter_value(state, wr, exlit->value);
+            }
+            break;
+        case LITEXPR_BINARY:
+            {
+                as_type(exbin, expr, LitBinaryExpr);
+                if(exbin->ignore_left)
+                {
+                    lit_towriter_expr(state, wr, exbin->left);
+                }
+                lit_writer_writestring(wr, lit_tostring_optok(exbin->op));
+                lit_towriter_expr(state, wr, exbin->right);
+            }
+            break;
+        case LITEXPR_UNARY:
+            {
+                as_type(exun, expr, LitUnaryExpr);
+                lit_writer_writestring(wr, lit_tostring_optok(exun->op));
+                lit_towriter_expr(state, wr, exun->right);
+                /*
+                if(exun->op == LITTOK_SLASH_SLASH)
+                {
+                    lit_writer_writestring(wr, "\n");
+                }
+                */
+            }
+            break;
+        case LITEXPR_VAREXPR:
+            {
+                as_type(exvarex, expr, LitVarExpr);
+                lit_writer_writeformat(wr, "%.*s", exvarex->length, exvarex->name);
+            }
+            break;
+        case LITEXPR_ASSIGN:
+            {
+                as_type(exassign, expr, LitAssignExpression);
+                lit_towriter_expr(state, wr, exassign->to);
+                lit_writer_writestring(wr, " = ");
+                lit_towriter_expr(state, wr, exassign->value);
+                lit_writer_writestring(wr, "\n");
+            }
+            break;
+        case LITEXPR_CALL:
+            {
+                as_type(excall, expr, LitCallExpression);
+                lit_towriter_expr(state, wr, excall->callee);
+                lit_writer_writestring(wr, "(");
+                for(i=0; i<excall->args.count; i++)
+                {
+                    lit_towriter_expr(state, wr, excall->args.values[i]);
+                    if((i+1) < excall->args.count)
+                    {
+                        lit_writer_writestring(wr, ", ");
+                    }
+                }
+                lit_writer_writestring(wr, ")");
+            }
+            break;
+        case LITEXPR_SET:
+            {
+                as_type(exset, expr, LitSetExpression);
+                lit_towriter_expr(state, wr, exset->where);
+                lit_writer_writeformat(wr, ".%s = ", exset->name);
+                lit_towriter_expr(state, wr, exset->value);
+            }
+            break;
+        case LITEXPR_GET:
+            {
+                as_type(exget, expr, LitGetExpression);
+                lit_towriter_expr(state, wr, exget->where);
+                lit_writer_writeformat(wr, ".%s", exget->name);
+            }
+            break;
+        case LITEXPR_LAMBDA:
+            {
+                as_type(exlam, expr, LitLambdaExpression);
+                lit_writer_writeformat(wr, "(");
+                for(i=0; i<exlam->parameters.count; i++)
+                {
+                    lit_writer_writeformat(wr, "%s", exlam->parameters.values[i].name);
+                    if(exlam->parameters.values[i].default_value != NULL)
+                    {
+                        lit_towriter_expr(state, wr, exlam->parameters.values[i].default_value);
+                    }
+                    if((i+1) < exlam->parameters.count)
+                    {
+                        lit_writer_writeformat(wr, ", ");
+                    }
+                }
+                lit_writer_writeformat(wr, ")");
+                lit_towriter_expr(state, wr, exlam->body);
+
+            }
+            break;
+        case LITEXPR_ARRAY:
+            {
+                as_type(exarr, expr, LitArrayExpression);
+                lit_writer_writeformat(wr, "[");
+                for(i=0; i<exarr->values.count; i++)
+                {
+                    lit_towriter_expr(state, wr, exarr->values.values[i]);
+                    if((i+1) < exarr->values.count)
+                    {
+                        lit_writer_writeformat(wr, ", ");
+                    }
+                }
+                lit_writer_writeformat(wr, "]");
+            }
+            break;
+        case LITEXPR_OBJECT:
+            {
+                as_type(exobj, expr, LitObjectExpression);
+                lit_writer_writeformat(wr, "{");
+                for(i=0; i<lit_vallist_count(&exobj->keys); i++)
+                {
+                    lit_towriter_value(state, wr, lit_vallist_get(&exobj->keys, i));
+                    lit_writer_writeformat(wr, ": ");
+                    lit_towriter_expr(state, wr, exobj->values.values[i]);
+                    if((i+1) < lit_vallist_count(&exobj->keys))
+                    {
+                        lit_writer_writeformat(wr, ", ");
+                    }
+                }
+                lit_writer_writeformat(wr, "}");
+            }
+            break;
+        case LITEXPR_SUBSCRIPT:
+            {
+                as_type(exsub, expr, LitSubscriptExpression);
+                lit_towriter_expr(state, wr, exsub->array);
+                lit_writer_writestring(wr, "[");
+                lit_towriter_expr(state, wr, exsub->index);
+                lit_writer_writestring(wr, "]");
+            }
+            break;
+        case LITEXPR_THIS:
+            {
+                lit_writer_writestring(wr, "this");
+            }
+            break;
+        case LITEXPR_SUPER:
+            {
+                as_type(exsuper, expr, LitSuperExpression);
+                lit_writer_writeformat(wr, "super(%s)", exsuper->method->chars);
+            }
+            break;
+        case LITEXPR_RANGE:
+            {
+                as_type(exrange, expr, LitRangeExpression);
+                lit_writer_writestring(wr, "[");
+                lit_towriter_expr(state, wr, exrange->from);
+                lit_writer_writestring(wr, " .. ");
+                lit_towriter_expr(state, wr, exrange->to);
+                lit_writer_writestring(wr, "]");
+            }
+            break;
+        case LITEXPR_IFEXPR:
+            {
+                as_type(exif, expr, LitIfExpression);
+                lit_writer_writestring(wr, "if(");
+                lit_towriter_expr(state, wr, exif->condition);
+                lit_writer_writestring(wr, ")");
+                lit_towriter_expr(state, wr, exif->if_branch);
+                if(exif->else_branch != NULL)
+                {
+                    lit_writer_writestring(wr, "else ");
+                    lit_towriter_expr(state, wr, exif->else_branch);
+                }
+            }
+            break;
+        case LITEXPR_INTERPOLATION:
+            {
+                as_type(exint, expr, LitInterpolationExpression);
+                lit_writer_writestring(wr, "\"\"+");
+                for(i=0; i<exint->expressions.count; i++)
+                {
+                    lit_writer_writestring(wr, "(");
+                    lit_towriter_expr(state, wr, exint->expressions.values[i]);
+                    lit_writer_writestring(wr, ")");
+                    if((i+1) < exint->expressions.count)
+                    {
+                        lit_writer_writestring(wr, "+");
+                    }
+                }
+                lit_writer_writestring(wr, "+\"\"");
+            }
+            break;
+        case LITEXPR_REFERENCE:
+            {
+            
+            }
+            break;
+        case LITEXPR_EXPRESSION:
+            {
+                as_type(exexpr, expr, LitExpressionStatement);
+                lit_towriter_expr(state, wr, exexpr->expression);
+            }
+            break;
+        case LITEXPR_BLOCK:
+            {
+                as_type(exblock, expr, LitBlockStatement);
+                lit_writer_writestring(wr, "{");
+                for(i=0; i<exblock->statements.count; i++)
+                {
+                    lit_towriter_expr(state, wr, exblock->statements.values[i]);
+                }
+                lit_writer_writestring(wr, "}");
+            }
+            break;
+        case LITEXPR_IFSTMT:
+            {
+            
+            }
+            break;
+        case LITEXPR_WHILE:
+            {
+                as_type(wl, expr, LitWhileStatement);
+                lit_writer_writeformat(wr, "while(");
+                lit_towriter_expr(state, wr, wl->condition);
+                lit_writer_writeformat(wr, ")");
+                lit_towriter_expr(state, wr, wl->body);
+            }
+            break;
+        case LITEXPR_FOR:
+            {
+            
+            }
+            break;
+        case LITEXPR_VARSTMT:
+            {
+            
+            }
+            break;
+        case LITEXPR_CONTINUE:
+            {
+            
+            }
+            break;
+        case LITEXPR_BREAK:
+            {
+            
+            }
+            break;
+        case LITEXPR_FUNCTION:
+            {
+            
+            }
+            break;
+        case LITEXPR_RETURN:
+            {
+            
+            }
+            break;
+        case LITEXPR_METHOD:
+            {
+            
+            }
+            break;
+        case LITEXPR_CLASS:
+            {
+            
+            }
+            break;
+        case LITEXPR_FIELD:
+            {
+            
+            }
+            break;
+        default:
+            {
+                lit_writer_writeformat(wr, "(unhandled expression type %d %s)", expr->type, lit_tostring_exprtype(expr->type));
+            }
+            break;
+    }
+}
+
+void lit_towriter_ast(LitState* state, LitWriter* wr, LitExprList* exlist)
+{
+    size_t i;
+    lit_writer_writeformat(wr, "begin AST dump (list of %d expressions):\n", exlist->count);
+    for(i=0; i<exlist->count; i++)
+    {
+        lit_towriter_expr(state, wr, exlist->values[i]);
+    }
+    lit_writer_writeformat(wr, "\nend AST dump\n");
 }

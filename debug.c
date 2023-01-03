@@ -52,7 +52,7 @@ static size_t print_constant_op(LitState* state, LitWriter* wr, const char* name
         constant = chunk->code[offset + 1];
     }
     lit_writer_writeformat(wr, "%s%-16s%s %4d '", COLOR_YELLOW, name, COLOR_RESET, constant);
-    lit_tostring_value(state, wr, lit_vallist_get(&chunk->constants, constant));
+    lit_towriter_value(state, wr, lit_vallist_get(&chunk->constants, constant));
     lit_writer_writeformat(wr, "'\n");
     return offset + (big ? 3 : 2);
 }
@@ -95,7 +95,7 @@ static size_t print_invoke_op(LitState* state, LitWriter* wr, const char* name, 
     constant = chunk->code[offset + 2];
     constant |= chunk->code[offset + 3];
     lit_writer_writeformat(wr, "%s%-16s%s (%d args) %4d '", COLOR_YELLOW, name, COLOR_RESET, arg_count, constant);
-    lit_tostring_value(state, wr, lit_vallist_get(&chunk->constants, constant));
+    lit_towriter_value(state, wr, lit_vallist_get(&chunk->constants, constant));
     lit_writer_writeformat(wr, "'\n");
     return offset + 4;
 }
@@ -258,7 +258,7 @@ size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offs
                 offset++;
                 constant |= chunk->code[offset];
                 lit_writer_writeformat(wr, "%-16s %4d ", "OP_CLOSURE", constant);
-                lit_tostring_value(state, wr, lit_vallist_get(&chunk->constants, constant));
+                lit_towriter_value(state, wr, lit_vallist_get(&chunk->constants, constant));
                 lit_writer_writeformat(wr, "\n");
                 function = lit_value_asfunction(lit_vallist_get(&chunk->constants, constant));
                 for(j = 0; j < function->upvalue_count; j++)

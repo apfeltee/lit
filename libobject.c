@@ -73,7 +73,7 @@ void lit_object_destroy(LitState* state, LitObject* object)
     LitClosure* closure;
 #ifdef LIT_LOG_ALLOCATION
     printf("(");
-    lit_tostring_value(lit_value_objectvalue(object));
+    lit_towriter_value(lit_value_objectvalue(object));
     printf(") %p free %s\n", (void*)object, lit_tostring_typename(object->type));
 #endif
 

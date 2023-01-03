@@ -54,8 +54,15 @@ linkflags=(
   -lreadline
 )
 
+cflags=(
+  -no-pie
+  -fPIC
+)
+
 ldmagicshit=(
-  -Wl,-z,relro -Wl,-z,now
+  -Wl,-z,relro
+  -Wl,-z,now
+  -O0
 )
 
 function verbose {
@@ -67,11 +74,11 @@ verbose mkdir -p _tmp
 for file in "${srclib[@]}"; do
   ofile="_tmp/${file%.*}.o"
   rm -fv "$ofile"
-  if ! verbose gcc -no-pie -fPIC -c "$file" -o "$ofile" "${ldmagicshit[@]}"; then
+  if ! verbose gcc "${cflags[@]}" -c "$file" -o "$ofile" "${ldmagicshit[@]}"; then
     exit
   fi
 done
-verbose gcc -no-pie -shared _tmp/*.o -o "${libname}" "${ldmagicshit[@]}"
-verbose gcc -no-pie "${srcexe[@]}" -Wl,-rpath=. liblit.so -o "${exename}" "${linkflags[@]}" "${ldmagicshit[@]}"
+verbose gcc "${cflags[@]}" -shared _tmp/*.o -o "${libname}" "${ldmagicshit[@]}"
+verbose gcc "${cflags[@]}" "${srcexe[@]}" -Wl,-rpath=. liblit.so -o "${exename}" "${linkflags[@]}" "${ldmagicshit[@]}"
 verbose rm -rf _tmp
 echo "**le fin**"

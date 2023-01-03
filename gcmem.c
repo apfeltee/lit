@@ -90,7 +90,7 @@ void lit_gcmem_markobject(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_MARKING
     printf("%p mark ", (void*)object);
-    lit_tostring_value(lit_value_objectvalue(object));
+    lit_towriter_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
 
@@ -165,7 +165,7 @@ void lit_gcmem_vmblackobject(LitVM* vm, LitObject* object)
 
 #ifdef LIT_LOG_BLACKING
     printf("%p blacken ", (void*)object);
-    lit_tostring_value(lit_value_objectvalue(object));
+    lit_towriter_value(lit_value_objectvalue(object));
     printf("\n");
 #endif
     switch(object->type)

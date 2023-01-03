@@ -440,14 +440,14 @@ void lit_trace_vm_stack(LitVM* vm, LitWriter* wr)
     for(slot = fiber->stack; slot < top; slot++)
     {
         lit_writer_writeformat(wr, "[ ");
-        lit_tostring_value(vm->state, wr, *slot);
+        lit_towriter_value(vm->state, wr, *slot);
         lit_writer_writeformat(wr, " ]");
     }
     lit_writer_writeformat(wr, "%s", COLOR_RESET);
     for(slot = top; slot < fiber->stack_top; slot++)
     {
         lit_writer_writeformat(wr, "[ ");
-        lit_tostring_value(vm->state, wr, *slot);
+        lit_towriter_value(vm->state, wr, *slot);
         lit_writer_writeformat(wr, " ]");
     }
     lit_writer_writeformat(wr, "\n");
@@ -1971,7 +1971,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    lit_tostring_value(state, &state->debugwriter, object);
+                    lit_towriter_value(state, &state->debugwriter, object);
                     printf("\n");
                     vmexec_raiseerror("You can only reference fields of real instances");
                 }

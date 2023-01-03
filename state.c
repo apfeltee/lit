@@ -290,7 +290,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
         }
         if(state->config.dumpast)
         {
-            lit_tostring_ast(state, &state->stdoutwriter, &statements);
+            lit_towriter_ast(state, &state->stdoutwriter, &statements);
         }
         if(measure_compilation_time)
         {

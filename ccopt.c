@@ -786,7 +786,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 }
                 bool reverse = lit_value_asnumber(from) > lit_value_asnumber(to);
                 LitVarStatement* var = (LitVarStatement*)stmt->var;
-                size_t line = range->expression.line;
+                size_t line = range->exobj.line;
                 // var i = from
                 var->init = range->from;
                 // i <= to

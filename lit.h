@@ -1368,9 +1368,9 @@ LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, Li
 LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname);
 
 /* print a value to LitWriter */
-void lit_tostring_object(LitState* state, LitWriter* wr, LitValue value);
-void lit_tostring_value(LitState* state, LitWriter* wr, LitValue value);
-void lit_tostring_ast(LitState* state, LitWriter* wr, LitExprList* exlist);
+void lit_towriter_object(LitState* state, LitWriter* wr, LitValue value);
+void lit_towriter_value(LitState* state, LitWriter* wr, LitValue value);
+void lit_towriter_ast(LitState* state, LitWriter* wr, LitExprList* exlist);
 /* returns the static string name of this type. does *not* represent class name, et al. just the LitValueType name! */
 const char* lit_tostring_typename(LitValue value);
 
