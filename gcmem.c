@@ -4,7 +4,7 @@
 #include <time.h>
 #include "lit.h"
 
-#if 0
+#if 1
     static LitObject g_stackmem[1024 * (1024 * 4)];
     static size_t g_objcount = 0;
 #endif
@@ -15,11 +15,11 @@ LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, 
     if(islight)
     {
         #if 0
+            LitObject stkobj; 
+            lit_vallist_push(state, &state->lightobjects, (obj = &stkobj));
+        #else
             obj = &g_stackmem[g_objcount];
             g_objcount++;
-        #else
-            LitObject stackobj[1];
-            obj = stackobj;
         #endif
         obj->mustfree = false;
     }

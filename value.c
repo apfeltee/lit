@@ -93,6 +93,10 @@ bool lit_value_isnumber(LitValue v)
 
 bool lit_value_compare(LitState* state, const LitValue a, const LitValue b)
 {
+    LitObjType t1;
+    LitObjType t2;
+    double n1;
+    double n2;
     LitInterpretResult inret;
     LitValue args[3];
     if(lit_value_isinstance(a))
@@ -108,5 +112,12 @@ bool lit_value_compare(LitState* state, const LitValue a, const LitValue b)
             return false;
         }
     }
-    return (a == b);
+    //t1 = lit_value_type(a);
+    //t2 = lit_value_type(b);
+    //fprintf(stderr, "compare: t1=%d t2=%d\n", t1, t2);
+    //if(t1 == t2)
+    {
+        return (a == b);
+    }
+    //return false;
 }

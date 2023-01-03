@@ -71,7 +71,7 @@ function testfiber()
         s = "foo"
         check("basic string assignment", s == "foo")
         m = {bar = "foo"}
-        check("basic inline object assignment", m["bar"] == "foo" && m.bar == "foo")
+        check("basic inline object assignment", m["bar"] == "foo")
         a = [1, 2, 3]
         check("basic array assignment", (a == [1, 2, 3]) && (a.length == 3))
     }

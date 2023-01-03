@@ -1,93 +1,141 @@
-  # uint16_t vmexec_readshort(LitExecState *est);
-  "vmexec_readshort": "lit_vmexec_readshort"
+  # void lit_exprlist_init(LitExprList *array);
+  "lit_exprlist_init": "lit_exprlist_init"
 
-  # uint8_t vmexec_readbyte(LitExecState *est);
-  "vmexec_readbyte": "lit_vmexec_readbyte"
+  # void lit_exprlist_destroy(LitState *state, LitExprList *array);
+  "lit_exprlist_destroy": "lit_exprlist_destroy"
 
-  # LitValue vmexec_readconstant(LitExecState *est);
-  "vmexec_readconstant": "lit_vmexec_readconstant"
+  # void lit_exprlist_push(LitState *state, LitExprList *array, LitExpression *value);
+  "lit_exprlist_push": "lit_exprlist_push"
 
-  # LitValue vmexec_readconstantlong(LitExecState *est);
-  "vmexec_readconstantlong": "lit_vmexec_readconstantlong"
+  # void lit_paramlist_init(LitParamList *array);
+  "lit_paramlist_init": "lit_paramlist_init"
 
-  # LitString * vmexec_readstring(LitExecState *est);
-  "vmexec_readstring": "lit_vmexec_readstring"
+  # void lit_paramlist_destroy(LitState *state, LitParamList *array);
+  "lit_paramlist_destroy": "lit_paramlist_destroy"
 
-  # LitString * vmexec_readstringlong(LitExecState *est);
-  "vmexec_readstringlong": "lit_vmexec_readstringlong"
+  # void lit_paramlist_push(LitState *state, LitParamList *array, LitParameter value);
+  "lit_paramlist_push": "lit_paramlist_push"
 
-  # void vmexec_push(LitFiber *fiber, LitValue v);
-  "vmexec_push": "lit_vmexec_push"
+  # void lit_paramlist_freevalues(LitState *state, LitParamList *parameters);
+  "lit_paramlist_freevalues": "lit_paramlist_destroyvalues"
 
-  # LitValue vmexec_pop(LitFiber *fiber);
-  "vmexec_pop": "lit_vmexec_pop"
+  # void free_expressions(LitState *state, LitExprList *expressions);
+  "free_expressions": "lit_ast_destroyexprlist"
 
-  # void vmexec_drop(LitFiber *fiber);
-  "vmexec_drop": "lit_vmexec_drop"
+  # void internal_free_statements(LitState *state, LitExprList *statements);
+  "internal_free_statements": "lit_ast_destroystmtlist"
 
-  # void vmexec_dropn(LitFiber *fiber, int amount);
-  "vmexec_dropn": "lit_vmexec_dropn"
+  # void lit_free_expression(LitState *state, LitExpression *expression);
+  "lit_free_expression": "lit_ast_destroyexpression"
 
-  # LitValue vmexec_peek(LitFiber *fiber, short distance);
-  "vmexec_peek": "lit_vmexec_peek"
+  # static LitExpression * allocate_expression(LitState *state, uint64_t line, size_t size, LitExprType type);
+  "allocate_expression": "lit_ast_allocexpr"
 
-  # void vm_readframe(LitFiber *fiber, LitExecState *est);
-  "vm_readframe": "lit_vmexec_readframe"
+  # LitLiteralExpr * lit_create_literal_expression(LitState *state, size_t line, LitValue value);
+  "lit_create_literal_expression": "lit_ast_make_literalexpr"
 
-  # void vm_writeframe(LitExecState *est, uint8_t *ip);
-  "vm_writeframe": "lit_vmexec_writeframe"
+  # LitBinaryExpr * lit_create_binary_expression(LitState *state, size_t line, LitExpression *left, LitExpression *right, LitTokType op);
+  "lit_create_binary_expression": "lit_ast_make_binaryexpr"
 
-  # void reset_stack(LitVM *vm);
-  "reset_stack": "lit_vmexec_resetstack"
+  # LitUnaryExpr * lit_create_unary_expression(LitState *state, size_t line, LitExpression *right, LitTokType op);
+  "lit_create_unary_expression": "lit_ast_make_unaryexpr"
 
-  # void reset_vm(LitState *state, LitVM *vm);
-  "reset_vm": "lit_vmexec_resetvm"
+  # LitVarExpr * lit_create_var_expression(LitState *state, size_t line, const char *name, size_t length);
+  "lit_create_var_expression": "lit_ast_make_varexpr"
 
-  # void lit_init_vm(LitState *state, LitVM *vm);
-  "lit_init_vm": "lit_vm_init"
+  # LitAssignExpr * lit_create_assign_expression(LitState *state, size_t line, LitExpression *to, LitExpression *value);
+  "lit_create_assign_expression": "lit_ast_make_assignexpr"
 
-  # void lit_free_vm(LitVM *vm);
-  "lit_free_vm": "lit_vm_destroy"
+  # LitCallExpr * lit_create_call_expression(LitState *state, size_t line, LitExpression *callee);
+  "lit_create_call_expression": "lit_ast_make_callexpr"
 
-  # void lit_trace_vm_stack(LitVM *vm, LitWriter *wr);
-  "lit_trace_vm_stack": "lit_vm_tracestack"
+  # LitGetExpr * lit_create_get_expression(LitState *state, size_t line, LitExpression *where, const char *name, size_t length, _Bool questionable, _Bool ignore_result);
+  "lit_create_get_expression": "lit_ast_make_getexpr"
 
-  # _Bool lit_handle_runtime_error(LitVM *vm, LitString *error_string);
-  "lit_handle_runtime_error": "lit_vm_handleruntimeerror"
+  # LitSetExpr * lit_create_set_expression(LitState *state, size_t line, LitExpression *where, const char *name, size_t length, LitExpression *value);
+  "lit_create_set_expression": "lit_ast_make_setexpr"
 
-  # _Bool lit_vruntime_error(LitVM *vm, const char *format, va_list args);
-  "lit_vruntime_error": "lit_vm_vraiseerror"
+  # LitLambdaExpr * lit_create_lambda_expression(LitState *state, size_t line);
+  "lit_create_lambda_expression": "lit_ast_make_lambdaexpr"
 
-  # _Bool lit_runtime_error(LitVM *vm, const char *format, ...);
-  "lit_runtime_error": "lit_vm_raiseerror"
+  # LitArrayExpr * lit_create_array_expression(LitState *state, size_t line);
+  "lit_create_array_expression": "lit_ast_make_arrayexpr"
 
-  # _Bool lit_runtime_error_exiting(LitVM *vm, const char *format, ...);
-  "lit_runtime_error_exiting": "lit_vm_raiseexitingerror"
+  # LitObjectExpr * lit_create_object_expression(LitState *state, size_t line);
+  "lit_create_object_expression": "lit_ast_make_objectexpr"
 
-  # _Bool call(LitVM *vm, LitFunction *function, LitClosure *closure, uint8_t argc);
-  "call": "lit_vm_callcallable"
+  # LitSubscriptExpr * lit_create_subscript_expression(LitState *state, size_t line, LitExpression *array, LitExpression *index);
+  "lit_create_subscript_expression": "lit_create_subscript_expression"
 
-  # const char * find_funcname_fromvalue(LitVM *vm, LitExecState *est, LitValue v);
-  "find_funcname_fromvalue": "lit_vmexec_funcnamefromvalue"
+  # LitThisExpr * lit_create_this_expression(LitState *state, size_t line);
+  "lit_create_this_expression": "lit_create_this_expression"
 
-  # _Bool call_value(LitVM *vm, LitFiber *fiber, LitExecState *est, LitValue callee, uint8_t argc);
-  "call_value": "lit_vm_callvalue"
+  # LitSuperExpr * lit_create_super_expression(LitState *state, size_t line, LitString *method, _Bool ignore_result);
+  "lit_create_super_expression": "lit_create_super_expression"
 
-  # LitUpvalue * capture_upvalue(LitState *state, LitValue *local);
-  "capture_upvalue": "lit_execvm_captureupvalue"
+  # LitRangeExpr * lit_create_range_expression(LitState *state, size_t line, LitExpression *from, LitExpression *to);
+  "lit_create_range_expression": "lit_create_range_expression"
 
-  # void close_upvalues(LitVM *vm, const LitValue *last);
-  "close_upvalues": "lit_vm_closeupvalues"
+  # LitTernaryExpr * lit_create_ternary_expression(LitState *state, size_t line, LitExpression *condition, LitExpression *if_branch, LitExpression *else_branch);
+  "lit_create_ternary_expression": "lit_create_ternary_expression"
 
-  # LitInterpretResult lit_interpret_module(LitState *state, LitModule *module);
-  "lit_interpret_module": "lit_vm_execmodule"
+  # LitInterpolationExpr * lit_create_interpolation_expression(LitState *state, size_t line);
+  "lit_create_interpolation_expression": "lit_create_interpolation_expression"
 
-  # LitInterpretResult lit_interpret_fiber(LitState *state, LitFiber *fiber);
-  "lit_interpret_fiber": "lit_vm_execfiber"
+  # LitReferenceExpr * lit_create_reference_expression(LitState *state, size_t line, LitExpression *to);
+  "lit_create_reference_expression": "lit_create_reference_expression"
 
-  # void lit_native_exit_jump(void);
-  "lit_native_exit_jump": "lit_vmutil_callexitjump"
+  # static LitExpression * allocate_statement(LitState *state, uint64_t line, size_t size, LitExprType type);
+  "allocate_statement": "allocate_statement"
 
-  # _Bool lit_set_native_exit_jump(void);
-  "lit_set_native_exit_jump": "lit_vmutil_setexitjump"
+  # LitExpressionExpr * lit_create_expression_statement(LitState *state, size_t line, LitExpression *expression);
+  "lit_create_expression_statement": "lit_create_expression_statement"
+
+  # LitBlockExpr * lit_create_block_statement(LitState *state, size_t line);
+  "lit_create_block_statement": "lit_create_block_statement"
+
+  # LitAssignVarExpr * lit_create_assignvar_statement(LitState *state, size_t line, const char *name, size_t length, LitExpression *init, _Bool constant);
+  "lit_create_assignvar_statement": "lit_create_assignvar_statement"
+
+  # LitIfExpr * lit_create_if_statement(LitState *state, size_t line, LitExpression *condition, LitExpression *if_branch, LitExpression *else_branch, LitExprList *elseif_conditions, LitExprList *elseif_branches);
+  "lit_create_if_statement": "lit_create_if_statement"
+
+  # LitWhileExpr * lit_create_while_statement(LitState *state, size_t line, LitExpression *condition, LitExpression *body);
+  "lit_create_while_statement": "lit_create_while_statement"
+
+  # LitForExpr * lit_create_for_statement(LitState *state, size_t line, LitExpression *init, LitExpression *var, LitExpression *condition, LitExpression *increment, LitExpression *body, _Bool c_style);
+  "lit_create_for_statement": "lit_create_for_statement"
+
+  # LitContinueExpr * lit_create_continue_statement(LitState *state, size_t line);
+  "lit_create_continue_statement": "lit_create_continue_statement"
+
+  # LitBreakExpr * lit_create_break_statement(LitState *state, size_t line);
+  "lit_create_break_statement": "lit_create_break_statement"
+
+  # LitFunctionExpr * lit_create_function_statement(LitState *state, size_t line, const char *name, size_t length);
+  "lit_create_function_statement": "lit_create_function_statement"
+
+  # LitReturnExpr * lit_create_return_statement(LitState *state, size_t line, LitExpression *expression);
+  "lit_create_return_statement": "lit_create_return_statement"
+
+  # LitMethodExpr * lit_create_method_statement(LitState *state, size_t line, LitString *name, _Bool is_static);
+  "lit_create_method_statement": "lit_create_method_statement"
+
+  # LitClassExpr * lit_create_class_statement(LitState *state, size_t line, LitString *name, LitString *parent);
+  "lit_create_class_statement": "lit_create_class_statement"
+
+  # LitFieldExpr * lit_create_field_statement(LitState *state, size_t line, LitString *name, LitExpression *getter, LitExpression *setter, _Bool is_static);
+  "lit_create_field_statement": "lit_create_field_statement"
+
+  # LitExprList * lit_allocate_expressions(LitState *state);
+  "lit_allocate_expressions": "lit_allocate_expressions"
+
+  # void lit_free_allocated_expressions(LitState *state, LitExprList *expressions);
+  "lit_free_allocated_expressions": "lit_free_allocated_expressions"
+
+  # LitExprList * lit_allocate_statements(LitState *state);
+  "lit_allocate_statements": "lit_allocate_statements"
+
+  # void lit_free_allocated_statements(LitState *state, LitExprList *statements);
+  "lit_free_allocated_statements": "lit_free_allocated_statements"
 

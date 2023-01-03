@@ -833,6 +833,7 @@ struct LitState
     int64_t bytes_allocated;
     int64_t next_gc;
     bool allow_gc;
+    LitValueList lightobjects;
     LitErrorFn error_fn;
     LitPrintFn print_fn;
     LitValue* roots;

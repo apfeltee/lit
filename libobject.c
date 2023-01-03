@@ -71,6 +71,10 @@ void lit_object_destroy(LitState* state, LitObject* object)
     LitFiber* fiber;
     LitModule* module;
     LitClosure* closure;
+    if(!object->mustfree)
+    {
+        return;
+    }
 #ifdef LIT_LOG_ALLOCATION
     printf("(");
     lit_towriter_value(lit_value_objectvalue(object));
@@ -228,15 +232,15 @@ void lit_object_destroy(LitState* state, LitObject* object)
 
 void lit_object_destroylistof(LitState* state, LitObject* objects)
 {
-    LitObject* object = objects;
-
-    while(object != NULL)
+    LitObject* obj;
+    LitObject* next;
+    obj = objects;
+    while(obj != NULL)
     {
-        LitObject* next = object->next;
-        lit_object_destroy(state, object);
-        object = next;
+        next = obj->next;
+        lit_object_destroy(state, obj);
+        obj = next;
     }
-
     free(state->vm->gray_stack);
     state->vm->gray_capacity = 0;
 }

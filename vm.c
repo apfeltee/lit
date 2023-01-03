@@ -1245,25 +1245,18 @@ LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber)
                     vmexec_raiseerrorfmt("cannot use bitwise op '%s' with types '%s' and '%s'", "<<", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 lit_vmexec_drop(fiber);
-                #if 0
-                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, (int)lit_value_asnumber(a) << (int)lit_value_asnumber(b));
-
-                #else
-                    /*
-                        double lit_util_uinttofloat(unsigned int val);
-                        unsigned int lit_util_floattouint(double val);
-                        int lit_util_numbertoint32(double n);
-                        int lit_util_doubletoint(double n);
-                        unsigned int lit_util_numbertouint32(double n);
-                    */
-                    
-                    int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
-                    unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
-                    int res = uleft << (uright & 0x1F);
-                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, res);
- 
-
-                #endif
+                /*
+                    ApeFloat_t rightval = ape_object_value_asnumber(right);
+                    ApeFloat_t leftval = ape_object_value_asnumber(left);
+                    int uleft = ape_util_numbertoint32(leftval);
+                    unsigned int uright = ape_util_numbertouint32(rightval);
+                    resfixed = (uleft << (uright & 0x1F));
+                    isfixed = true;
+                */                
+                int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
+                unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
+                int res = uleft << (uright & 0x1F);
+                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, (res));
                 continue;
             }
             op_case(OP_RSHIFT)
@@ -1275,41 +1268,25 @@ LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber)
                     vmexec_raiseerrorfmt("cannot use bitwise op '%s' with types '%s' and '%s'", ">>", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 lit_vmexec_drop(fiber);
-
                 /*
-                    double lit_util_uinttofloat(unsigned int val);
-                    unsigned int lit_util_floattouint(double val);
-                    int lit_util_numbertoint32(double n);
-                    int lit_util_doubletoint(double n);
-                    unsigned int lit_util_numbertouint32(double n);
+                    ApeFloat_t rightval = ape_object_value_asnumber(right);
+                    ApeFloat_t leftval = ape_object_value_asnumber(left);
+                    int uleft = ape_util_numbertoint32(leftval);
+                    unsigned int uright = ape_util_numbertouint32(rightval);
+                    resfixed = (uleft >> (uright & 0x1F));
+                    isfixed = true;
                 */
                 int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
                 unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
                 int res = uleft >> (uright & 0x1F);
-                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, res);
-                
-
+                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, (res));
                 continue;
             }
-
             op_case(OP_EQUAL)
             {
-                /*
-                if(lit_value_isinstance(lit_vmexec_peek(fiber, 1)))
-                {
-                    lit_vmexec_writeframe(&est, est.ip);
-                    fprintf(stderr, "OP_EQUAL: trying to invoke '==' ...\n");
-                    vmexec_invokefromclass(lit_value_asinstance(lit_vmexec_peek(fiber, 1))->klass, CONST_STRING(state, "=="), 1, false, methods, false);
-                    continue;
-                }
-                a = lit_vmexec_pop(fiber);
-                b = lit_vmexec_pop(fiber);
-                lit_vmexec_push(fiber, lit_bool_to_value(vm->state, a == b));
-                */
                 vm_binaryop(lit_value_numbertovalue, ==, "==");
                 continue;
             }
-
             op_case(OP_GREATER)
             {
                 vm_binaryop(lit_bool_to_value, >, ">");
@@ -1330,7 +1307,6 @@ LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber)
                 vm_binaryop(lit_bool_to_value, <=, "<=");
                 continue;
             }
-
             op_case(OP_SET_GLOBAL)
             {
                 name = lit_vmexec_readstringlong(&est);
@@ -1608,7 +1584,7 @@ LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber)
                     klassobj = lit_state_getclassfor(state, object);
                     if(klassobj == NULL)
                     {
-                        vmexec_raiseerror("GET_FIELD: cannot get class object");
+                        vmexec_raiseerrorfmt("GET_FIELD: cannot get class object for type '%s'", lit_tostring_typename(object));
                     }
                     if(lit_table_get(&klassobj->methods, name, &getval))
                     {

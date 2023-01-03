@@ -59,7 +59,7 @@ LitState* lit_make_state()
         state->print_fn = lit_util_default_printf;
         lit_writer_init_file(state, &state->stdoutwriter, stdout, true);
     }
-
+    lit_vallist_init(&state->lightobjects);
     state->had_error = false;
     state->roots = NULL;
     state->root_count = 0;
@@ -145,6 +145,11 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
     {
         switch(lit_value_type(value))
         {
+            case LITTYPE_NUMBER:
+                {
+                    return state->numbervalue_class;
+                }
+                break;
             case LITTYPE_STRING:
                 {
                     return state->stringvalue_class;
