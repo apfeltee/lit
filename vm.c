@@ -205,7 +205,7 @@ bool lit_set_native_exit_jump(void);
     { \
         if(error) \
         { \
-            vmexec_raiseerrorfmt("Attempt to call method '%s', that is not defined in class %s", mthname->chars, \
+            vmexec_raiseerrorfmt("cannot call undefined method '%s' of class '%s'", mthname->chars, \
                                zklass->name->chars) \
         } \
     } \
@@ -222,12 +222,12 @@ bool lit_set_native_exit_jump(void);
 #define vm_invokemethod(instance, mthname, argc) \
     if(lit_value_isnull(instance)) \
     { \
-        vmexec_raiseerrorfmt("invokemethod('%s'): instance is null", mthname); \
+        vmexec_raiseerrorfmt("cannot call method '%s' of null-instance", mthname); \
     } \
     LitClass* klass = lit_state_getclassfor(state, instance); \
     if(klass == NULL) \
     { \
-        vmexec_raiseerrorfmt("invokemethod('%s'): only instances and classes have methods", mthname); \
+        vmexec_raiseerrorfmt("cannot call method '%s' of a non-class", mthname); \
     } \
     vm_writeframe(&est, est.ip); \
     vmexec_advinvokefromclass(klass, CONST_STRING(state, mthname), argc, true, methods, false, instance); \
@@ -242,7 +242,7 @@ bool lit_set_native_exit_jump(void);
         { \
             if(!lit_value_isnull(b)) \
             { \
-                vmexec_raiseerrorfmt("Attempt to use op %s with a number and a %s", op_string, lit_tostring_typename(b)); \
+                vmexec_raiseerrorfmt("cannot use op '%s' with a 'number' and a '%s'", op_string, lit_tostring_typename(b)); \
             } \
         } \
         vmexec_drop(fiber); \
@@ -266,7 +266,7 @@ bool lit_set_native_exit_jump(void);
     /* if((!lit_value_isnumber(a) && !lit_value_isnull(a)) || (!lit_value_isnumber(b) && !lit_value_isnull(b))) */ \
     if((!lit_value_isnumber(a) ) || (!lit_value_isnumber(b))) \
     { \
-        vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, \
+        vmexec_raiseerrorfmt("cannot use bitwise op '%s' with types '%s' and '%s'", op_string, \
                            lit_tostring_typename(a), lit_tostring_typename(b)); \
     } \
     vmexec_drop(fiber); \
@@ -278,7 +278,7 @@ bool lit_set_native_exit_jump(void);
     LitValue receiver = vmexec_peek(fiber, argc); \
     if(lit_value_isnull(receiver)) \
     { \
-        vmexec_raiseerror("Attempt to index a null value"); \
+        vmexec_raiseerrorfmt("cannot index a null value with '%s'", mthname->chars); \
     } \
     vm_writeframe(&est, est.ip); \
     if(lit_value_isclass(receiver)) \
@@ -304,7 +304,7 @@ bool lit_set_native_exit_jump(void);
         LitClass* type = lit_state_getclassfor(state, receiver); \
         if(type == NULL) \
         { \
-            vmexec_raiseerror("invokeoperation: only instances and classes have methods"); \
+            vmexec_raiseerror("cannot get class"); \
         } \
         vmexec_advinvokefromclass(type, mthname, argc, true, methods, ignoring, receiver); \
     }
@@ -995,7 +995,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
 #ifdef LIT_CHECK_STACK_SIZE
         if((fiber->stack_top - est.frame->slots) > fiber->stack_capacity)
         {
-            vmexec_raiseerrorfmt("Fiber stack is not large enough (%i > %i)", (int)(fiber->stack_top - est.frame->slots),
+            vmexec_raiseerrorfmt("fiber stack too small (%i > %i)", (int)(fiber->stack_top - est.frame->slots),
                                fiber->stack_capacity);
         }
 #endif
@@ -1121,7 +1121,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 b = vmexec_pop(fiber);
                 if(!lit_value_isnumber(a) || !lit_value_isnumber(b))
                 {
-                    vmexec_raiseerror("Range operands must be number");
+                    vmexec_raiseerror("range fields must be numbers");
                 }
                 vmexec_push(fiber, lit_value_objectvalue(lit_create_range(state, lit_value_asnumber(a), lit_value_asnumber(b))));
                 continue;
@@ -1131,16 +1131,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 if(!lit_value_isnumber(vmexec_peek(fiber, 0)))
                 {
                     arg = vmexec_peek(fiber, 0);
-                    // Don't even ask me why
-                    // This doesn't kill our performance, since it's a error anyway
-                    if(lit_value_isstring(arg) && strcmp(lit_value_ascstring(arg), "muffin") == 0)
-                    {
-                        vmexec_raiseerror("Idk, can you negate a muffin?");
-                    }
-                    else
-                    {
-                        vmexec_raiseerror("Operand must be a number");
-                    }
+                    vmexec_raiseerror("operand must be a number");
                 }
                 tmpval = lit_value_numbertovalue(vm->state, -lit_value_asnumber(vmexec_pop(fiber)));
                 vmexec_push(fiber, tmpval);
@@ -1252,7 +1243,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 LitValue b = vmexec_peek(fiber, 0);
                 if((!lit_value_isnumber(a) && !lit_value_isnull(a)) || (!lit_value_isnumber(b) && !lit_value_isnull(b)))
                 {
-                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", "<<", lit_tostring_typename(a), lit_tostring_typename(b));
+                    vmexec_raiseerrorfmt("cannot use bitwise op '%s' with types '%s' and '%s'", "<<", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 vmexec_drop(fiber);
                 #if 0
@@ -1269,8 +1260,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     
                     int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
                     unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
-
-                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, uleft << (uright & 0x1F));
+                    int res = uleft << (uright & 0x1F);
+                    *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, res);
  
 
                 #endif
@@ -1282,7 +1273,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 LitValue b = vmexec_peek(fiber, 0);
                 if((!lit_value_isnumber(a) && !lit_value_isnull(a)) || (!lit_value_isnumber(b) && !lit_value_isnull(b)))
                 {
-                    vmexec_raiseerrorfmt("Operands of bitwise op %s must be two numbers, got %s and %s", ">>", lit_tostring_typename(a), lit_tostring_typename(b));
+                    vmexec_raiseerrorfmt("cannot use bitwise op '%s' with types '%s' and '%s'", ">>", lit_tostring_typename(a), lit_tostring_typename(b));
                 }
                 vmexec_drop(fiber);
 
@@ -1295,8 +1286,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 */
                 int uleft = lit_util_numbertoint32(lit_value_asnumber(a));
                 unsigned int uright = lit_util_numbertouint32(lit_value_asnumber(b));
-
-                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, uleft >> (uright & 0x1F));
+                int res = uleft >> (uright & 0x1F);
+                *(fiber->stack_top - 1) = lit_value_numbertovalue(vm->state, res);
                 
 
                 continue;
@@ -1543,11 +1534,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(GET_FIELD)
             {
                 object = vmexec_peek(fiber, 1);
+                name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isnull(object))
                 {
-                    vmexec_raiseerror("Attempt to index a null value");
+                    vmexec_raiseerrorfmt("attempt to set field '%s' of a null value", name->chars);
                 }
-                name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isinstance(object))
                 {
                     instobj = lit_value_asinstance(object);
@@ -1561,7 +1552,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                                 field = lit_value_asfield(getval);
                                 if(field->getter == NULL)
                                 {
-                                    vmexec_raiseerrorfmt("Class %s does not have a getter for the field %s",
+                                    vmexec_raiseerrorfmt("class %s does not have a getter for field '%s'",
                                                        instobj->klass->name->chars, name->chars);
                                 }
                                 vmexec_drop(fiber);
@@ -1597,7 +1588,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                             field = lit_value_asfield(getval);
                             if(field->getter == NULL)
                             {
-                                vmexec_raiseerrorfmt("Class %s does not have a getter for the field %s", klassobj->name->chars,
+                                vmexec_raiseerrorfmt("class %s does not have a getter for field '%s'", klassobj->name->chars,
                                                    name->chars);
                             }
                             vmexec_drop(fiber);
@@ -1618,7 +1609,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     klassobj = lit_state_getclassfor(state, object);
                     if(klassobj == NULL)
                     {
-                        vmexec_raiseerror("GET_FIELD: only instances and classes have fields");
+                        vmexec_raiseerror("GET_FIELD: cannot get class object");
                     }
                     if(lit_table_get(&klassobj->methods, name, &getval))
                     {
@@ -1627,7 +1618,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                             field = lit_value_asfield(getval);
                             if(field->getter == NULL)
                             {
-                                vmexec_raiseerrorfmt("Class %s does not have a getter for the field %s", klassobj->name->chars,
+                                vmexec_raiseerrorfmt("class %s does not have a getter for field '%s'", klassobj->name->chars,
                                                    name->chars);
                             }
                             vmexec_drop(fiber);
@@ -1654,12 +1645,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
             op_case(SET_FIELD)
             {
                 instval = vmexec_peek(fiber, 2);
-                if(lit_value_isnull(instval))
-                {
-                    vmexec_raiseerror("Attempt to index a null value")
-                }
                 value = vmexec_peek(fiber, 1);
                 field_name = lit_value_asstring(vmexec_peek(fiber, 0));
+                if(lit_value_isnull(instval))
+                {
+                    vmexec_raiseerrorfmt("attempt to set field '%s' of a null value", field_name->chars)
+                }
                 if(lit_value_isclass(instval))
                 {
                     klassobj = lit_value_asclass(instval);
@@ -1668,7 +1659,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
-                            vmexec_raiseerrorfmt("Class %s does not have a setter for the field %s", klassobj->name->chars,
+                            vmexec_raiseerrorfmt("class %s does not have a setter for field '%s'", klassobj->name->chars,
                                                field_name->chars);
                         }
 
@@ -1699,7 +1690,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
-                            vmexec_raiseerrorfmt("Class %s does not have a setter for the field %s", instobj->klass->name->chars,
+                            vmexec_raiseerrorfmt("class %s does not have a setter for field '%s'", instobj->klass->name->chars,
                                                field_name->chars);
                         }
                         vmexec_dropn(fiber, 2);
@@ -1733,7 +1724,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                         field = lit_value_asfield(setter);
                         if(field->setter == NULL)
                         {
-                            vmexec_raiseerrorfmt("Class %s does not have a setter for the field %s", klassobj->name->chars,
+                            vmexec_raiseerrorfmt("class '%s' does not have a setter for field '%s'", klassobj->name->chars,
                                                field_name->chars);
                         }
                         vmexec_dropn(fiber, 2);
@@ -1746,7 +1737,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                     }
                     else
                     {
-                        vmexec_raiseerrorfmt("Class %s does not contain field %s", klassobj->name->chars, field_name->chars);
+                        vmexec_raiseerrorfmt("class '%s' does not contain field '%s'", klassobj->name->chars, field_name->chars);
                     }
                 }
                 continue;
@@ -1783,7 +1774,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    vmexec_raiseerrorfmt("Expected an object or a map as the operand, got %s", lit_tostring_typename(operand));
+                    vmexec_raiseerrorfmt("cannot set field '%s' on type '%s'", lit_tostring_typename(operand));
                 }
                 vmexec_dropn(fiber, 2);
                 continue;
@@ -1862,7 +1853,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 super = vmexec_peek(fiber, 1);
                 if(!lit_value_isclass(super))
                 {
-                    vmexec_raiseerror("Superclass must be a class");
+                    vmexec_raiseerror("superclass must be a class");
                 }
                 klassobj = lit_value_asclass(vmexec_peek(fiber, 0));
                 super_klass = lit_value_asclass(super);
@@ -1886,7 +1877,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 klassval = vmexec_peek(fiber, 0);
                 if(instance_klass == NULL || !lit_value_isclass(klassval))
                 {
-                    vmexec_raiseerror("operands must be an instance and a class");
+                    vmexec_raiseerror("operands must be an instance or a class");
                 }            
                 type = lit_value_asclass(klassval);
                 found = false;
@@ -1935,7 +1926,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 }
                 else
                 {
-                    vmexec_raiseerror("Attempt to reference a null value");
+                    vmexec_raiseerror("attempt to reference a null value");
                 }
                 continue;
             }
@@ -1959,21 +1950,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 object = vmexec_peek(fiber, 1);
                 if(lit_value_isnull(object))
                 {
-                    vmexec_raiseerror("Attempt to index a null value");
+                    vmexec_raiseerror("attempt to index a null value");
                 }
                 name = lit_value_asstring(vmexec_peek(fiber, 0));
                 if(lit_value_isinstance(object))
                 {
                     if(!lit_table_get_slot(&lit_value_asinstance(object)->fields, name, &pval))
                     {
-                        vmexec_raiseerror("Attempt to reference a null value");
+                        vmexec_raiseerror("attempt to reference a null value");
                     }
                 }
                 else
                 {
                     lit_towriter_value(state, &state->debugwriter, object);
                     printf("\n");
-                    vmexec_raiseerror("You can only reference fields of real instances");
+                    vmexec_raiseerrorfmt("cannot reference field '%s' of a non-instance", name->chars);
                 }
                 vmexec_drop(fiber);// Pop field name
                 fiber->stack_top[-1] = lit_value_objectvalue(lit_create_reference(state, pval));
@@ -1984,14 +1975,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber)
                 reference = vmexec_pop(fiber);
                 if(!lit_value_isreference(reference))
                 {
-                    vmexec_raiseerror("Provided value is not a reference");
+                    vmexec_raiseerror("cannot set reference value of a non-reference");
                 }
                 *lit_value_asreference(reference)->slot = vmexec_peek(fiber, 0);
                 continue;
             }
             vm_default()
             {
-                vmexec_raiseerrorfmt("Unknown op code '%d'", *est.ip);
+                vmexec_raiseerrorfmt("unknown VM op code '%d'", *est.ip);
                 break;
             }
         }
