@@ -65,77 +65,77 @@
   "lit_create_object_expression": "lit_ast_make_objectexpr"
 
   # LitSubscriptExpr * lit_create_subscript_expression(LitState *state, size_t line, LitExpression *array, LitExpression *index);
-  "lit_create_subscript_expression": "lit_create_subscript_expression"
+  "lit_create_subscript_expression": "lit_ast_make_subscriptexpr"
 
   # LitThisExpr * lit_create_this_expression(LitState *state, size_t line);
-  "lit_create_this_expression": "lit_create_this_expression"
+  "lit_create_this_expression": "lit_ast_make_thisexpr"
 
   # LitSuperExpr * lit_create_super_expression(LitState *state, size_t line, LitString *method, _Bool ignore_result);
-  "lit_create_super_expression": "lit_create_super_expression"
+  "lit_create_super_expression": "lit_ast_make_superexpr"
 
   # LitRangeExpr * lit_create_range_expression(LitState *state, size_t line, LitExpression *from, LitExpression *to);
-  "lit_create_range_expression": "lit_create_range_expression"
+  "lit_create_range_expression": "lit_ast_make_rangeexpr"
 
   # LitTernaryExpr * lit_create_ternary_expression(LitState *state, size_t line, LitExpression *condition, LitExpression *if_branch, LitExpression *else_branch);
-  "lit_create_ternary_expression": "lit_create_ternary_expression"
+  "lit_create_ternary_expression": "lit_ast_make_ternaryexpr"
 
   # LitInterpolationExpr * lit_create_interpolation_expression(LitState *state, size_t line);
-  "lit_create_interpolation_expression": "lit_create_interpolation_expression"
+  "lit_create_interpolation_expression": "lit_ast_make_strinterpolexpr"
 
   # LitReferenceExpr * lit_create_reference_expression(LitState *state, size_t line, LitExpression *to);
-  "lit_create_reference_expression": "lit_create_reference_expression"
+  "lit_create_reference_expression": "lit_ast_make_referenceexpr"
 
   # static LitExpression * allocate_statement(LitState *state, uint64_t line, size_t size, LitExprType type);
-  "allocate_statement": "allocate_statement"
+  "allocate_statement": "lit_ast_allocstmt"
 
   # LitExpressionExpr * lit_create_expression_statement(LitState *state, size_t line, LitExpression *expression);
-  "lit_create_expression_statement": "lit_create_expression_statement"
+  "lit_create_expression_statement": "lit_ast_make_exprstmt"
 
   # LitBlockExpr * lit_create_block_statement(LitState *state, size_t line);
-  "lit_create_block_statement": "lit_create_block_statement"
+  "lit_create_block_statement": "lit_ast_make_blockexpr"
 
   # LitAssignVarExpr * lit_create_assignvar_statement(LitState *state, size_t line, const char *name, size_t length, LitExpression *init, _Bool constant);
-  "lit_create_assignvar_statement": "lit_create_assignvar_statement"
+  "lit_create_assignvar_statement": "lit_ast_make_assignvarexpr"
 
   # LitIfExpr * lit_create_if_statement(LitState *state, size_t line, LitExpression *condition, LitExpression *if_branch, LitExpression *else_branch, LitExprList *elseif_conditions, LitExprList *elseif_branches);
-  "lit_create_if_statement": "lit_create_if_statement"
+  "lit_create_if_statement": "lit_ast_make_ifexpr"
 
   # LitWhileExpr * lit_create_while_statement(LitState *state, size_t line, LitExpression *condition, LitExpression *body);
-  "lit_create_while_statement": "lit_create_while_statement"
+  "lit_create_while_statement": "lit_ast_make_whileexpr"
 
   # LitForExpr * lit_create_for_statement(LitState *state, size_t line, LitExpression *init, LitExpression *var, LitExpression *condition, LitExpression *increment, LitExpression *body, _Bool c_style);
-  "lit_create_for_statement": "lit_create_for_statement"
+  "lit_create_for_statement": "lit_ast_make_forexpr"
 
   # LitContinueExpr * lit_create_continue_statement(LitState *state, size_t line);
-  "lit_create_continue_statement": "lit_create_continue_statement"
+  "lit_create_continue_statement": "lit_ast_make_continueexpr"
 
   # LitBreakExpr * lit_create_break_statement(LitState *state, size_t line);
-  "lit_create_break_statement": "lit_create_break_statement"
+  "lit_create_break_statement": "lit_ast_make_breakexpr"
 
   # LitFunctionExpr * lit_create_function_statement(LitState *state, size_t line, const char *name, size_t length);
-  "lit_create_function_statement": "lit_create_function_statement"
+  "lit_create_function_statement": "lit_ast_make_funcexpr"
 
   # LitReturnExpr * lit_create_return_statement(LitState *state, size_t line, LitExpression *expression);
-  "lit_create_return_statement": "lit_create_return_statement"
+  "lit_create_return_statement": "lit_ast_make_returnexpr"
 
   # LitMethodExpr * lit_create_method_statement(LitState *state, size_t line, LitString *name, _Bool is_static);
-  "lit_create_method_statement": "lit_create_method_statement"
+  "lit_create_method_statement": "lit_ast_make_methodexpr"
 
   # LitClassExpr * lit_create_class_statement(LitState *state, size_t line, LitString *name, LitString *parent);
-  "lit_create_class_statement": "lit_create_class_statement"
+  "lit_create_class_statement": "lit_ast_make_classexpr"
 
   # LitFieldExpr * lit_create_field_statement(LitState *state, size_t line, LitString *name, LitExpression *getter, LitExpression *setter, _Bool is_static);
-  "lit_create_field_statement": "lit_create_field_statement"
+  "lit_create_field_statement": "lit_ast_make_fieldexpr"
 
   # LitExprList * lit_allocate_expressions(LitState *state);
-  "lit_allocate_expressions": "lit_allocate_expressions"
+  "lit_allocate_expressions": "lit_ast_allocexprlist"
 
   # void lit_free_allocated_expressions(LitState *state, LitExprList *expressions);
-  "lit_free_allocated_expressions": "lit_free_allocated_expressions"
+  "lit_free_allocated_expressions": "lit_ast_destroy_allocdexprlist"
 
   # LitExprList * lit_allocate_statements(LitState *state);
-  "lit_allocate_statements": "lit_allocate_statements"
+  "lit_allocate_statements": "lit_ast_allocate_stmtlist"
 
   # void lit_free_allocated_statements(LitState *state, LitExprList *statements);
-  "lit_free_allocated_statements": "lit_free_allocated_statements"
+  "lit_free_allocated_statements": "lit_ast_destry_allocdstmtlist"
 

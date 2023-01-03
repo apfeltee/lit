@@ -392,38 +392,38 @@ void lit_varlist_init(LitVarList* array);
 void lit_varlist_destroy(LitState* state, LitVarList* array);
 void lit_varlist_push(LitState* state, LitVarList* array, LitVariable value);
 
-void lit_free_expression(LitState* state, LitExpression* expression);
-LitLiteralExpr* lit_create_literal_expression(LitState* state, size_t line, LitValue value);
+void lit_ast_destroyexpression(LitState* state, LitExpression* expression);
+LitLiteralExpr* lit_ast_make_literalexpr(LitState* state, size_t line, LitValue value);
 
 LitBinaryExpr*
-lit_create_binary_expression(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokType op);
-LitUnaryExpr* lit_create_unary_expression(LitState* state, size_t line, LitExpression* right, LitTokType op);
-LitVarExpr* lit_create_var_expression(LitState* state, size_t line, const char* name, size_t length);
-LitAssignExpr* lit_create_assign_expression(LitState* state, size_t line, LitExpression* to, LitExpression* value);
-LitCallExpr* lit_create_call_expression(LitState* state, size_t line, LitExpression* callee);
+lit_ast_make_binaryexpr(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokType op);
+LitUnaryExpr* lit_ast_make_unaryexpr(LitState* state, size_t line, LitExpression* right, LitTokType op);
+LitVarExpr* lit_ast_make_varexpr(LitState* state, size_t line, const char* name, size_t length);
+LitAssignExpr* lit_ast_make_assignexpr(LitState* state, size_t line, LitExpression* to, LitExpression* value);
+LitCallExpr* lit_ast_make_callexpr(LitState* state, size_t line, LitExpression* callee);
 LitGetExpr*
-lit_create_get_expression(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, bool questionable, bool ignore_result);
+lit_ast_make_getexpr(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, bool questionable, bool ignore_result);
 LitSetExpr*
-lit_create_set_expression(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, LitExpression* value);
-LitLambdaExpr* lit_create_lambda_expression(LitState* state, size_t line);
-LitArrayExpr* lit_create_array_expression(LitState* state, size_t line);
-LitObjectExpr* lit_create_object_expression(LitState* state, size_t line);
-LitSubscriptExpr* lit_create_subscript_expression(LitState* state, size_t line, LitExpression* array, LitExpression* index);
-LitThisExpr* lit_create_this_expression(LitState* state, size_t line);
+lit_ast_make_setexpr(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, LitExpression* value);
+LitLambdaExpr* lit_ast_make_lambdaexpr(LitState* state, size_t line);
+LitArrayExpr* lit_ast_make_arrayexpr(LitState* state, size_t line);
+LitObjectExpr* lit_ast_make_objectexpr(LitState* state, size_t line);
+LitSubscriptExpr* lit_ast_make_subscriptexpr(LitState* state, size_t line, LitExpression* array, LitExpression* index);
+LitThisExpr* lit_ast_make_thisexpr(LitState* state, size_t line);
 
-LitSuperExpr* lit_create_super_expression(LitState* state, size_t line, LitString* method, bool ignore_result);
-LitRangeExpr* lit_create_range_expression(LitState* state, size_t line, LitExpression* from, LitExpression* to);
+LitSuperExpr* lit_ast_make_superexpr(LitState* state, size_t line, LitString* method, bool ignore_result);
+LitRangeExpr* lit_ast_make_rangeexpr(LitState* state, size_t line, LitExpression* from, LitExpression* to);
 LitTernaryExpr*
-lit_create_ternary_expression(LitState* state, size_t line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch);
+lit_ast_make_ternaryexpr(LitState* state, size_t line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch);
 
-LitInterpolationExpr* lit_create_interpolation_expression(LitState* state, size_t line);
-LitReferenceExpr* lit_create_reference_expression(LitState* state, size_t line, LitExpression* to);
+LitInterpolationExpr* lit_ast_make_strinterpolexpr(LitState* state, size_t line);
+LitReferenceExpr* lit_ast_make_referenceexpr(LitState* state, size_t line, LitExpression* to);
 void lit_free_statement(LitState* state, LitExpression* statement);
-LitExpressionExpr* lit_create_expression_statement(LitState* state, size_t line, LitExpression* expression);
-LitBlockExpr* lit_create_block_statement(LitState* state, size_t line);
-LitAssignVarExpr* lit_create_assignvar_statement(LitState* state, size_t line, const char* name, size_t length, LitExpression* init, bool constant);
+LitExpressionExpr* lit_ast_make_exprstmt(LitState* state, size_t line, LitExpression* expression);
+LitBlockExpr* lit_ast_make_blockexpr(LitState* state, size_t line);
+LitAssignVarExpr* lit_ast_make_assignvarexpr(LitState* state, size_t line, const char* name, size_t length, LitExpression* init, bool constant);
 
-LitIfExpr* lit_create_if_statement(LitState* state,
+LitIfExpr* lit_ast_make_ifexpr(LitState* state,
                                         size_t line,
                                         LitExpression* condition,
                                         LitExpression* if_branch,
@@ -431,9 +431,9 @@ LitIfExpr* lit_create_if_statement(LitState* state,
                                         LitExprList* elseif_conditions,
                                         LitExprList* elseif_branches);
 
-LitWhileExpr* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitExpression* body);
+LitWhileExpr* lit_ast_make_whileexpr(LitState* state, size_t line, LitExpression* condition, LitExpression* body);
 
-LitForExpr* lit_create_for_statement(LitState* state,
+LitForExpr* lit_ast_make_forexpr(LitState* state,
                                           size_t line,
                                           LitExpression* init,
                                           LitExpression* var,
@@ -441,20 +441,20 @@ LitForExpr* lit_create_for_statement(LitState* state,
                                           LitExpression* increment,
                                           LitExpression* body,
                                           bool c_style);
-LitContinueExpr* lit_create_continue_statement(LitState* state, size_t line);
-LitBreakExpr* lit_create_break_statement(LitState* state, size_t line);
-LitFunctionExpr* lit_create_function_statement(LitState* state, size_t line, const char* name, size_t length);
-LitReturnExpr* lit_create_return_statement(LitState* state, size_t line, LitExpression* expression);
-LitMethodExpr* lit_create_method_statement(LitState* state, size_t line, LitString* name, bool is_static);
-LitClassExpr* lit_create_class_statement(LitState* state, size_t line, LitString* name, LitString* parent);
+LitContinueExpr* lit_ast_make_continueexpr(LitState* state, size_t line);
+LitBreakExpr* lit_ast_make_breakexpr(LitState* state, size_t line);
+LitFunctionExpr* lit_ast_make_funcexpr(LitState* state, size_t line, const char* name, size_t length);
+LitReturnExpr* lit_ast_make_returnexpr(LitState* state, size_t line, LitExpression* expression);
+LitMethodExpr* lit_ast_make_methodexpr(LitState* state, size_t line, LitString* name, bool is_static);
+LitClassExpr* lit_ast_make_classexpr(LitState* state, size_t line, LitString* name, LitString* parent);
 LitFieldExpr*
-lit_create_field_statement(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static);
+lit_ast_make_fieldexpr(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static);
 
-LitExprList* lit_allocate_expressions(LitState* state);
-void lit_free_allocated_expressions(LitState* state, LitExprList* expressions);
+LitExprList* lit_ast_allocexprlist(LitState* state);
+void lit_ast_destroy_allocdexprlist(LitState* state, LitExprList* expressions);
 
-LitExprList* lit_allocate_statements(LitState* state);
-void lit_free_allocated_statements(LitState* state, LitExprList* statements);
+LitExprList* lit_ast_allocate_stmtlist(LitState* state);
+void lit_ast_destry_allocdstmtlist(LitState* state, LitExprList* statements);
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 

@@ -52,18 +52,18 @@ void lit_paramlist_push(LitState* state, LitParamList* array, LitParameter value
     array->count++;
 }
 
-void lit_paramlist_freevalues(LitState* state, LitParamList* parameters)
+void lit_paramlist_destroyvalues(LitState* state, LitParamList* parameters)
 {
     size_t i;
     for(i = 0; i < parameters->count; i++)
     {
-        lit_free_expression(state, parameters->values[i].default_value);
+        lit_ast_destroyexpression(state, parameters->values[i].default_value);
     }
 
     lit_paramlist_destroy(state, parameters);
 }
 
-void free_expressions(LitState* state, LitExprList* expressions)
+void lit_ast_destroyexprlist(LitState* state, LitExprList* expressions)
 {
     if(expressions == NULL)
     {
@@ -72,13 +72,13 @@ void free_expressions(LitState* state, LitExprList* expressions)
 
     for(size_t i = 0; i < expressions->count; i++)
     {
-        lit_free_expression(state, expressions->values[i]);
+        lit_ast_destroyexpression(state, expressions->values[i]);
     }
 
     lit_exprlist_destroy(state, expressions);
 }
 
-void internal_free_statements(LitState* state, LitExprList* statements)
+void lit_ast_destroystmtlist(LitState* state, LitExprList* statements)
 {
     if(statements == NULL)
     {
@@ -87,13 +87,13 @@ void internal_free_statements(LitState* state, LitExprList* statements)
 
     for(size_t i = 0; i < statements->count; i++)
     {
-        lit_free_expression(state, statements->values[i]);
+        lit_ast_destroyexpression(state, statements->values[i]);
     }
 
     lit_exprlist_destroy(state, statements);
 }
 
-void lit_free_expression(LitState* state, LitExpression* expression)
+void lit_ast_destroyexpression(LitState* state, LitExpression* expression)
 {
     if(expression == NULL)
     {
@@ -114,10 +114,10 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
             if(!expr->ignore_left)
             {
-                lit_free_expression(state, expr->left);
+                lit_ast_destroyexpression(state, expr->left);
             }
 
-            lit_free_expression(state, expr->right);
+            lit_ast_destroyexpression(state, expr->right);
 
             lit_gcmem_memrealloc(state, expression, sizeof(LitBinaryExpr), 0);
             break;
@@ -125,7 +125,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
         case LITEXPR_UNARY:
         {
-            lit_free_expression(state, ((LitUnaryExpr*)expression)->right);
+            lit_ast_destroyexpression(state, ((LitUnaryExpr*)expression)->right);
             lit_gcmem_memrealloc(state, expression, sizeof(LitUnaryExpr), 0);
 
             break;
@@ -141,8 +141,8 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         {
             LitAssignExpr* expr = (LitAssignExpr*)expression;
 
-            lit_free_expression(state, expr->to);
-            lit_free_expression(state, expr->value);
+            lit_ast_destroyexpression(state, expr->to);
+            lit_ast_destroyexpression(state, expr->value);
 
             lit_gcmem_memrealloc(state, expression, sizeof(LitAssignExpr), 0);
             break;
@@ -152,10 +152,10 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         {
             LitCallExpr* expr = (LitCallExpr*)expression;
 
-            lit_free_expression(state, expr->callee);
-            lit_free_expression(state, expr->init);
+            lit_ast_destroyexpression(state, expr->callee);
+            lit_ast_destroyexpression(state, expr->init);
 
-            free_expressions(state, &expr->args);
+            lit_ast_destroyexprlist(state, &expr->args);
 
             lit_gcmem_memrealloc(state, expression, sizeof(LitCallExpr), 0);
             break;
@@ -163,7 +163,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
 
         case LITEXPR_GET:
         {
-            lit_free_expression(state, ((LitGetExpr*)expression)->where);
+            lit_ast_destroyexpression(state, ((LitGetExpr*)expression)->where);
             lit_gcmem_memrealloc(state, expression, sizeof(LitGetExpr), 0);
             break;
         }
@@ -172,8 +172,8 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         {
             LitSetExpr* expr = (LitSetExpr*)expression;
 
-            lit_free_expression(state, expr->where);
-            lit_free_expression(state, expr->value);
+            lit_ast_destroyexpression(state, expr->where);
+            lit_ast_destroyexpression(state, expr->value);
 
             lit_gcmem_memrealloc(state, expression, sizeof(LitSetExpr), 0);
             break;
@@ -182,14 +182,14 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         case LITEXPR_LAMBDA:
             {
                 LitLambdaExpr* expr = (LitLambdaExpr*)expression;
-                lit_paramlist_freevalues(state, &expr->parameters);
-                lit_free_expression(state, expr->body);
+                lit_paramlist_destroyvalues(state, &expr->parameters);
+                lit_ast_destroyexpression(state, expr->body);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitLambdaExpr), 0);
             }
             break;
         case LITEXPR_ARRAY:
             {
-                free_expressions(state, &((LitArrayExpr*)expression)->values);
+                lit_ast_destroyexprlist(state, &((LitArrayExpr*)expression)->values);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitArrayExpr), 0);
             }
             break;
@@ -197,15 +197,15 @@ void lit_free_expression(LitState* state, LitExpression* expression)
             {
                 LitObjectExpr* map = (LitObjectExpr*)expression;
                 lit_vallist_destroy(state, &map->keys);
-                free_expressions(state, &map->values);
+                lit_ast_destroyexprlist(state, &map->values);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitObjectExpr), 0);
             }
             break;
         case LITEXPR_SUBSCRIPT:
             {
                 LitSubscriptExpr* expr = (LitSubscriptExpr*)expression;
-                lit_free_expression(state, expr->array);
-                lit_free_expression(state, expr->index);
+                lit_ast_destroyexpression(state, expr->array);
+                lit_ast_destroyexpression(state, expr->index);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitSubscriptExpr), 0);
             }
             break;
@@ -222,78 +222,78 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         case LITEXPR_RANGE:
             {
                 LitRangeExpr* expr = (LitRangeExpr*)expression;
-                lit_free_expression(state, expr->from);
-                lit_free_expression(state, expr->to);
+                lit_ast_destroyexpression(state, expr->from);
+                lit_ast_destroyexpression(state, expr->to);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitRangeExpr), 0);
             }
             break;
         case LITEXPR_TERNARY:
             {
                 LitTernaryExpr* expr = (LitTernaryExpr*)expression;
-                lit_free_expression(state, expr->condition);
-                lit_free_expression(state, expr->if_branch);
-                lit_free_expression(state, expr->else_branch);
+                lit_ast_destroyexpression(state, expr->condition);
+                lit_ast_destroyexpression(state, expr->if_branch);
+                lit_ast_destroyexpression(state, expr->else_branch);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitTernaryExpr), 0);
             }
             break;
         case LITEXPR_INTERPOLATION:
             {
-                free_expressions(state, &((LitInterpolationExpr*)expression)->expressions);
+                lit_ast_destroyexprlist(state, &((LitInterpolationExpr*)expression)->expressions);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitInterpolationExpr), 0);
             }
             break;
         case LITEXPR_REFERENCE:
             {
-                lit_free_expression(state, ((LitReferenceExpr*)expression)->to);
+                lit_ast_destroyexpression(state, ((LitReferenceExpr*)expression)->to);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitReferenceExpr), 0);
             }
             break;
         case LITEXPR_EXPRESSION:
             {
-                lit_free_expression(state, ((LitExpressionExpr*)expression)->expression);
+                lit_ast_destroyexpression(state, ((LitExpressionExpr*)expression)->expression);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitExpressionExpr), 0);
             }
             break;
         case LITEXPR_BLOCK:
             {
-                internal_free_statements(state, &((LitBlockExpr*)expression)->statements);
+                lit_ast_destroystmtlist(state, &((LitBlockExpr*)expression)->statements);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitBlockExpr), 0);
             }
             break;
         case LITEXPR_VARSTMT:
             {
-                lit_free_expression(state, ((LitAssignVarExpr*)expression)->init);
+                lit_ast_destroyexpression(state, ((LitAssignVarExpr*)expression)->init);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitAssignVarExpr), 0);
             }
             break;
         case LITEXPR_IFSTMT:
             {
                 LitIfExpr* stmt = (LitIfExpr*)expression;
-                lit_free_expression(state, stmt->condition);
-                lit_free_expression(state, stmt->if_branch);
-                lit_free_allocated_expressions(state, stmt->elseif_conditions);
-                lit_free_allocated_statements(state, stmt->elseif_branches);
-                lit_free_expression(state, stmt->else_branch);
+                lit_ast_destroyexpression(state, stmt->condition);
+                lit_ast_destroyexpression(state, stmt->if_branch);
+                lit_ast_destroy_allocdexprlist(state, stmt->elseif_conditions);
+                lit_ast_destry_allocdstmtlist(state, stmt->elseif_branches);
+                lit_ast_destroyexpression(state, stmt->else_branch);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitIfExpr), 0);
             }
             break;
         case LITEXPR_WHILE:
             {
                 LitWhileExpr* stmt = (LitWhileExpr*)expression;
-                lit_free_expression(state, stmt->condition);
-                lit_free_expression(state, stmt->body);
+                lit_ast_destroyexpression(state, stmt->condition);
+                lit_ast_destroyexpression(state, stmt->body);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitWhileExpr), 0);
             }
             break;
         case LITEXPR_FOR:
             {
                 LitForExpr* stmt = (LitForExpr*)expression;
-                lit_free_expression(state, stmt->increment);
-                lit_free_expression(state, stmt->condition);
-                lit_free_expression(state, stmt->init);
+                lit_ast_destroyexpression(state, stmt->increment);
+                lit_ast_destroyexpression(state, stmt->condition);
+                lit_ast_destroyexpression(state, stmt->init);
 
-                lit_free_expression(state, stmt->var);
-                lit_free_expression(state, stmt->body);
+                lit_ast_destroyexpression(state, stmt->var);
+                lit_ast_destroyexpression(state, stmt->body);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitForExpr), 0);
             }
             break;
@@ -310,36 +310,36 @@ void lit_free_expression(LitState* state, LitExpression* expression)
         case LITEXPR_FUNCTION:
             {
                 LitFunctionExpr* stmt = (LitFunctionExpr*)expression;
-                lit_free_expression(state, stmt->body);
-                lit_paramlist_freevalues(state, &stmt->parameters);
+                lit_ast_destroyexpression(state, stmt->body);
+                lit_paramlist_destroyvalues(state, &stmt->parameters);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitFunctionExpr), 0);
             }
             break;
         case LITEXPR_RETURN:
             {
-                lit_free_expression(state, ((LitReturnExpr*)expression)->expression);
+                lit_ast_destroyexpression(state, ((LitReturnExpr*)expression)->expression);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitReturnExpr), 0);
             }
             break;
         case LITEXPR_METHOD:
             {
                 LitMethodExpr* stmt = (LitMethodExpr*)expression;
-                lit_paramlist_freevalues(state, &stmt->parameters);
-                lit_free_expression(state, stmt->body);
+                lit_paramlist_destroyvalues(state, &stmt->parameters);
+                lit_ast_destroyexpression(state, stmt->body);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitMethodExpr), 0);
             }
             break;
         case LITEXPR_CLASS:
             {
-                internal_free_statements(state, &((LitClassExpr*)expression)->fields);
+                lit_ast_destroystmtlist(state, &((LitClassExpr*)expression)->fields);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitClassExpr), 0);
             }
             break;
         case LITEXPR_FIELD:
             {
                 LitFieldExpr* stmt = (LitFieldExpr*)expression;
-                lit_free_expression(state, stmt->getter);
-                lit_free_expression(state, stmt->setter);
+                lit_ast_destroyexpression(state, stmt->getter);
+                lit_ast_destroyexpression(state, stmt->setter);
                 lit_gcmem_memrealloc(state, expression, sizeof(LitFieldExpr), 0);
             }
             break;
@@ -351,7 +351,7 @@ void lit_free_expression(LitState* state, LitExpression* expression)
     }
 }
 
-static LitExpression* allocate_expression(LitState* state, uint64_t line, size_t size, LitExprType type)
+static LitExpression* lit_ast_allocexpr(LitState* state, uint64_t line, size_t size, LitExprType type)
 {
     LitExpression* object;
     object = (LitExpression*)lit_gcmem_memrealloc(state, NULL, 0, size);
@@ -360,18 +360,18 @@ static LitExpression* allocate_expression(LitState* state, uint64_t line, size_t
     return object;
 }
 
-LitLiteralExpr* lit_create_literal_expression(LitState* state, size_t line, LitValue value)
+LitLiteralExpr* lit_ast_make_literalexpr(LitState* state, size_t line, LitValue value)
 {
     LitLiteralExpr* expression;
-    expression = (LitLiteralExpr*)allocate_expression(state, line, sizeof(LitLiteralExpr), LITEXPR_LITERAL);
+    expression = (LitLiteralExpr*)lit_ast_allocexpr(state, line, sizeof(LitLiteralExpr), LITEXPR_LITERAL);
     expression->value = value;
     return expression;
 }
 
-LitBinaryExpr* lit_create_binary_expression(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokType op)
+LitBinaryExpr* lit_ast_make_binaryexpr(LitState* state, size_t line, LitExpression* left, LitExpression* right, LitTokType op)
 {
     LitBinaryExpr* expression;
-    expression = (LitBinaryExpr*)allocate_expression(state, line, sizeof(LitBinaryExpr), LITEXPR_BINARY);
+    expression = (LitBinaryExpr*)lit_ast_allocexpr(state, line, sizeof(LitBinaryExpr), LITEXPR_BINARY);
     expression->left = left;
     expression->right = right;
     expression->op = op;
@@ -379,47 +379,47 @@ LitBinaryExpr* lit_create_binary_expression(LitState* state, size_t line, LitExp
     return expression;
 }
 
-LitUnaryExpr* lit_create_unary_expression(LitState* state, size_t line, LitExpression* right, LitTokType op)
+LitUnaryExpr* lit_ast_make_unaryexpr(LitState* state, size_t line, LitExpression* right, LitTokType op)
 {
     LitUnaryExpr* expression;
-    expression = (LitUnaryExpr*)allocate_expression(state, line, sizeof(LitUnaryExpr), LITEXPR_UNARY);
+    expression = (LitUnaryExpr*)lit_ast_allocexpr(state, line, sizeof(LitUnaryExpr), LITEXPR_UNARY);
     expression->right = right;
     expression->op = op;
     return expression;
 }
 
-LitVarExpr* lit_create_var_expression(LitState* state, size_t line, const char* name, size_t length)
+LitVarExpr* lit_ast_make_varexpr(LitState* state, size_t line, const char* name, size_t length)
 {
     LitVarExpr* expression;
-    expression = (LitVarExpr*)allocate_expression(state, line, sizeof(LitVarExpr), LITEXPR_VAREXPR);
+    expression = (LitVarExpr*)lit_ast_allocexpr(state, line, sizeof(LitVarExpr), LITEXPR_VAREXPR);
     expression->name = name;
     expression->length = length;
     return expression;
 }
 
-LitAssignExpr* lit_create_assign_expression(LitState* state, size_t line, LitExpression* to, LitExpression* value)
+LitAssignExpr* lit_ast_make_assignexpr(LitState* state, size_t line, LitExpression* to, LitExpression* value)
 {
     LitAssignExpr* expression;
-    expression = (LitAssignExpr*)allocate_expression(state, line, sizeof(LitAssignExpr), LITEXPR_ASSIGN);
+    expression = (LitAssignExpr*)lit_ast_allocexpr(state, line, sizeof(LitAssignExpr), LITEXPR_ASSIGN);
     expression->to = to;
     expression->value = value;
     return expression;
 }
 
-LitCallExpr* lit_create_call_expression(LitState* state, size_t line, LitExpression* callee)
+LitCallExpr* lit_ast_make_callexpr(LitState* state, size_t line, LitExpression* callee)
 {
     LitCallExpr* expression;
-    expression = (LitCallExpr*)allocate_expression(state, line, sizeof(LitCallExpr), LITEXPR_CALL);
+    expression = (LitCallExpr*)lit_ast_allocexpr(state, line, sizeof(LitCallExpr), LITEXPR_CALL);
     expression->callee = callee;
     expression->init = NULL;
     lit_exprlist_init(&expression->args);
     return expression;
 }
 
-LitGetExpr* lit_create_get_expression(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, bool questionable, bool ignore_result)
+LitGetExpr* lit_ast_make_getexpr(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, bool questionable, bool ignore_result)
 {
     LitGetExpr* expression;
-    expression = (LitGetExpr*)allocate_expression(state, line, sizeof(LitGetExpr), LITEXPR_GET);
+    expression = (LitGetExpr*)lit_ast_allocexpr(state, line, sizeof(LitGetExpr), LITEXPR_GET);
     expression->where = where;
     expression->name = name;
     expression->length = length;
@@ -429,10 +429,10 @@ LitGetExpr* lit_create_get_expression(LitState* state, size_t line, LitExpressio
     return expression;
 }
 
-LitSetExpr* lit_create_set_expression(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, LitExpression* value)
+LitSetExpr* lit_ast_make_setexpr(LitState* state, size_t line, LitExpression* where, const char* name, size_t length, LitExpression* value)
 {
     LitSetExpr* expression;
-    expression = (LitSetExpr*)allocate_expression(state, line, sizeof(LitSetExpr), LITEXPR_SET);
+    expression = (LitSetExpr*)lit_ast_allocexpr(state, line, sizeof(LitSetExpr), LITEXPR_SET);
     expression->where = where;
     expression->name = name;
     expression->length = length;
@@ -440,69 +440,69 @@ LitSetExpr* lit_create_set_expression(LitState* state, size_t line, LitExpressio
     return expression;
 }
 
-LitLambdaExpr* lit_create_lambda_expression(LitState* state, size_t line)
+LitLambdaExpr* lit_ast_make_lambdaexpr(LitState* state, size_t line)
 {
     LitLambdaExpr* expression;
-    expression = (LitLambdaExpr*)allocate_expression(state, line, sizeof(LitLambdaExpr), LITEXPR_LAMBDA);
+    expression = (LitLambdaExpr*)lit_ast_allocexpr(state, line, sizeof(LitLambdaExpr), LITEXPR_LAMBDA);
     expression->body = NULL;
     lit_paramlist_init(&expression->parameters);
     return expression;
 }
 
-LitArrayExpr* lit_create_array_expression(LitState* state, size_t line)
+LitArrayExpr* lit_ast_make_arrayexpr(LitState* state, size_t line)
 {
     LitArrayExpr* expression;
-    expression = (LitArrayExpr*)allocate_expression(state, line, sizeof(LitArrayExpr), LITEXPR_ARRAY);
+    expression = (LitArrayExpr*)lit_ast_allocexpr(state, line, sizeof(LitArrayExpr), LITEXPR_ARRAY);
     lit_exprlist_init(&expression->values);
     return expression;
 }
 
-LitObjectExpr* lit_create_object_expression(LitState* state, size_t line)
+LitObjectExpr* lit_ast_make_objectexpr(LitState* state, size_t line)
 {
     LitObjectExpr* expression;
-    expression = (LitObjectExpr*)allocate_expression(state, line, sizeof(LitObjectExpr), LITEXPR_OBJECT);
+    expression = (LitObjectExpr*)lit_ast_allocexpr(state, line, sizeof(LitObjectExpr), LITEXPR_OBJECT);
     lit_vallist_init(&expression->keys);
     lit_exprlist_init(&expression->values);
     return expression;
 }
 
-LitSubscriptExpr* lit_create_subscript_expression(LitState* state, size_t line, LitExpression* array, LitExpression* index)
+LitSubscriptExpr* lit_ast_make_subscriptexpr(LitState* state, size_t line, LitExpression* array, LitExpression* index)
 {
     LitSubscriptExpr* expression;
-    expression = (LitSubscriptExpr*)allocate_expression(state, line, sizeof(LitSubscriptExpr), LITEXPR_SUBSCRIPT);
+    expression = (LitSubscriptExpr*)lit_ast_allocexpr(state, line, sizeof(LitSubscriptExpr), LITEXPR_SUBSCRIPT);
     expression->array = array;
     expression->index = index;
     return expression;
 }
 
-LitThisExpr* lit_create_this_expression(LitState* state, size_t line)
+LitThisExpr* lit_ast_make_thisexpr(LitState* state, size_t line)
 {
-    return (LitThisExpr*)allocate_expression(state, line, sizeof(LitThisExpr), LITEXPR_THIS);
+    return (LitThisExpr*)lit_ast_allocexpr(state, line, sizeof(LitThisExpr), LITEXPR_THIS);
 }
 
-LitSuperExpr* lit_create_super_expression(LitState* state, size_t line, LitString* method, bool ignore_result)
+LitSuperExpr* lit_ast_make_superexpr(LitState* state, size_t line, LitString* method, bool ignore_result)
 {
     LitSuperExpr* expression;
-    expression = (LitSuperExpr*)allocate_expression(state, line, sizeof(LitSuperExpr), LITEXPR_SUPER);
+    expression = (LitSuperExpr*)lit_ast_allocexpr(state, line, sizeof(LitSuperExpr), LITEXPR_SUPER);
     expression->method = method;
     expression->ignore_emit = false;
     expression->ignore_result = ignore_result;
     return expression;
 }
 
-LitRangeExpr* lit_create_range_expression(LitState* state, size_t line, LitExpression* from, LitExpression* to)
+LitRangeExpr* lit_ast_make_rangeexpr(LitState* state, size_t line, LitExpression* from, LitExpression* to)
 {
     LitRangeExpr* expression;
-    expression = (LitRangeExpr*)allocate_expression(state, line, sizeof(LitRangeExpr), LITEXPR_RANGE);
+    expression = (LitRangeExpr*)lit_ast_allocexpr(state, line, sizeof(LitRangeExpr), LITEXPR_RANGE);
     expression->from = from;
     expression->to = to;
     return expression;
 }
 
-LitTernaryExpr* lit_create_ternary_expression(LitState* state, size_t line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch)
+LitTernaryExpr* lit_ast_make_ternaryexpr(LitState* state, size_t line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch)
 {
     LitTernaryExpr* expression;
-    expression = (LitTernaryExpr*)allocate_expression(state, line, sizeof(LitTernaryExpr), LITEXPR_TERNARY);
+    expression = (LitTernaryExpr*)lit_ast_allocexpr(state, line, sizeof(LitTernaryExpr), LITEXPR_TERNARY);
     expression->condition = condition;
     expression->if_branch = if_branch;
     expression->else_branch = else_branch;
@@ -510,25 +510,25 @@ LitTernaryExpr* lit_create_ternary_expression(LitState* state, size_t line, LitE
     return expression;
 }
 
-LitInterpolationExpr* lit_create_interpolation_expression(LitState* state, size_t line)
+LitInterpolationExpr* lit_ast_make_strinterpolexpr(LitState* state, size_t line)
 {
     LitInterpolationExpr* expression;
-    expression = (LitInterpolationExpr*)allocate_expression(state, line, sizeof(LitInterpolationExpr), LITEXPR_INTERPOLATION);
+    expression = (LitInterpolationExpr*)lit_ast_allocexpr(state, line, sizeof(LitInterpolationExpr), LITEXPR_INTERPOLATION);
     lit_exprlist_init(&expression->expressions);
     return expression;
 }
 
-LitReferenceExpr* lit_create_reference_expression(LitState* state, size_t line, LitExpression* to)
+LitReferenceExpr* lit_ast_make_referenceexpr(LitState* state, size_t line, LitExpression* to)
 {
     LitReferenceExpr* expression;
-    expression = (LitReferenceExpr*)allocate_expression(state, line, sizeof(LitReferenceExpr), LITEXPR_REFERENCE);
+    expression = (LitReferenceExpr*)lit_ast_allocexpr(state, line, sizeof(LitReferenceExpr), LITEXPR_REFERENCE);
     expression->to = to;
     return expression;
 }
 
 
 
-static LitExpression* allocate_statement(LitState* state, uint64_t line, size_t size, LitExprType type)
+static LitExpression* lit_ast_allocstmt(LitState* state, uint64_t line, size_t size, LitExprType type)
 {
     LitExpression* object;
     object = (LitExpression*)lit_gcmem_memrealloc(state, NULL, 0, size);
@@ -537,27 +537,27 @@ static LitExpression* allocate_statement(LitState* state, uint64_t line, size_t 
     return object;
 }
 
-LitExpressionExpr* lit_create_expression_statement(LitState* state, size_t line, LitExpression* expression)
+LitExpressionExpr* lit_ast_make_exprstmt(LitState* state, size_t line, LitExpression* expression)
 {
     LitExpressionExpr* statement;
-    statement = (LitExpressionExpr*)allocate_statement(state, line, sizeof(LitExpressionExpr), LITEXPR_EXPRESSION);
+    statement = (LitExpressionExpr*)lit_ast_allocstmt(state, line, sizeof(LitExpressionExpr), LITEXPR_EXPRESSION);
     statement->expression = expression;
     statement->pop = true;
     return statement;
 }
 
-LitBlockExpr* lit_create_block_statement(LitState* state, size_t line)
+LitBlockExpr* lit_ast_make_blockexpr(LitState* state, size_t line)
 {
     LitBlockExpr* statement;
-    statement = (LitBlockExpr*)allocate_statement(state, line, sizeof(LitBlockExpr), LITEXPR_BLOCK);
+    statement = (LitBlockExpr*)lit_ast_allocstmt(state, line, sizeof(LitBlockExpr), LITEXPR_BLOCK);
     lit_exprlist_init(&statement->statements);
     return statement;
 }
 
-LitAssignVarExpr* lit_create_assignvar_statement(LitState* state, size_t line, const char* name, size_t length, LitExpression* init, bool constant)
+LitAssignVarExpr* lit_ast_make_assignvarexpr(LitState* state, size_t line, const char* name, size_t length, LitExpression* init, bool constant)
 {
     LitAssignVarExpr* statement;
-    statement = (LitAssignVarExpr*)allocate_statement(state, line, sizeof(LitAssignVarExpr), LITEXPR_VARSTMT);
+    statement = (LitAssignVarExpr*)lit_ast_allocstmt(state, line, sizeof(LitAssignVarExpr), LITEXPR_VARSTMT);
     statement->name = name;
     statement->length = length;
     statement->init = init;
@@ -565,7 +565,7 @@ LitAssignVarExpr* lit_create_assignvar_statement(LitState* state, size_t line, c
     return statement;
 }
 
-LitIfExpr* lit_create_if_statement(LitState* state,
+LitIfExpr* lit_ast_make_ifexpr(LitState* state,
                                         size_t line,
                                         LitExpression* condition,
                                         LitExpression* if_branch,
@@ -574,7 +574,7 @@ LitIfExpr* lit_create_if_statement(LitState* state,
                                         LitExprList* elseif_branches)
 {
     LitIfExpr* statement;
-    statement = (LitIfExpr*)allocate_statement(state, line, sizeof(LitIfExpr), LITEXPR_IFSTMT);
+    statement = (LitIfExpr*)lit_ast_allocstmt(state, line, sizeof(LitIfExpr), LITEXPR_IFSTMT);
     statement->condition = condition;
     statement->if_branch = if_branch;
     statement->else_branch = else_branch;
@@ -583,16 +583,16 @@ LitIfExpr* lit_create_if_statement(LitState* state,
     return statement;
 }
 
-LitWhileExpr* lit_create_while_statement(LitState* state, size_t line, LitExpression* condition, LitExpression* body)
+LitWhileExpr* lit_ast_make_whileexpr(LitState* state, size_t line, LitExpression* condition, LitExpression* body)
 {
     LitWhileExpr* statement;
-    statement = (LitWhileExpr*)allocate_statement(state, line, sizeof(LitWhileExpr), LITEXPR_WHILE);
+    statement = (LitWhileExpr*)lit_ast_allocstmt(state, line, sizeof(LitWhileExpr), LITEXPR_WHILE);
     statement->condition = condition;
     statement->body = body;
     return statement;
 }
 
-LitForExpr* lit_create_for_statement(LitState* state,
+LitForExpr* lit_ast_make_forexpr(LitState* state,
                                           size_t line,
                                           LitExpression* init,
                                           LitExpression* var,
@@ -602,7 +602,7 @@ LitForExpr* lit_create_for_statement(LitState* state,
                                           bool c_style)
 {
     LitForExpr* statement;
-    statement = (LitForExpr*)allocate_statement(state, line, sizeof(LitForExpr), LITEXPR_FOR);
+    statement = (LitForExpr*)lit_ast_allocstmt(state, line, sizeof(LitForExpr), LITEXPR_FOR);
     statement->init = init;
     statement->var = var;
     statement->condition = condition;
@@ -612,20 +612,20 @@ LitForExpr* lit_create_for_statement(LitState* state,
     return statement;
 }
 
-LitContinueExpr* lit_create_continue_statement(LitState* state, size_t line)
+LitContinueExpr* lit_ast_make_continueexpr(LitState* state, size_t line)
 {
-    return (LitContinueExpr*)allocate_statement(state, line, sizeof(LitContinueExpr), LITEXPR_CONTINUE);
+    return (LitContinueExpr*)lit_ast_allocstmt(state, line, sizeof(LitContinueExpr), LITEXPR_CONTINUE);
 }
 
-LitBreakExpr* lit_create_break_statement(LitState* state, size_t line)
+LitBreakExpr* lit_ast_make_breakexpr(LitState* state, size_t line)
 {
-    return (LitBreakExpr*)allocate_statement(state, line, sizeof(LitBreakExpr), LITEXPR_BREAK);
+    return (LitBreakExpr*)lit_ast_allocstmt(state, line, sizeof(LitBreakExpr), LITEXPR_BREAK);
 }
 
-LitFunctionExpr* lit_create_function_statement(LitState* state, size_t line, const char* name, size_t length)
+LitFunctionExpr* lit_ast_make_funcexpr(LitState* state, size_t line, const char* name, size_t length)
 {
     LitFunctionExpr* function;
-    function = (LitFunctionExpr*)allocate_statement(state, line, sizeof(LitFunctionExpr), LITEXPR_FUNCTION);
+    function = (LitFunctionExpr*)lit_ast_allocstmt(state, line, sizeof(LitFunctionExpr), LITEXPR_FUNCTION);
     function->name = name;
     function->length = length;
     function->body = NULL;
@@ -633,18 +633,18 @@ LitFunctionExpr* lit_create_function_statement(LitState* state, size_t line, con
     return function;
 }
 
-LitReturnExpr* lit_create_return_statement(LitState* state, size_t line, LitExpression* expression)
+LitReturnExpr* lit_ast_make_returnexpr(LitState* state, size_t line, LitExpression* expression)
 {
     LitReturnExpr* statement;
-    statement = (LitReturnExpr*)allocate_statement(state, line, sizeof(LitReturnExpr), LITEXPR_RETURN);
+    statement = (LitReturnExpr*)lit_ast_allocstmt(state, line, sizeof(LitReturnExpr), LITEXPR_RETURN);
     statement->expression = expression;
     return statement;
 }
 
-LitMethodExpr* lit_create_method_statement(LitState* state, size_t line, LitString* name, bool is_static)
+LitMethodExpr* lit_ast_make_methodexpr(LitState* state, size_t line, LitString* name, bool is_static)
 {
     LitMethodExpr* statement;
-    statement = (LitMethodExpr*)allocate_statement(state, line, sizeof(LitMethodExpr), LITEXPR_METHOD);
+    statement = (LitMethodExpr*)lit_ast_allocstmt(state, line, sizeof(LitMethodExpr), LITEXPR_METHOD);
     statement->name = name;
     statement->body = NULL;
     statement->is_static = is_static;
@@ -652,20 +652,20 @@ LitMethodExpr* lit_create_method_statement(LitState* state, size_t line, LitStri
     return statement;
 }
 
-LitClassExpr* lit_create_class_statement(LitState* state, size_t line, LitString* name, LitString* parent)
+LitClassExpr* lit_ast_make_classexpr(LitState* state, size_t line, LitString* name, LitString* parent)
 {
     LitClassExpr* statement;
-    statement = (LitClassExpr*)allocate_statement(state, line, sizeof(LitClassExpr), LITEXPR_CLASS);
+    statement = (LitClassExpr*)lit_ast_allocstmt(state, line, sizeof(LitClassExpr), LITEXPR_CLASS);
     statement->name = name;
     statement->parent = parent;
     lit_exprlist_init(&statement->fields);
     return statement;
 }
 
-LitFieldExpr* lit_create_field_statement(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static)
+LitFieldExpr* lit_ast_make_fieldexpr(LitState* state, size_t line, LitString* name, LitExpression* getter, LitExpression* setter, bool is_static)
 {
     LitFieldExpr* statement;
-    statement = (LitFieldExpr*)allocate_statement(state, line, sizeof(LitFieldExpr), LITEXPR_FIELD);
+    statement = (LitFieldExpr*)lit_ast_allocstmt(state, line, sizeof(LitFieldExpr), LITEXPR_FIELD);
     statement->name = name;
     statement->getter = getter;
     statement->setter = setter;
@@ -673,7 +673,7 @@ LitFieldExpr* lit_create_field_statement(LitState* state, size_t line, LitString
     return statement;
 }
 
-LitExprList* lit_allocate_expressions(LitState* state)
+LitExprList* lit_ast_allocexprlist(LitState* state)
 {
     LitExprList* expressions;
     expressions = (LitExprList*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(LitExprList));
@@ -681,7 +681,7 @@ LitExprList* lit_allocate_expressions(LitState* state)
     return expressions;
 }
 
-void lit_free_allocated_expressions(LitState* state, LitExprList* expressions)
+void lit_ast_destroy_allocdexprlist(LitState* state, LitExprList* expressions)
 {
     size_t i;
     if(expressions == NULL)
@@ -690,13 +690,13 @@ void lit_free_allocated_expressions(LitState* state, LitExprList* expressions)
     }
     for(i = 0; i < expressions->count; i++)
     {
-        lit_free_expression(state, expressions->values[i]);
+        lit_ast_destroyexpression(state, expressions->values[i]);
     }
     lit_exprlist_destroy(state, expressions);
     lit_gcmem_memrealloc(state, expressions, sizeof(LitExprList), 0);
 }
 
-LitExprList* lit_allocate_statements(LitState* state)
+LitExprList* lit_ast_allocate_stmtlist(LitState* state)
 {
     LitExprList* statements;
     statements = (LitExprList*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(LitExprList));
@@ -704,7 +704,7 @@ LitExprList* lit_allocate_statements(LitState* state)
     return statements;
 }
 
-void lit_free_allocated_statements(LitState* state, LitExprList* statements)
+void lit_ast_destry_allocdstmtlist(LitState* state, LitExprList* statements)
 {
     size_t i;
     if(statements == NULL)
@@ -713,7 +713,7 @@ void lit_free_allocated_statements(LitState* state, LitExprList* statements)
     }
     for(i = 0; i < statements->count; i++)
     {
-        lit_free_expression(state, statements->values[i]);
+        lit_ast_destroyexpression(state, statements->values[i]);
     }
     lit_exprlist_destroy(state, statements);
     lit_gcmem_memrealloc(state, statements, sizeof(LitExprList), 0);

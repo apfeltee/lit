@@ -127,7 +127,7 @@ static void opt_end_scope(LitOptimizer* optimizer)
         if(remove_unused && !variables->values[variables->count - 1].used)
         {
             variable = &variables->values[variables->count - 1];
-            lit_free_expression(optimizer->state, *variable->declaration);
+            lit_ast_destroyexpression(optimizer->state, *variable->declaration);
             *variable->declaration = NULL;
         }
         variables->count--;
@@ -327,7 +327,7 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
             else if(number == 1)
             {
                 optdbg("reducing expression to literal '1'");
-                lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+                lit_ast_destroyexpression(optimizer->state, left ? expression->right : expression->left);
                 expression->left = branch;
                 expression->right = NULL;
             }
@@ -335,14 +335,14 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
         else if((op == LITTOK_PLUS || op == LITTOK_MINUS) && number == 0)
         {
             optdbg("reducing expression that would result in '0' to literal '0'");
-            lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+            lit_ast_destroyexpression(optimizer->state, left ? expression->right : expression->left);
             expression->left = branch;
             expression->right = NULL;
         }
         else if(((left && op == LITTOK_SLASH) || op == LITTOK_STAR_STAR) && number == 1)
         {
             optdbg("reducing expression that would result in '1' to literal '1'");
-            lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+            lit_ast_destroyexpression(optimizer->state, left ? expression->right : expression->left);
             expression->left = branch;
             expression->right = NULL;
         }
@@ -428,8 +428,8 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
                     LitValue optimized = evaluate_expression(optimizer, expression);
                     if(optimized != NULL_VALUE)
                     {
-                        *slot = (LitExpression*)lit_create_literal_expression(state, expression->line, optimized);
-                        lit_free_expression(state, expression);
+                        *slot = (LitExpression*)lit_ast_make_literalexpr(state, expression->line, optimized);
+                        lit_ast_destroyexpression(state, expression);
                         break;
                     }
                 }
@@ -540,7 +540,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
                 }
 
                 optimize_expression(optimizer, slot);
-                lit_free_expression(state, expression);
+                lit_ast_destroyexpression(state, expression);
             }
             else
             {
@@ -570,8 +570,8 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
                 // the constant_value would be NULL_VALUE anyway (:thinkaboutit:)
                 if(variable->constant && variable->constant_value != NULL_VALUE)
                 {
-                    *slot = (LitExpression*)lit_create_literal_expression(state, expression->line, variable->constant_value);
-                    lit_free_expression(state, expression);
+                    *slot = (LitExpression*)lit_ast_make_literalexpr(state, expression->line, variable->constant_value);
+                    lit_ast_destroyexpression(state, expression);
                 }
             }
 
@@ -625,7 +625,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 stmt = (LitBlockExpr*)statement;
                 if(stmt->statements.count == 0)
                 {
-                    lit_free_expression(state, statement);
+                    lit_ast_destroyexpression(state, statement);
                     *slot = NULL;
                     break;
                 }
@@ -647,7 +647,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                                 step = stmt->statements.values[j];
                                 if(step != NULL)
                                 {
-                                    lit_free_expression(state, step);
+                                    lit_ast_destroyexpression(state, step);
                                     stmt->statements.values[j] = NULL;
                                 }
                             }
@@ -658,7 +658,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 }
                 if(!found && lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY))
                 {
-                    lit_free_expression(optimizer->state, statement);
+                    lit_ast_destroyexpression(optimizer->state, statement);
                     *slot = NULL;
                 }
             }
@@ -678,10 +678,10 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
             if((optimized != NULL_VALUE && lit_value_isfalsey(optimized)) || (dead && is_empty(stmt->if_branch)))
             {
-                lit_free_expression(state, stmt->condition);
+                lit_ast_destroyexpression(state, stmt->condition);
                 stmt->condition = NULL;
 
-                lit_free_expression(state, stmt->if_branch);
+                lit_ast_destroyexpression(state, stmt->if_branch);
                 stmt->if_branch = NULL;
             }
 
@@ -696,10 +696,10 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                     {
                         if(empty && is_empty(stmt->elseif_branches->values[i]))
                         {
-                            lit_free_expression(state, stmt->elseif_conditions->values[i]);
+                            lit_ast_destroyexpression(state, stmt->elseif_conditions->values[i]);
                             stmt->elseif_conditions->values[i] = NULL;
 
-                            lit_free_expression(state, stmt->elseif_branches->values[i]);
+                            lit_ast_destroyexpression(state, stmt->elseif_branches->values[i]);
                             stmt->elseif_branches->values[i] = NULL;
 
                             continue;
@@ -711,10 +711,10 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
                             if(value != NULL_VALUE && lit_value_isfalsey(value))
                             {
-                                lit_free_expression(state, stmt->elseif_conditions->values[i]);
+                                lit_ast_destroyexpression(state, stmt->elseif_conditions->values[i]);
                                 stmt->elseif_conditions->values[i] = NULL;
 
-                                lit_free_expression(state, stmt->elseif_branches->values[i]);
+                                lit_ast_destroyexpression(state, stmt->elseif_branches->values[i]);
                                 stmt->elseif_branches->values[i] = NULL;
                             }
                         }
@@ -737,7 +737,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
                 if(optimized != NULL_VALUE && lit_value_isfalsey(optimized))
                 {
-                    lit_free_expression(optimizer->state, statement);
+                    lit_ast_destroyexpression(optimizer->state, statement);
                     *slot = NULL;
                     break;
                 }
@@ -747,7 +747,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
             if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
             {
-                lit_free_expression(optimizer->state, statement);
+                lit_ast_destroyexpression(optimizer->state, statement);
                 *slot = NULL;
             }
 
@@ -769,7 +769,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 opt_end_scope(optimizer);
                 if(lit_is_optimization_enabled(LITOPTSTATE_EMPTY_BODY) && is_empty(stmt->body))
                 {
-                    lit_free_expression(optimizer->state, statement);
+                    lit_ast_destroyexpression(optimizer->state, statement);
                     *slot = NULL;
                     break;
                 }
@@ -790,21 +790,21 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 // var i = from
                 var->init = range->from;
                 // i <= to
-                stmt->condition = (LitExpression*)lit_create_binary_expression(
-                state, line, (LitExpression*)lit_create_var_expression(state, line, var->name, var->length), range->to, LITTOK_LESS_EQUAL);
+                stmt->condition = (LitExpression*)lit_ast_make_binaryexpr(
+                state, line, (LitExpression*)lit_ast_make_varexpr(state, line, var->name, var->length), range->to, LITTOK_LESS_EQUAL);
                 // i++ (or i--)
-                LitExpression* var_get = (LitExpression*)lit_create_var_expression(state, line, var->name, var->length);
-                LitBinaryExpr* assign_value = lit_create_binary_expression(
-                state, line, var_get, (LitExpression*)lit_create_literal_expression(state, line, lit_value_numbertovalue(optimizer->state, 1)),
+                LitExpression* var_get = (LitExpression*)lit_ast_make_varexpr(state, line, var->name, var->length);
+                LitBinaryExpr* assign_value = lit_ast_make_binaryexpr(
+                state, line, var_get, (LitExpression*)lit_ast_make_literalexpr(state, line, lit_value_numbertovalue(optimizer->state, 1)),
                 reverse ? LITTOK_MINUS_MINUS : LITTOK_PLUS);
                 assign_value->ignore_left = true;
                 LitExpression* increment
-                = (LitExpression*)lit_create_assign_expression(state, line, var_get, (LitExpression*)assign_value);
+                = (LitExpression*)lit_ast_make_assignexpr(state, line, var_get, (LitExpression*)assign_value);
                 stmt->increment = (LitExpression*)increment;
                 range->from = NULL;
                 range->to = NULL;
                 stmt->c_style = true;
-                lit_free_expression(state, (LitExpression*)range);
+                lit_ast_destroyexpression(state, (LitExpression*)range);
             }
             break;
 
