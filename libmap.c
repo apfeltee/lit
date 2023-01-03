@@ -293,7 +293,7 @@ static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, L
     LitString* index;
     if(!lit_value_isstring(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "map index must be a string");
+        lit_vm_raiseexitingerror(vm, "map index must be a string");
     }
     map = lit_value_asmap(instance);
     index = lit_value_asstring(argv[0]);
@@ -323,7 +323,7 @@ static LitValue objfn_map_addall(LitVM* vm, LitValue instance, size_t argc, LitV
     LIT_ENSURE_ARGS(1);
     if(!lit_value_ismap(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "expected map as the argument");
+        lit_vm_raiseexitingerror(vm, "expected map as the argument");
     }
     lit_map_add_all(vm->state, lit_value_asmap(argv[0]), lit_value_asmap(instance));
     return NULL_VALUE;

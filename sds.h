@@ -172,7 +172,7 @@ static inline void sdsfree(sdstring_t* s);
  * sdsupdatelen(s);
  * printf("%d\n", sdslen(s));
  *
- * The output will be "2", but if we comment out the call to sdsupdatelen()
+ * The output will be "2", but if we comment out the lit_vm_callcallable to sdsupdatelen()
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
 static inline void sdsupdatelen(sdstring_t* s);
@@ -197,8 +197,8 @@ static inline sdstring_t* sdsMakeRoomFor(sdstring_t* s, size_t addlen);
  * contained string remains not altered, but next concatenation operations
  * will require a reallocation.
  *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+ * After the lit_vm_callcallable, the passed sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable. */
 static inline sdstring_t* sdsRemoveFreeSpace(sdstring_t* s);
 
 /* Return the total size of the allocation of the specified sds string,
@@ -250,21 +250,21 @@ static inline sdstring_t* sdsgrowzero(sdstring_t* s, size_t len);
 /* Append the specified binary-safe string pointed by 't' of 'len' bytes to the
  * end of the specified sds string 's'.
  *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+ * After the lit_vm_callcallable, the passed sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable. */
 static inline sdstring_t* sdscatlen(sdstring_t* s, const void* t, size_t len);
 
 /* Append the specified null termianted C string to the sds string 's'.
  *
- * After the call, the passed sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+ * After the lit_vm_callcallable, the passed sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable. */
 static inline sdstring_t* sdscat(sdstring_t* s, const char* t);
 
 
 /* Append the specified sds 't' to the existing sds 's'.
  *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+ * After the lit_vm_callcallable, the modified sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable. */
 static inline sdstring_t* sdscatsds(sdstring_t* s, const sdstring_t* t);
 
 
@@ -301,8 +301,8 @@ static inline sdstring_t* sdsfromlonglong(long long value);
 * Append to the sds string 's' a string obtained using printf-alike format
 * specifier.
 *
-* After the call, the modified sds string is no longer valid and all the
-* references must be substituted with the new pointer returned by the call.
+* After the lit_vm_callcallable, the modified sds string is no longer valid and all the
+* references must be substituted with the new pointer returned by the lit_vm_callcallable.
 *
 * Example:
 *
@@ -345,8 +345,8 @@ static inline sdstring_t* sdscatfmt(sdstring_t* s, char const* fmt, ...);
 /* Remove the part of the string from left and from right composed just of
  * contiguous characters found in 'cset', that is a null terminted C string.
  *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call.
+ * After the lit_vm_callcallable, the modified sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable.
  *
  * Example:
  *
@@ -421,8 +421,8 @@ static inline void sdsfreesplitres(sdstring_t* *tokens, int count);
  * all the non-printable characters (tested with isprint()) are turned into
  * escapes in the form "\n\r\a...." or "\x<hex-number>".
  *
- * After the call, the modified sds string is no longer valid and all the
- * references must be substituted with the new pointer returned by the call. */
+ * After the lit_vm_callcallable, the modified sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the lit_vm_callcallable. */
 static inline sdstring_t* sdscatrepr(sdstring_t* s, const char* p, size_t len, bool withquotes);
 
 /* Helper function for sdssplitargs() that returns non zero if 'c'

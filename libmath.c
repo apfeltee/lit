@@ -321,7 +321,7 @@ static LitValue random_pick(LitVM* vm, LitValue instance, size_t argc, LitValue*
         }
         else
         {
-            lit_runtime_error_exiting(vm, "Expected map or array as the argument");
+            lit_vm_raiseexitingerror(vm, "Expected map or array as the argument");
         }
     }
     else

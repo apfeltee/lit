@@ -119,7 +119,7 @@ void util_run_fiber(LitVM* vm, LitFiber* fiber, LitValue* argv, size_t argc, boo
     LitCallFrame* frame;
     if(util_is_fiber_done(fiber))
     {
-        lit_runtime_error_exiting(vm, "Fiber already finished executing");
+        lit_vm_raiseexitingerror(vm, "Fiber already finished executing");
     }
     fiber->parent = vm->fiber;
     fiber->catcher = catcher;
@@ -260,7 +260,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
     {
         if(folders)
         {
-            lit_runtime_error_exiting(vm, "cannot recursively require folders");
+            lit_vm_raiseexitingerror(vm, "cannot recursively require folders");
         }
         dir_path = LIT_ALLOCATE(vm->state, sizeof(char), length+1);
         dir_path[length - 2] = '\0';
@@ -300,7 +300,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
                 DIR* dir = opendir(modname);
                 if(dir == NULL)
                 {
-                    lit_runtime_error_exiting(vm, "failed to open folder '%s'", modname);
+                    lit_vm_raiseexitingerror(vm, "failed to open folder '%s'", modname);
                 }
                 while((ep = readdir(dir)))
                 {
@@ -317,7 +317,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
                             dir_path[length] = '.';
                             if(!util_attempt_to_require(vm, argv + argc, 0, dir_path, false, false))
                             {
-                                lit_runtime_error_exiting(vm, "failed to require module '%s'", name);
+                                lit_vm_raiseexitingerror(vm, "failed to require module '%s'", name);
                             }
                             else
                             {
@@ -331,7 +331,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
             #endif
             if(!found)
             {
-                lit_runtime_error_exiting(vm, "folder '%s' contains no modules that can be required", modname);
+                lit_vm_raiseexitingerror(vm, "folder '%s' contains no modules that can be required", modname);
             }
             return found;
         }
@@ -422,7 +422,7 @@ LitValue util_invalid_constructor(LitVM* vm, LitValue instance, size_t argc, Lit
 {
     (void)argc;
     (void)argv;
-    lit_runtime_error_exiting(vm, "cannot create an instance of built-in type", lit_value_asinstance(instance)->klass->name);
+    lit_vm_raiseexitingerror(vm, "cannot create an instance of built-in type", lit_value_asinstance(instance)->klass->name);
     return NULL_VALUE;
 }
 
@@ -552,7 +552,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
             free(buffer);
         }
     }
-    lit_runtime_error_exiting(vm, "failed to require module '%s'", name->chars);
+    lit_vm_raiseexitingerror(vm, "failed to require module '%s'", name->chars);
     return false;
 }
 #endif

@@ -366,7 +366,7 @@ static LitValue objfn_object_tomap(LitVM* vm, LitValue instance, size_t argc, Li
     mclass = NULL;
     if(!lit_value_isinstance(instance))
     {
-        lit_runtime_error_exiting(vm, "toMap() can only be used on instances");
+        lit_vm_raiseexitingerror(vm, "toMap() can only be used on instances");
     }
     inst = lit_value_asinstance(instance);
     map = lit_create_map(vm->state);
@@ -400,14 +400,14 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
     LitInstance* inst;
     if(!lit_value_isinstance(instance))
     {
-        lit_runtime_error_exiting(vm, "cannot modify built-in types");
+        lit_vm_raiseexitingerror(vm, "cannot modify built-in types");
     }
     inst = lit_value_asinstance(instance);
     if(argc == 2)
     {
         if(!lit_value_isstring(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "object index must be a string");
+            lit_vm_raiseexitingerror(vm, "object index must be a string");
         }
 
         lit_table_set(vm->state, &inst->fields, lit_value_asstring(argv[0]), argv[1]);
@@ -415,7 +415,7 @@ static LitValue objfn_object_subscript(LitVM* vm, LitValue instance, size_t argc
     }
     if(!lit_value_isstring(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "object index must be a string");
+        lit_vm_raiseexitingerror(vm, "object index must be a string");
     }
     if(lit_table_get(&inst->fields, lit_value_asstring(argv[0]), &value))
     {

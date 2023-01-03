@@ -103,7 +103,7 @@ double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id
 {
     if(arg_count <= id || !lit_value_isnumber(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected a number as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected a number as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
     return lit_value_asnumber(args[id]);
@@ -123,7 +123,7 @@ bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id)
 {
     if(arg_count <= id || !lit_value_isbool(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected a boolean as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected a boolean as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
@@ -144,7 +144,7 @@ const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8
 {
     if(arg_count <= id || !lit_value_isstring(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
@@ -166,7 +166,7 @@ LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count,
 {
     if(arg_count <= id || !lit_value_isstring(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected a string as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected a string as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
@@ -177,7 +177,7 @@ LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, ui
 {
     if(arg_count <= id || !lit_value_isinstance(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected an instance as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected an instance as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
@@ -188,7 +188,7 @@ LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint
 {
     if(arg_count <= id || !lit_value_isreference(args[id]))
     {
-        lit_runtime_error_exiting(vm, "expected a reference as argument #%i, got a %s", (int)id,
+        lit_vm_raiseexitingerror(vm, "expected a reference as argument #%i, got a %s", (int)id,
                                   id >= arg_count ? "null" : lit_tostring_typename(args[id]));
     }
 
@@ -199,7 +199,7 @@ void lit_ensure_bool(LitVM* vm, LitValue value, const char* error)
 {
     if(!lit_value_isbool(value))
     {
-        lit_runtime_error_exiting(vm, error);
+        lit_vm_raiseexitingerror(vm, error);
     }
 }
 
@@ -207,7 +207,7 @@ void lit_ensure_string(LitVM* vm, LitValue value, const char* error)
 {
     if(!lit_value_isstring(value))
     {
-        lit_runtime_error_exiting(vm, error);
+        lit_vm_raiseexitingerror(vm, error);
     }
 }
 
@@ -215,7 +215,7 @@ void lit_ensure_number(LitVM* vm, LitValue value, const char* error)
 {
     if(!lit_value_isnumber(value))
     {
-        lit_runtime_error_exiting(vm, error);
+        lit_vm_raiseexitingerror(vm, error);
     }
 }
 
@@ -223,7 +223,7 @@ void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjType type, const ch
 {
     if(!lit_value_isobject(value) || lit_value_type(value) != type)
     {
-        lit_runtime_error_exiting(vm, error);
+        lit_vm_raiseexitingerror(vm, error);
     }
 }
 
@@ -270,12 +270,12 @@ static bool ensure_fiber(LitVM* vm, LitFiber* fiber)
     size_t newsize;
     if(fiber == NULL)
     {
-        lit_runtime_error(vm, "no fiber to run on");
+        lit_vm_raiseerror(vm, "no fiber to run on");
         return true;
     }
     if(fiber->frame_count == LIT_CALL_FRAMES_MAX)
     {
-        lit_runtime_error(vm, "fiber frame overflow");
+        lit_vm_raiseerror(vm, "fiber frame overflow");
         return true;
     }
     if(fiber->frame_count + 1 > fiber->frame_capacity)
@@ -308,7 +308,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
     fiber = vm->fiber;
     if(callee == NULL)
     {
-        lit_runtime_error(vm, "attempt to call a null value");
+        lit_vm_raiseerror(vm, "attempt to lit_vm_callcallable a null value");
         return NULL;
     }
     if(ignfiber)
@@ -391,7 +391,7 @@ static inline LitInterpretResult execute_call(LitState* state, LitCallFrame* fra
         RETURN_RUNTIME_ERROR();
     }
     fiber = state->vm->fiber;
-    result = lit_interpret_fiber(state, fiber);
+    result = lit_vm_execfiber(state, fiber);
     if(fiber->error != NULL_VALUE)
     {
         result.result = fiber->error;
@@ -434,7 +434,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
     vm = state->vm;
     if(lit_value_isobject(callee))
     {
-        if(lit_set_native_exit_jump())
+        if(lit_vmutil_setexitjump())
         {
             RETURN_RUNTIME_ERROR();
         }
@@ -551,11 +551,11 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
     }
     if(lit_value_isnull(callee))
     {
-        lit_runtime_error(vm, "attempt to call a null value");
+        lit_vm_raiseerror(vm, "attempt to lit_vm_callcallable a null value");
     }
     else
     {
-        lit_runtime_error(vm, "can only call functions and classes");
+        lit_vm_raiseerror(vm, "can only lit_vm_callcallable functions and classes");
     }
 
     RETURN_RUNTIME_ERROR();
@@ -578,7 +578,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
     {
         if(!ignfiber)
         {
-            lit_runtime_error(vm, "no fiber to run on");
+            lit_vm_raiseerror(vm, "no fiber to run on");
             RETURN_RUNTIME_ERROR();
         }
     }
@@ -659,7 +659,7 @@ LitString* lit_to_string(LitState* state, LitValue object)
     frame->return_to_c = true;
     PUSH(lit_value_objectvalue(function));
     PUSH(object);
-    result = lit_interpret_fiber(state, fiber);
+    result = lit_vm_execfiber(state, fiber);
     if(result.type != LITRESULT_OK)
     {
         return CONST_STRING(state, "null");
@@ -673,7 +673,7 @@ LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t argc, 
     LitClass* klass;
     if(!lit_table_get(&vm->globals->values, CONST_STRING(vm->state, name), &value))
     {
-        lit_runtime_error(vm, "failed to create instance of class %s: class not found", name);
+        lit_vm_raiseerror(vm, "failed to create instance of class %s: class not found", name);
         return NULL_VALUE;
     }
     klass = lit_value_asclass(value);

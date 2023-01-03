@@ -54,7 +54,7 @@ static void* LIT_EXTRACT_DATA(LitVM* vm, LitValue instance)
     LitValue _d;
     if(!lit_table_get(&lit_value_asinstance(instance)->fields, CONST_STRING(vm->state, "_data"), &_d))
     {
-        lit_runtime_error_exiting(vm, "failed to extract userdata");
+        lit_vm_raiseexitingerror(vm, "failed to extract userdata");
     }
     return lit_value_asuserdata(_d)->data;
 }
@@ -551,7 +551,7 @@ static LitValue objmethod_file_constructor(LitVM* vm, LitValue instance, size_t 
             hnd = fopen(path, mode);
             if(hnd == NULL)
             {
-                lit_runtime_error_exiting(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
+                lit_vm_raiseexitingerror(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
             }
             data = (LitFileData*)LIT_INSERT_DATA(vm, instance, sizeof(LitFileData), cleanup_file);
             data->path = (char*)path;
@@ -561,7 +561,7 @@ static LitValue objmethod_file_constructor(LitVM* vm, LitValue instance, size_t 
     }
     else
     {
-        lit_runtime_error_exiting(vm, "File() expects either string|string, or userdata|string");
+        lit_vm_raiseexitingerror(vm, "File() expects either string|string, or userdata|string");
         return NULL_VALUE;
     }
     return instance;

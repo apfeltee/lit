@@ -236,7 +236,7 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
     {
         if(!lit_value_isstring(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "class index must be a string");
+            lit_vm_raiseexitingerror(vm, "class index must be a string");
         }
 
         lit_table_set(vm->state, &klass->static_fields, lit_value_asstring(argv[0]), argv[1]);
@@ -244,7 +244,7 @@ static LitValue objfn_class_subscript(LitVM* vm, LitValue instance, size_t argc,
     }
     if(!lit_value_isstring(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "class index must be a string");
+        lit_vm_raiseexitingerror(vm, "class index must be a string");
     }
     if(lit_table_get(&klass->static_fields, lit_value_asstring(argv[0]), &value))
     {

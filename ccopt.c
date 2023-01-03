@@ -23,7 +23,7 @@
 #define optc_do_fn_op(fn, tokstr) \
     if(lit_value_isnumber(a) && lit_value_isnumber(b)) \
     { \
-        optdbg("translating constant expression of '" tokstr "' to constant value via call to '" #fn "'"); \
+        optdbg("translating constant expression of '" tokstr "' to constant value via lit_vm_callcallable to '" #fn "'"); \
         return lit_value_numbertovalue(optimizer->state, fn(lit_value_asnumber(a), lit_value_asnumber(b))); \
     } \
     return NULL_VALUE;
@@ -161,7 +161,7 @@ static LitVariable* resolve_variable(LitOptimizer* optimizer, const char* name, 
 
 static bool is_empty(LitExpression* statement)
 {
-    return statement == NULL || (statement->type == LITEXPR_BLOCK && ((LitBlockStatement*)statement)->statements.count == 0);
+    return statement == NULL || (statement->type == LITEXPR_BLOCK && ((LitBlockExpr*)statement)->statements.count == 0);
 }
 
 static LitValue evaluate_unary_op(LitOptimizer* optimizer, LitValue value, LitTokType op)
@@ -457,53 +457,53 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
             break;
         case LITEXPR_ASSIGN:
             {
-                LitAssignExpression* expr = (LitAssignExpression*)expression;
+                LitAssignExpr* expr = (LitAssignExpr*)expression;
                 optimize_expression(optimizer, &expr->to);
                 optimize_expression(optimizer, &expr->value);
             }
             break;
         case LITEXPR_CALL:
             {
-                LitCallExpression* expr = (LitCallExpression*)expression;
+                LitCallExpr* expr = (LitCallExpr*)expression;
                 optimize_expression(optimizer, &expr->callee);
                 optimize_expressions(optimizer, &expr->args);
             }
             break;
         case LITEXPR_SET:
             {
-                LitSetExpression* expr = (LitSetExpression*)expression;
+                LitSetExpr* expr = (LitSetExpr*)expression;
                 optimize_expression(optimizer, &expr->where);
                 optimize_expression(optimizer, &expr->value);
             }
             break;
         case LITEXPR_GET:
             {
-                optimize_expression(optimizer, &((LitGetExpression*)expression)->where);
+                optimize_expression(optimizer, &((LitGetExpr*)expression)->where);
             }
             break;
         case LITEXPR_LAMBDA:
             {
                 opt_begin_scope(optimizer);
-                optimize_statement(optimizer, &((LitLambdaExpression*)expression)->body);
+                optimize_statement(optimizer, &((LitLambdaExpr*)expression)->body);
                 opt_end_scope(optimizer);
             }
             break;
 
         case LITEXPR_ARRAY:
         {
-            optimize_expressions(optimizer, &((LitArrayExpression*)expression)->values);
+            optimize_expressions(optimizer, &((LitArrayExpr*)expression)->values);
             break;
         }
 
         case LITEXPR_OBJECT:
         {
-            optimize_expressions(optimizer, &((LitObjectExpression*)expression)->values);
+            optimize_expressions(optimizer, &((LitObjectExpr*)expression)->values);
             break;
         }
 
         case LITEXPR_SUBSCRIPT:
         {
-            LitSubscriptExpression* expr = (LitSubscriptExpression*)expression;
+            LitSubscriptExpr* expr = (LitSubscriptExpr*)expression;
 
             optimize_expression(optimizer, &expr->array);
             optimize_expression(optimizer, &expr->index);
@@ -513,7 +513,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_RANGE:
         {
-            LitRangeExpression* expr = (LitRangeExpression*)expression;
+            LitRangeExpr* expr = (LitRangeExpr*)expression;
 
             optimize_expression(optimizer, &expr->from);
             optimize_expression(optimizer, &expr->to);
@@ -521,9 +521,9 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
             break;
         }
 
-        case LITEXPR_IFEXPR:
+        case LITEXPR_TERNARY:
         {
-            LitIfExpression* expr = (LitIfExpression*)expression;
+            LitTernaryExpr* expr = (LitTernaryExpr*)expression;
             LitValue optimized = evaluate_expression(optimizer, expr->condition);
 
             if(optimized != NULL_VALUE)
@@ -553,7 +553,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_INTERPOLATION:
         {
-            optimize_expressions(optimizer, &((LitInterpolationExpression*)expression)->expressions);
+            optimize_expressions(optimizer, &((LitInterpolationExpr*)expression)->expressions);
             break;
         }
 
@@ -580,7 +580,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_REFERENCE:
         {
-            optimize_expression(optimizer, &((LitReferenceExpression*)expression)->to);
+            optimize_expression(optimizer, &((LitReferenceExpr*)expression)->to);
             break;
         }
 
@@ -616,13 +616,13 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
     {
         case LITEXPR_EXPRESSION:
             {
-                optimize_expression(optimizer, &((LitExpressionStatement*)statement)->expression);
+                optimize_expression(optimizer, &((LitExpressionExpr*)statement)->expression);
             }
             break;
         case LITEXPR_BLOCK:
             {
-                LitBlockStatement* stmt;
-                stmt = (LitBlockStatement*)statement;
+                LitBlockExpr* stmt;
+                stmt = (LitBlockExpr*)statement;
                 if(stmt->statements.count == 0)
                 {
                     lit_free_expression(state, statement);
@@ -666,7 +666,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_IFSTMT:
         {
-            LitIfStatement* stmt = (LitIfStatement*)statement;
+            LitIfExpr* stmt = (LitIfExpr*)statement;
 
             optimize_expression(optimizer, &stmt->condition);
             optimize_statement(optimizer, &stmt->if_branch);
@@ -728,7 +728,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_WHILE:
         {
-            LitWhileStatement* stmt = (LitWhileStatement*)statement;
+            LitWhileExpr* stmt = (LitWhileExpr*)statement;
             optimize_expression(optimizer, &stmt->condition);
 
             if(lit_is_optimization_enabled(LITOPTSTATE_UNREACHABLE_CODE))
@@ -756,7 +756,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_FOR:
             {
-                LitForStatement* stmt = (LitForStatement*)statement;
+                LitForExpr* stmt = (LitForExpr*)statement;
                 opt_begin_scope(optimizer);
                 // This is required, so that optimizer doesn't optimize out our i variable (and such)
                 optimizer->mark_used = true;
@@ -777,7 +777,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                 {
                     break;
                 }
-                LitRangeExpression* range = (LitRangeExpression*)stmt->condition;
+                LitRangeExpr* range = (LitRangeExpr*)stmt->condition;
                 LitValue from = evaluate_expression(optimizer, range->from);
                 LitValue to = evaluate_expression(optimizer, range->to);
                 if(!lit_value_isnumber(from) || !lit_value_isnumber(to))
@@ -785,7 +785,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
                     break;
                 }
                 bool reverse = lit_value_asnumber(from) > lit_value_asnumber(to);
-                LitVarStatement* var = (LitVarStatement*)stmt->var;
+                LitAssignVarExpr* var = (LitAssignVarExpr*)stmt->var;
                 size_t line = range->exobj.line;
                 // var i = from
                 var->init = range->from;
@@ -810,7 +810,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
 
         case LITEXPR_VARSTMT:
             {
-                LitVarStatement* stmt = (LitVarStatement*)statement;
+                LitAssignVarExpr* stmt = (LitAssignVarExpr*)statement;
                 LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, stmt->constant, slot);
                 optimize_expression(optimizer, &stmt->init);
                 if(stmt->constant && lit_is_optimization_enabled(LITOPTSTATE_CONSTANT_FOLDING))
@@ -826,7 +826,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
             break;
         case LITEXPR_FUNCTION:
             {
-                LitFunctionStatement* stmt = (LitFunctionStatement*)statement;
+                LitFunctionExpr* stmt = (LitFunctionExpr*)statement;
                 LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, false, slot);
                 if(stmt->exported)
                 {
@@ -840,24 +840,24 @@ static void optimize_statement(LitOptimizer* optimizer, LitExpression** slot)
             break;
         case LITEXPR_RETURN:
             {
-                optimize_expression(optimizer, &((LitReturnStatement*)statement)->expression);
+                optimize_expression(optimizer, &((LitReturnExpr*)statement)->expression);
             }
             break;
         case LITEXPR_METHOD:
             {
                 opt_begin_scope(optimizer);
-                optimize_statement(optimizer, &((LitMethodStatement*)statement)->body);
+                optimize_statement(optimizer, &((LitMethodExpr*)statement)->body);
                 opt_end_scope(optimizer);
             }
             break;
         case LITEXPR_CLASS:
             {
-                optimize_statements(optimizer, &((LitClassStatement*)statement)->fields);
+                optimize_statements(optimizer, &((LitClassExpr*)statement)->fields);
             }
             break;
         case LITEXPR_FIELD:
             {
-                LitFieldStatement* stmt = (LitFieldStatement*)statement;
+                LitFieldExpr* stmt = (LitFieldExpr*)statement;
                 if(stmt->getter != NULL)
                 {
                     opt_begin_scope(optimizer);

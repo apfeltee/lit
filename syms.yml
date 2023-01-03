@@ -1,18 +1,93 @@
-  "AS_INSTANCE": "lit_value_asinstance"
-  "AS_FUNCTION": "lit_value_asfunction"
-  "AS_NATIVE_FUNCTION": "lit_value_asnativefunction"
-  "AS_NATIVE_PRIMITIVE": "lit_value_asnativeprimitive"
-  "AS_NATIVE_METHOD": "lit_value_asnativemethod"
-  "AS_PRIMITIVE_METHOD": "lit_value_asprimitivemethod"
-  "AS_MODULE": "lit_value_asmodule"
-  "AS_CLOSURE": "lit_value_asclosure"
-  "AS_UPVALUE": "lit_value_asupvalue"
-  "AS_CLASS": "lit_value_asclass"
-  "AS_ARRAY": "lit_value_asarray"
-  "AS_MAP": "lit_value_asmap"
-  "AS_BOUND_METHOD": "lit_value_asboundmethod"
-  "AS_USERDATA": "lit_value_asuserdata"
-  "AS_RANGE": "lit_value_asrange"
-  "AS_FIELD": "lit_value_asfield"
-  "AS_FIBER": "lit_value_asfiber"
-  "AS_REFERENCE": "lit_value_asreference"
+  # uint16_t vmexec_readshort(LitExecState *est);
+  "vmexec_readshort": "lit_vmexec_readshort"
+
+  # uint8_t vmexec_readbyte(LitExecState *est);
+  "vmexec_readbyte": "lit_vmexec_readbyte"
+
+  # LitValue vmexec_readconstant(LitExecState *est);
+  "vmexec_readconstant": "lit_vmexec_readconstant"
+
+  # LitValue vmexec_readconstantlong(LitExecState *est);
+  "vmexec_readconstantlong": "lit_vmexec_readconstantlong"
+
+  # LitString * vmexec_readstring(LitExecState *est);
+  "vmexec_readstring": "lit_vmexec_readstring"
+
+  # LitString * vmexec_readstringlong(LitExecState *est);
+  "vmexec_readstringlong": "lit_vmexec_readstringlong"
+
+  # void vmexec_push(LitFiber *fiber, LitValue v);
+  "vmexec_push": "lit_vmexec_push"
+
+  # LitValue vmexec_pop(LitFiber *fiber);
+  "vmexec_pop": "lit_vmexec_pop"
+
+  # void vmexec_drop(LitFiber *fiber);
+  "vmexec_drop": "lit_vmexec_drop"
+
+  # void vmexec_dropn(LitFiber *fiber, int amount);
+  "vmexec_dropn": "lit_vmexec_dropn"
+
+  # LitValue vmexec_peek(LitFiber *fiber, short distance);
+  "vmexec_peek": "lit_vmexec_peek"
+
+  # void vm_readframe(LitFiber *fiber, LitExecState *est);
+  "vm_readframe": "lit_vmexec_readframe"
+
+  # void vm_writeframe(LitExecState *est, uint8_t *ip);
+  "vm_writeframe": "lit_vmexec_writeframe"
+
+  # void reset_stack(LitVM *vm);
+  "reset_stack": "lit_vmexec_resetstack"
+
+  # void reset_vm(LitState *state, LitVM *vm);
+  "reset_vm": "lit_vmexec_resetvm"
+
+  # void lit_init_vm(LitState *state, LitVM *vm);
+  "lit_init_vm": "lit_vm_init"
+
+  # void lit_free_vm(LitVM *vm);
+  "lit_free_vm": "lit_vm_destroy"
+
+  # void lit_trace_vm_stack(LitVM *vm, LitWriter *wr);
+  "lit_trace_vm_stack": "lit_vm_tracestack"
+
+  # _Bool lit_handle_runtime_error(LitVM *vm, LitString *error_string);
+  "lit_handle_runtime_error": "lit_vm_handleruntimeerror"
+
+  # _Bool lit_vruntime_error(LitVM *vm, const char *format, va_list args);
+  "lit_vruntime_error": "lit_vm_vraiseerror"
+
+  # _Bool lit_runtime_error(LitVM *vm, const char *format, ...);
+  "lit_runtime_error": "lit_vm_raiseerror"
+
+  # _Bool lit_runtime_error_exiting(LitVM *vm, const char *format, ...);
+  "lit_runtime_error_exiting": "lit_vm_raiseexitingerror"
+
+  # _Bool call(LitVM *vm, LitFunction *function, LitClosure *closure, uint8_t argc);
+  "call": "lit_vm_callcallable"
+
+  # const char * find_funcname_fromvalue(LitVM *vm, LitExecState *est, LitValue v);
+  "find_funcname_fromvalue": "lit_vmexec_funcnamefromvalue"
+
+  # _Bool call_value(LitVM *vm, LitFiber *fiber, LitExecState *est, LitValue callee, uint8_t argc);
+  "call_value": "lit_vm_callvalue"
+
+  # LitUpvalue * capture_upvalue(LitState *state, LitValue *local);
+  "capture_upvalue": "lit_execvm_captureupvalue"
+
+  # void close_upvalues(LitVM *vm, const LitValue *last);
+  "close_upvalues": "lit_vm_closeupvalues"
+
+  # LitInterpretResult lit_interpret_module(LitState *state, LitModule *module);
+  "lit_interpret_module": "lit_vm_execmodule"
+
+  # LitInterpretResult lit_interpret_fiber(LitState *state, LitFiber *fiber);
+  "lit_interpret_fiber": "lit_vm_execfiber"
+
+  # void lit_native_exit_jump(void);
+  "lit_native_exit_jump": "lit_vmutil_callexitjump"
+
+  # _Bool lit_set_native_exit_jump(void);
+  "lit_set_native_exit_jump": "lit_vmutil_setexitjump"
+

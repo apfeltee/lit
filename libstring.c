@@ -618,7 +618,7 @@ static LitValue objfn_string_splice(LitVM* vm, LitString* string, int from, int 
     to = fmin(to, length - 1);
     if(from > to)
     {
-        lit_runtime_error_exiting(vm, "String.splice argument 'from' is larger than argument 'to'");
+        lit_vm_raiseexitingerror(vm, "String.splice argument 'from' is larger than argument 'to'");
     }
     from = lit_util_ucharoffset(string->chars, from);
     to = lit_util_ucharoffset(string->chars, to);
@@ -639,7 +639,7 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
     index = lit_check_number(vm, argv, argc, 0);
     if(argc != 1)
     {
-        lit_runtime_error_exiting(vm, "cannot modify strings with the subscript op");
+        lit_vm_raiseexitingerror(vm, "cannot modify strings with the subscript op");
     }
     if(index < 0)
     {
@@ -682,7 +682,7 @@ static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, 
         }
         return FALSE_VALUE;
     }
-    lit_runtime_error_exiting(vm, "can only compare string to another string or null");
+    lit_vm_raiseexitingerror(vm, "can only compare string to another string or null");
     return FALSE_VALUE;
 }
 
@@ -850,7 +850,7 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
     LIT_ENSURE_ARGS(2);
     if(!lit_value_isstring(argv[0]) || !lit_value_isstring(argv[1]))
     {
-        lit_runtime_error_exiting(vm, "expected 2 string arguments");
+        lit_vm_raiseexitingerror(vm, "expected 2 string arguments");
     }
     string = lit_value_asstring(instance);
     what = lit_value_asstring(argv[0]);
@@ -965,7 +965,7 @@ bool check_fmt_arg(LitVM* vm, char* buf, size_t ai, size_t argc, LitValue* argv,
         return true;
     }
     sdsfree(buf);
-    lit_runtime_error_exiting(vm, "too few arguments for format flag '%s' at position %d (argc=%d)", fmttext, ai, argc);
+    lit_vm_raiseexitingerror(vm, "too few arguments for format flag '%s' at position %d (argc=%d)", fmttext, ai, argc);
     return false;
 }
 
@@ -1044,7 +1044,7 @@ static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, L
                             if(!lit_value_isnumber(argv[ai]))
                             {
                                 sdsfree(buf);
-                                lit_runtime_error_exiting(vm, "flag 'c' expects a number");
+                                lit_vm_raiseexitingerror(vm, "flag 'c' expects a number");
                             }
                             iv = lit_check_number(vm, argv, argc, ai);
                             /* TODO: both of these use the same amount of memory. but which is faster? */
@@ -1059,7 +1059,7 @@ static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, L
                     default:
                         {
                             sdsfree(buf);
-                            lit_runtime_error_exiting(vm, "unrecognized formatting flag '%c'", nch);
+                            lit_vm_raiseexitingerror(vm, "unrecognized formatting flag '%c'", nch);
                             return NULL_VALUE;
                         }
                         break;

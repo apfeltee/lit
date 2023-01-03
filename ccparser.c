@@ -22,7 +22,7 @@ static void sync(LitParser* parser);
 
 static LitExpression *parse_block(LitParser *parser);
 static LitExpression *parse_precedence(LitParser *parser, LitPrecedence precedence, bool err, bool ignsemi);
-static LitExpression *parse_lambda(LitParser *parser, LitLambdaExpression *lambda);
+static LitExpression *parse_lambda(LitParser *parser, LitLambdaExpr *lambda);
 static void parse_parameters(LitParser *parser, LitParamList *parameters);
 static LitExpression *parse_expression(LitParser *parser, bool ignsemi);
 static LitExpression *parse_var_declaration(LitParser *parser, bool ignsemi);
@@ -447,7 +447,7 @@ static void consume(LitParser* parser, LitTokType type, const char* error)
 
 static LitExpression* parse_block(LitParser* parser)
 {
-    LitBlockStatement* statement;
+    LitBlockExpr* statement;
     prs_begin_scope(parser);
     statement = lit_create_block_statement(parser->state, parser->previous.line);
     while(true)
@@ -521,7 +521,7 @@ static LitExpression* prule_number(LitParser* parser, bool can_assign)
     return (LitExpression*)lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value);
 }
 
-static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambda)
+static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpr* lambda)
 {
     lambda->body = parse_statement(parser);
     return (LitExpression*)lambda;
@@ -603,7 +603,7 @@ static LitExpression* prule_grouping_or_lambda(LitParser* parser, bool can_assig
             had_array = parser->previous.type == LITTOK_ARROW;
             had_vararg= parser->previous.type == LITTOK_DOT_DOT_DOT;
             // This is a lambda
-            LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
+            LitLambdaExpr* lambda = lit_create_lambda_expression(state, line);
             LitExpression* def_value = NULL;
             had_default = prs_match(parser, LITTOK_EQUAL);
             if(had_default)
@@ -673,7 +673,7 @@ static LitExpression* prule_call(LitParser* parser, LitExpression* prev, bool ca
     (void)can_assign;
     LitExpression* e;
     LitVarExpr* ee;
-    LitCallExpression* expression;
+    LitCallExpr* expression;
     expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
     while(!check(parser, LITTOK_RIGHT_PAREN))
     {
@@ -905,7 +905,7 @@ static LitExpression* prule_string(LitParser* parser, bool can_assign)
 
 static LitExpression* prule_interpolation(LitParser* parser, bool can_assign)
 {
-    LitInterpolationExpression* expression;
+    LitInterpolationExpr* expression;
     (void)can_assign;
     expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
     do
@@ -935,7 +935,7 @@ static LitExpression* prule_interpolation(LitParser* parser, bool can_assign)
 static LitExpression* prule_object(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
-    LitObjectExpression* object;
+    LitObjectExpr* object;
     object = lit_create_object_expression(parser->state, parser->previous.line);
     ignore_new_lines(parser, true);
     while(!check(parser, LITTOK_RIGHT_BRACE))
@@ -961,32 +961,32 @@ static LitExpression* prule_variable_expression_base(LitParser* parser, bool can
 {
     (void)can_assign;
     bool had_args;
-    LitCallExpression* call;
+    LitCallExpr* lit_vm_callcallable;
     LitExpression* expression;
     expression = (LitExpression*)lit_create_var_expression(parser->state, parser->previous.line, parser->previous.start, parser->previous.length);
     if(isnew)
     {
         had_args = check(parser, LITTOK_LEFT_PAREN);
-        call = NULL;
+        lit_vm_callcallable = NULL;
         if(had_args)
         {
             prs_advance(parser);
-            call = (LitCallExpression*)prule_call(parser, expression, false);
+            lit_vm_callcallable = (LitCallExpr*)prule_call(parser, expression, false);
         }
         if(prs_match(parser, LITTOK_LEFT_BRACE))
         {
-            if(call == NULL)
+            if(lit_vm_callcallable == NULL)
             {
-                call = lit_create_call_expression(parser->state, expression->line, expression);
+                lit_vm_callcallable = lit_create_call_expression(parser->state, expression->line, expression);
             }
-            call->init = prule_object(parser, false);
+            lit_vm_callcallable->init = prule_object(parser, false);
         }
         else if(!had_args)
         {
             error_at_current(parser, LITERROR_EXPECTATION_UNMET, "argument list for instance creation",
                              parser->previous.length, parser->previous.start);
         }
-        return (LitExpression*)call;
+        return (LitExpression*)lit_vm_callcallable;
     }
     if(prs_match(parser, LITTOK_LEFT_BRACKET))
     {
@@ -1066,14 +1066,14 @@ static LitExpression* prule_ternary_or_question(LitParser* parser, LitExpression
     if_branch = parse_expression(parser, true);
     consume(parser, LITTOK_COLON, "':' after expression");
     else_branch = parse_expression(parser, true);
-    return (LitExpression*)lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
+    return (LitExpression*)lit_create_ternary_expression(parser->state, line, previous, if_branch, else_branch);
 }
 
 static LitExpression* prule_array(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     LitExpression* expr;
-    LitArrayExpression* array;
+    LitArrayExpr* array;
     array = lit_create_array_expression(parser->state, parser->previous.line);
     ignore_new_lines(parser, true);
     while(!check(parser, LITTOK_RIGHT_BRACKET))
@@ -1179,7 +1179,7 @@ static LitExpression* prule_reference(LitParser* parser, bool can_assign)
 {
     (void)can_assign;
     size_t line;
-    LitReferenceExpression* expression;
+    LitReferenceExpr* expression;
     line = parser->previous.line;
     ignore_new_lines(parser, true);
     expression = lit_create_reference_expression(parser->state, line, parse_precedence(parser, LITPREC_CALL, false, true));
@@ -1263,7 +1263,7 @@ static LitExpression* parse_var_declaration(LitParser* parser, bool ignsemi)
     {
         init = parse_expression(parser, ignsemi);
     }
-    return (LitExpression*)lit_create_var_statement(parser->state, line, name, length, init, constant);
+    return (LitExpression*)lit_create_assignvar_statement(parser->state, line, name, length, init, constant);
 }
 
 static LitExpression* parse_if(LitParser* parser)
@@ -1411,9 +1411,9 @@ static LitExpression* prule_function(LitParser* parser, bool canassign)
     size_t fnamelen;
     const char* fnamestr;
     LitCompiler compiler;
-    LitFunctionStatement* function;
-    LitLambdaExpression* lambda;
-    LitSetExpression* to;
+    LitFunctionExpr* function;
+    LitLambdaExpr* lambda;
+    LitSetExpr* to;
     islambda = canassign;
     isexport = parser->previous.type == LITTOK_EXPORT;
     fnamestr = "<anonymous>";
@@ -1539,7 +1539,7 @@ static LitExpression* parse_method(LitParser* parser, bool is_static)
 {
     size_t i;
     LitCompiler compiler;
-    LitMethodStatement* method;
+    LitMethodExpr* method;
     LitString* name;
     if(prs_match(parser, LITTOK_STATIC))
     {
@@ -1604,7 +1604,7 @@ static LitExpression* parse_class(LitParser* parser)
     bool is_static;
     LitString* name;
     LitString* super;
-    LitClassStatement* klass;
+    LitClassExpr* klass;
     LitExpression* var;
     LitExpression* method;
     if(setjmp(prs_jmpbuffer))

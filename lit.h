@@ -135,21 +135,21 @@
 #define LIT_ENSURE_ARGS(count)                                                   \
     if(argc != count)                                                       \
     {                                                                            \
-        lit_runtime_error(vm, "expected %i argument, got %i", count, argc); \
+        lit_vm_raiseerror(vm, "expected %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                       \
     }
 
 #define LIT_ENSURE_MIN_ARGS(count)                                                       \
     if(argc < count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "expected minimum %i argument, got %i", count, argc); \
+        lit_vm_raiseerror(vm, "expected minimum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 
 #define LIT_ENSURE_MAX_ARGS(count)                                                       \
     if(argc > count)                                                                \
     {                                                                                    \
-        lit_runtime_error(vm, "expected maximum %i argument, got %i", count, argc); \
+        lit_vm_raiseerror(vm, "expected maximum %i argument, got %i", count, argc); \
         return NULL_VALUE;                                                               \
     }
 
@@ -170,7 +170,7 @@ enum LitExprType
     LITEXPR_THIS,
     LITEXPR_SUPER,
     LITEXPR_RANGE,
-    LITEXPR_IFEXPR,
+    LITEXPR_TERNARY,
     LITEXPR_INTERPOLATION,
     LITEXPR_REFERENCE,
 
@@ -892,9 +892,9 @@ struct LitVM
 
 struct LitInterpretResult
 {
-    /* the result of this interpret/call attempt */
+    /* the result of this interpret/lit_vm_callcallable attempt */
     LitResult type;
-    /* the value returned from this interpret/call attempt */
+    /* the value returned from this interpret/lit_vm_callcallable attempt */
     LitValue result;
 };
 
@@ -1363,7 +1363,7 @@ void lit_state_poproots(LitState* state, uint8_t amount);
 LitClass* lit_state_getclassfor(LitState* state, LitValue value);
 
 
-/* call a function in an instance */
+/* lit_vm_callcallable a function in an instance */
 LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
 LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname);
 
@@ -1500,9 +1500,9 @@ void lit_state_raiseerror(LitState* state, LitErrType type, const char* message,
 void lit_state_printf(LitState* state, const char* message, ...);
 void lit_enable_compilation_time_measurement();
 
-void lit_init_vm(LitState* state, LitVM* vm);
-void lit_free_vm(LitVM* vm);
-void lit_trace_vm_stack(LitVM* vm, LitWriter* wr);
+void lit_vm_init(LitState* state, LitVM* vm);
+void lit_vm_destroy(LitVM* vm);
+void lit_vm_tracestack(LitVM* vm, LitWriter* wr);
 
 static inline void lit_vm_push(LitVM* vm, LitValue value)
 {
@@ -1519,15 +1519,15 @@ static inline LitValue lit_vm_pop(LitVM* vm)
     return rt;
 }
 
-LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
-LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
-bool lit_handle_runtime_error(LitVM* vm, LitString* error_string);
-bool lit_vruntime_error(LitVM* vm, const char* format, va_list args);
-bool lit_runtime_error(LitVM* vm, const char* format, ...);
-bool lit_runtime_error_exiting(LitVM* vm, const char* format, ...);
+LitInterpretResult lit_vm_execmodule(LitState* state, LitModule* module);
+LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber);
+bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string);
+bool lit_vm_vraiseerror(LitVM* vm, const char* format, va_list args);
+bool lit_vm_raiseerror(LitVM* vm, const char* format, ...);
+bool lit_vm_raiseexitingerror(LitVM* vm, const char* format, ...);
 
-void lit_native_exit_jump();
-bool lit_set_native_exit_jump();
+void lit_vmutil_callexitjump();
+bool lit_vmutil_setexitjump();
 
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);

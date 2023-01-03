@@ -80,7 +80,7 @@ static LitValue objfn_fiber_constructor(LitVM* vm, LitValue instance, size_t arg
     (void)instance;
     if(argc < 1 || !lit_value_isfunction(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
+        lit_vm_raiseexitingerror(vm, "Fiber constructor expects a function as its argument");
     }
 
     LitFunction* function = lit_value_asfunction(argv[0]);
@@ -140,7 +140,7 @@ static bool objfn_fiber_yield(LitVM* vm, LitValue instance, size_t argc, LitValu
     (void)instance;
     if(vm->fiber->parent == NULL)
     {
-        lit_handle_runtime_error(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was yielded") :
+        lit_vm_handleruntimeerror(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was yielded") :
         lit_to_string(vm->state, argv[0]));
         return true;
     }
@@ -161,7 +161,7 @@ static bool objfn_fiber_yeet(LitVM* vm, LitValue instance, size_t argc, LitValue
     (void)instance;
     if(vm->fiber->parent == NULL)
     {
-        lit_handle_runtime_error(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was yeeted") :
+        lit_vm_handleruntimeerror(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was yeeted") :
         lit_to_string(vm->state, argv[0]));
         return true;
     }
@@ -180,7 +180,7 @@ static bool objfn_fiber_yeet(LitVM* vm, LitValue instance, size_t argc, LitValue
 static bool objfn_fiber_abort(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    lit_handle_runtime_error(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was aborted") :
+    lit_vm_handleruntimeerror(vm, argc == 0 ? CONST_STRING(vm->state, "Fiber was aborted") :
     lit_to_string(vm->state, argv[0]));
     argv[-1] = NULL_VALUE;
     return true;

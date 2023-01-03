@@ -255,7 +255,7 @@ LitArray* lit_array_splice(LitState* state, LitArray* oa, int from, int to)
     }
     if(from > to)
     {
-        lit_runtime_error_exiting(state->vm, "Array.splice argument 'from' is larger than argument 'to'");
+        lit_vm_raiseexitingerror(state->vm, "Array.splice argument 'from' is larger than argument 'to'");
         return NULL;
     }
     from = fmax(from, 0);
@@ -302,7 +302,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
     {
         if(!lit_value_isnumber(argv[0]))
         {
-            lit_runtime_error_exiting(vm, "array index must be a number");
+            lit_vm_raiseexitingerror(vm, "array index must be a number");
         }
         values = &lit_value_asarray(instance)->list;
         index = lit_value_asnumber(argv[0]);
@@ -320,7 +320,7 @@ static LitValue objfn_array_subscript(LitVM* vm, LitValue instance, size_t argc,
             range = lit_value_asrange(argv[0]);
             return objfn_array_splice(vm, lit_value_asarray(instance), (int)range->from, (int)range->to);
         }
-        lit_runtime_error_exiting(vm, "array index must be a number");
+        lit_vm_raiseexitingerror(vm, "array index must be a number");
         return NULL_VALUE;
     }
     values = &lit_value_asarray(instance)->list;
@@ -343,7 +343,7 @@ static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, L
     LitArray* self;
     LitArray* other;
     (void)argc;
-    fprintf(stderr, "call to objfn_array_compare\n");
+    fprintf(stderr, "lit_vm_callcallable to objfn_array_compare\n");
     self = lit_value_asarray(instance);
     if(lit_value_isarray(argv[0]))
     {
@@ -361,7 +361,7 @@ static LitValue objfn_array_compare(LitVM* vm, LitValue instance, size_t argc, L
         }
         return FALSE_VALUE;
     }
-    lit_runtime_error_exiting(vm, "can only compare array to another array or null");
+    lit_vm_raiseexitingerror(vm, "can only compare array to another array or null");
     return FALSE_VALUE;
 }
 
@@ -416,7 +416,7 @@ static LitValue objfn_array_addall(LitVM* vm, LitValue instance, size_t argc, Li
     LIT_ENSURE_ARGS(1);
     if(!lit_value_isarray(argv[0]))
     {
-        lit_runtime_error_exiting(vm, "expected array as the argument");
+        lit_vm_raiseexitingerror(vm, "expected array as the argument");
     }
     array = lit_value_asarray(instance);
     toadd = lit_value_asarray(argv[0]);

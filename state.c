@@ -76,7 +76,7 @@ LitState* lit_make_state()
     state->optimizer = (LitOptimizer*)malloc(sizeof(LitOptimizer));
     lit_init_optimizer(state, state->optimizer);
     state->vm = (LitVM*)malloc(sizeof(LitVM));
-    lit_init_vm(state, state->vm);
+    lit_vm_init(state, state->vm);
     lit_init_api(state);
     lit_open_core_library(state);
     return state;
@@ -99,7 +99,7 @@ int64_t lit_destroy_state(LitState* state)
     lit_free_emitter(state->emitter);
     free(state->emitter);
     free(state->optimizer);
-    lit_free_vm(state->vm);
+    lit_vm_destroy(state->vm);
     free(state->vm);
     amount = state->bytes_allocated;
     free(state);
@@ -346,7 +346,7 @@ LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module
         return (LitInterpretResult){ LITRESULT_COMPILE_ERROR, NULL_VALUE };
     }
     
-    result = lit_interpret_module(state, module);
+    result = lit_vm_execmodule(state, module);
     fiber = module->main_fiber;
     if(!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack)
     {
