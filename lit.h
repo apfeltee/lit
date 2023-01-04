@@ -470,7 +470,7 @@ enum LitObjType
     LITTYPE_NUMBER,
 };
 
-typedef uint64_t LitValue;
+
 typedef enum /**/LitOpCode LitOpCode;
 typedef enum /**/LitExprType LitExprType;
 typedef enum /**/LitOptLevel LitOptLevel;
@@ -577,6 +577,8 @@ typedef struct /**/LitPrivate LitPrivate;
 typedef struct /**/LitDirReader LitDirReader;
 typedef struct /**/LitDirItem LitDirItem;
 
+typedef uint64_t LitValue;
+//typedef LitObject LitValue;
 
 typedef LitExpression* (*LitPrefixParseFn)(LitParser*, bool);
 typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*, bool);
@@ -594,6 +596,16 @@ typedef void (*LitPrintFn)(LitState*, const char*);
 typedef void(*LitWriterByteFN)(LitWriter*, int);
 typedef void(*LitWriterStringFN)(LitWriter*, const char*, size_t);
 typedef void(*LitWriterFormatFN)(LitWriter*, const char*, va_list);
+
+
+struct LitObject
+{
+    /* the type of this object */
+    LitObjType type;
+    LitObject* next;
+    bool marked;
+    bool mustfree;
+};
 
 struct LitDataList
 {
@@ -1016,14 +1028,6 @@ struct LitTable
     LitTableEntry* entries;
 };
 
-struct LitObject
-{
-    /* the type of this object */
-    LitObjType type;
-    LitObject* next;
-    bool marked;
-    bool mustfree;
-};
 
 struct LitNumber
 {
@@ -1416,8 +1420,6 @@ struct LitPreprocessor
 #define lit_value_istype(value, t) \
     (lit_value_isobject(value) && (lit_value_asobject(value) != NULL) && (lit_value_asobject(value)->type == t))
 
-#define lit_value_isnull(v) \
-    ((v) == NULL_VALUE)
 
 #define lit_value_isstring(value) \
     lit_value_istype(value, LITTYPE_STRING)
@@ -1485,16 +1487,6 @@ static inline bool lit_value_isreference(LitValue value)
     return lit_value_istype(value, LITTYPE_REFERENCE);
 }
 
-/* is this value falsey? */
-static inline bool lit_value_isfalsey(LitValue v)
-{
-    return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
-}
-
-static inline bool lit_value_asbool(LitValue v)
-{
-    return (v == TRUE_VALUE);
-}
 
 static inline LitString* lit_value_asstring(LitValue v)
 {

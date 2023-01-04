@@ -24,6 +24,21 @@ bool lit_value_isbool(LitValue v)
     return ((v & FALSE_VALUE) == FALSE_VALUE);
 }
 
+bool lit_value_isfalsey(LitValue v)
+{
+    return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
+}
+
+bool lit_value_asbool(LitValue v)
+{
+    return (v == TRUE_VALUE);
+}
+
+bool lit_value_isnull(LitValue v)
+{
+    return (v == NULL_VALUE);
+}
+
 bool lit_value_isobject(LitValue v)
 {
     return ((v & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT));
