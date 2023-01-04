@@ -340,7 +340,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
     size_t i;
     size_t count;
     uint8_t type;
-    lit_init_chunk(chunk);
+    lit_chunk_init(chunk);
     count = lit_read_euint32_t(file);
     chunk->code = (uint8_t*)lit_gcmem_memrealloc(state, NULL, 0, sizeof(uint8_t) * count);
     chunk->count = count;

@@ -488,7 +488,7 @@ bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string)
 
         if(chunk->has_line_info)
         {
-            length += snprintf(NULL, 0, "[line %d] in %s()\n", (int)lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
+            length += snprintf(NULL, 0, "[line %d] in %s()\n", (int)lit_chunk_getline(chunk, frame->ip - chunk->code - 1), name);
         }
         else
         {
@@ -507,7 +507,7 @@ bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string)
         name = function->name == NULL ? "unknown" : function->name->chars;
         if(chunk->has_line_info)
         {
-            start += sprintf(start, "[line %d] in %s()\n", (int)lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
+            start += sprintf(start, "[line %d] in %s()\n", (int)lit_chunk_getline(chunk, frame->ip - chunk->code - 1), name);
         }
         else
         {

@@ -1,81 +1,165 @@
-  # void optdbg(const char *fmt, ...);
-  "optdbg": "lit_astopt_optdbg"
+  # _Bool lit_dir_open(LitDirReader *rd, const char *path);
+  "lit_dir_open": "lit_dir_open"
 
-  # void lit_varlist_init(LitVarList *array);
-  "lit_varlist_init": "lit_varlist_init"
+  # _Bool lit_dir_read(LitDirReader *rd, LitDirItem *itm);
+  "lit_dir_read": "lit_dir_read"
 
-  # void lit_varlist_destroy(LitState *state, LitVarList *array);
-  "lit_varlist_destroy": "lit_varlist_destroy"
+  # _Bool lit_dir_close(LitDirReader *rd);
+  "lit_dir_close": "lit_dir_close"
 
-  # void lit_varlist_push(LitState *state, LitVarList *array, LitVariable value);
-  "lit_varlist_push": "lit_varlist_push"
+  # static void * LIT_INSERT_DATA(LitVM *vm, LitValue instance, size_t typsz, CleanupFunc cleanup);
+  "LIT_INSERT_DATA": "LIT_INSERT_DATA"
 
-  # void lit_init_optimizer(LitState *state, LitOptimizer *optimizer);
-  "lit_init_optimizer": "lit_astopt_init"
+  # static void * LIT_EXTRACT_DATA(LitVM *vm, LitValue instance);
+  "LIT_EXTRACT_DATA": "LIT_EXTRACT_DATA"
 
-  # static void opt_begin_scope(LitOptimizer *optimizer);
-  "opt_begin_scope": "lit_astopt_beginscope"
+  # char * lit_util_readfile(const char *path, size_t *dlen);
+  "lit_util_readfile": "lit_util_readfile"
 
-  # static void opt_end_scope(LitOptimizer *optimizer);
-  "opt_end_scope": "lit_astopt_endscope"
+  # _Bool lit_file_exists(const char *path);
+  "lit_file_exists": "lit_file_exists"
 
-  # static LitVariable * add_variable(LitOptimizer *optimizer, const char *name, size_t length, _Bool constant, LitExpression **declaration);
-  "add_variable": "lit_astopt_addvar"
+  # _Bool lit_dir_exists(const char *path);
+  "lit_dir_exists": "lit_dir_exists"
 
-  # static LitVariable * resolve_variable(LitOptimizer *optimizer, const char *name, size_t length);
-  "resolve_variable": "lit_astopt_resolvevar"
+  # size_t lit_write_uint8_t(FILE *file, uint8_t byte);
+  "lit_write_uint8_t": "lit_write_uint8_t"
 
-  # static _Bool is_empty(LitExpression *statement);
-  "is_empty": "lit_astopt_isemptyexpr"
+  # size_t lit_write_uint16_t(FILE *file, uint16_t byte);
+  "lit_write_uint16_t": "lit_write_uint16_t"
 
-  # static LitValue evaluate_unary_op(LitOptimizer *optimizer, LitValue value, LitTokType op);
-  "evaluate_unary_op": "lit_astopt_evalunaryop"
+  # size_t lit_write_uint32_t(FILE *file, uint32_t byte);
+  "lit_write_uint32_t": "lit_write_uint32_t"
 
-  # static LitValue evaluate_binary_op(LitOptimizer *optimizer, LitValue a, LitValue b, LitTokType op);
-  "evaluate_binary_op": "lit_astopt_evalbinaryop"
+  # size_t lit_write_double(FILE *file, double byte);
+  "lit_write_double": "lit_write_double"
 
-  # static LitValue attempt_to_optimize_binary(LitOptimizer *optimizer, LitBinaryExpr *expression, LitValue value, _Bool left);
-  "attempt_to_optimize_binary": "lit_astopt_attemptoptbinary"
+  # size_t lit_write_string(FILE *file, LitString *string);
+  "lit_write_string": "lit_write_string"
 
-  # static LitValue evaluate_expression(LitOptimizer *optimizer, LitExpression *expression);
-  "evaluate_expression": "lit_astopt_evalexpr"
+  # uint8_t lit_read_uint8_t(FILE *file);
+  "lit_read_uint8_t": "lit_read_uint8_t"
 
-  # static void optimize_expression(LitOptimizer *optimizer, LitExpression **slot);
-  "optimize_expression": "lit_astopt_optexpression"
+  # uint16_t lit_read_uint16_t(FILE *file);
+  "lit_read_uint16_t": "lit_read_uint16_t"
 
-  # static void optimize_expressions(LitOptimizer *optimizer, LitExprList *expressions);
-  "optimize_expressions": "lit_astopt_optexprlist"
+  # uint32_t lit_read_uint32_t(FILE *file);
+  "lit_read_uint32_t": "lit_read_uint32_t"
 
-  # static void optimize_statement(LitOptimizer *optimizer, LitExpression **slot);
-  "optimize_statement": "lit_asdtopt_optstatement"
+  # double lit_read_double(FILE *file);
+  "lit_read_double": "lit_read_double"
 
-  # static void optimize_statements(LitOptimizer *optimizer, LitExprList *statements);
-  "optimize_statements": "lit_astopt_optstmtlist"
+  # LitString * lit_read_string(LitState *state, FILE *file);
+  "lit_read_string": "lit_read_string"
 
-  # void lit_optimize(LitOptimizer *optimizer, LitExprList *statements);
-  "lit_optimize": "lit_astopt_optast"
+  # void lit_init_emulated_file(LitEmulatedFile *file, const char *source, size_t len);
+  "lit_init_emulated_file": "lit_init_emulated_file"
 
-  # static void setup_optimization_states(void);
-  "setup_optimization_states": "lit_astopt_setupstates"
+  # uint8_t lit_read_euint8_t(LitEmulatedFile *file);
+  "lit_read_euint8_t": "lit_read_euint8_t"
 
-  # _Bool lit_is_optimization_enabled(LitOptimization optimization);
-  "lit_is_optimization_enabled": "lit_astopt_isoptenabled"
+  # uint16_t lit_read_euint16_t(LitEmulatedFile *file);
+  "lit_read_euint16_t": "lit_read_euint16_t"
 
-  # void lit_set_optimization_enabled(LitOptimization optimization, _Bool enabled);
-  "lit_set_optimization_enabled": "lit_astopt_setoptenabled"
+  # uint32_t lit_read_euint32_t(LitEmulatedFile *file);
+  "lit_read_euint32_t": "lit_read_euint32_t"
 
-  # void lit_set_all_optimization_enabled(_Bool enabled);
-  "lit_set_all_optimization_enabled": "lit_astopt_setalloptenabled"
+  # double lit_read_edouble(LitEmulatedFile *file);
+  "lit_read_edouble": "lit_read_edouble"
 
-  # void lit_set_optimization_level(LitOptLevel level);
-  "lit_set_optimization_level": "lit_astopt_setoptlevel"
+  # LitString * lit_read_estring(LitState *state, LitEmulatedFile *file);
+  "lit_read_estring": "lit_read_estring"
 
-  # const char * lit_get_optimization_name(LitOptimization optimization);
-  "lit_get_optimization_name": "lit_astopt_getoptname"
+  # static void save_function(FILE *file, LitFunction *function);
+  "save_function": "save_function"
 
-  # const char * lit_get_optimization_description(LitOptimization optimization);
-  "lit_get_optimization_description": "lit_astopt_getoptdescr"
+  # static LitFunction * load_function(LitState *state, LitEmulatedFile *file, LitModule *module);
+  "load_function": "load_function"
 
-  # const char * lit_get_optimization_level_description(LitOptLevel level);
-  "lit_get_optimization_level_description": "lit_astopt_getoptleveldescr"
+  # static void save_chunk(FILE *file, LitChunk *chunk);
+  "save_chunk": "save_chunk"
+
+  # static void load_chunk(LitState *state, LitEmulatedFile *file, LitModule *module, LitChunk *chunk);
+  "load_chunk": "load_chunk"
+
+  # void lit_save_module(LitModule *module, FILE *file);
+  "lit_save_module": "lit_save_module"
+
+  # LitModule * lit_load_module(LitState *state, const char *input, size_t len);
+  "lit_load_module": "lit_load_module"
+
+  # void cleanup_file(LitState *state, LitUserdata *data, _Bool mark);
+  "cleanup_file": "cleanup_file"
+
+  # static LitValue objmethod_file_constructor(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_constructor": "objmethod_file_constructor"
+
+  # static LitValue objmethod_file_close(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_close": "objmethod_file_close"
+
+  # static LitValue objmethod_file_exists(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_exists": "objmethod_file_exists"
+
+  # static LitValue objmethod_file_write(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_write": "objmethod_file_write"
+
+  # static LitValue objmethod_file_writebyte(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_writebyte": "objmethod_file_writebyte"
+
+  # static LitValue objmethod_file_writeshort(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_writeshort": "objmethod_file_writeshort"
+
+  # static LitValue objmethod_file_writenumber(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_writenumber": "objmethod_file_writenumber"
+
+  # static LitValue objmethod_file_writebool(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_writebool": "objmethod_file_writebool"
+
+  # static LitValue objmethod_file_writestring(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_writestring": "objmethod_file_writestring"
+
+  # static LitValue objmethod_file_readall(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readall": "objmethod_file_readall"
+
+  # static LitValue objmethod_file_readline(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readline": "objmethod_file_readline"
+
+  # static LitValue objmethod_file_readbyte(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readbyte": "objmethod_file_readbyte"
+
+  # static LitValue objmethod_file_readshort(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readshort": "objmethod_file_readshort"
+
+  # static LitValue objmethod_file_readnumber(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readnumber": "objmethod_file_readnumber"
+
+  # static LitValue objmethod_file_readbool(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readbool": "objmethod_file_readbool"
+
+  # static LitValue objmethod_file_readstring(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_readstring": "objmethod_file_readstring"
+
+  # static LitValue objmethod_file_getlastmodified(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objmethod_file_getlastmodified": "objmethod_file_getlastmodified"
+
+  # static LitValue objfunction_directory_exists(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objfunction_directory_exists": "objfunction_directory_exists"
+
+  # static LitValue objfunction_directory_listfiles(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objfunction_directory_listfiles": "objfunction_directory_listfiles"
+
+  # static LitValue objfunction_directory_listdirs(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
+  "objfunction_directory_listdirs": "objfunction_directory_listdirs"
+
+  # static void free_handle(LitState *state, LitUserdata *userdata, _Bool mark);
+  "free_handle": "free_handle"
+
+  # static void make_handle(LitState *state, LitValue fileval, const char *name, FILE *hnd, _Bool canread, _Bool canwrite);
+  "make_handle": "make_handle"
+
+  # static void make_stdhandles(LitState *state);
+  "make_stdhandles": "make_stdhandles"
+
+  # void lit_open_file_library(LitState *state);
+  "lit_open_file_library": "lit_open_file_library"
 

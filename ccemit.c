@@ -120,7 +120,7 @@ static void lit_emitter_emit1byte(LitEmitter* emitter, uint16_t line, uint8_t by
         line = emitter->last_line;
     }
 
-    lit_write_chunk(emitter->state, emitter->chunk, byte, line);
+    lit_chunk_push(emitter->state, emitter->chunk, byte, line);
     emitter->last_line = line;
 }
 
@@ -137,8 +137,8 @@ static void lit_emitter_emit2bytes(LitEmitter* emitter, uint16_t line, uint8_t a
         // Egor-fail proofing
         line = emitter->last_line;
     }
-    lit_write_chunk(emitter->state, emitter->chunk, a, line);
-    lit_write_chunk(emitter->state, emitter->chunk, b, line);
+    lit_chunk_push(emitter->state, emitter->chunk, a, line);
+    lit_chunk_push(emitter->state, emitter->chunk, b, line);
     emitter->last_line = line;
 }
 
@@ -332,7 +332,7 @@ static void lit_emitter_raiseerror(LitEmitter* emitter, size_t line, LitError li
 
 static uint16_t lit_emitter_addconstant(LitEmitter* emitter, size_t line, LitValue value)
 {
-    size_t constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
+    size_t constant = lit_chunk_addconst(emitter->state, emitter->chunk, value);
 
     if(constant >= UINT16_MAX)
     {
@@ -344,7 +344,7 @@ static uint16_t lit_emitter_addconstant(LitEmitter* emitter, size_t line, LitVal
 
 static size_t lit_emitter_emitconstant(LitEmitter* emitter, size_t line, LitValue value)
 {
-    size_t constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
+    size_t constant = lit_chunk_addconst(emitter->state, emitter->chunk, value);
 
     if(constant < UINT8_MAX)
     {

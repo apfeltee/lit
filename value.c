@@ -176,10 +176,10 @@ LitString* lit_value_tostring(LitState* state, LitValue object)
         chunk->count = 0;
         lit_vallist_setcount(&chunk->constants, 0);
         function->max_slots = 3;
-        lit_write_chunk(state, chunk, OP_INVOKE, 1);
-        lit_emit_byte(state, chunk, 0);
-        lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
-        lit_emit_byte(state, chunk, OP_RETURN);
+        lit_chunk_push(state, chunk, OP_INVOKE, 1);
+        lit_chunk_emitbyte(state, chunk, 0);
+        lit_chunk_emitshort(state, chunk, lit_chunk_addconst(state, chunk, OBJECT_CONST_STRING(state, "toString")));
+        lit_chunk_emitbyte(state, chunk, OP_RETURN);
     }
     lit_ensure_fiber_stack(state, fiber, function->max_slots + (int)(fiber->stack_top - fiber->stack));
     frame = &fiber->frames[fiber->frame_count++];

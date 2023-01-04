@@ -117,8 +117,8 @@ size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offs
     LitWriter* wr;
     LitFunction* function;
     wr = &state->debugwriter;
-    line = lit_chunk_get_line(chunk, offset);
-    same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
+    line = lit_chunk_getline(chunk, offset);
+    same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_getline(chunk, offset - 1));
     if(!same && source != NULL)
     {
         index = 0;

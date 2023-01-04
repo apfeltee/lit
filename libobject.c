@@ -105,7 +105,7 @@ void lit_object_destroy(LitState* state, LitObject* object)
         case LITTYPE_FUNCTION:
             {
                 function = (LitFunction*)object;
-                lit_free_chunk(state, &function->chunk);
+                lit_chunk_destroy(state, &function->chunk);
                 LIT_FREE(state, sizeof(LitFunction), object);
             }
             break;

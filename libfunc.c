@@ -5,7 +5,7 @@ LitFunction* lit_create_function(LitState* state, LitModule* module)
 {
     LitFunction* function;
     function = (LitFunction*)lit_gcmem_allocobject(state, sizeof(LitFunction), LITTYPE_FUNCTION, false);
-    lit_init_chunk(&function->chunk);
+    lit_chunk_init(&function->chunk);
     function->name = NULL;
     function->arg_count = 0;
     function->upvalue_count = 0;

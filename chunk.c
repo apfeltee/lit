@@ -1,7 +1,7 @@
 
 #include "lit.h"
 
-void lit_init_chunk(LitChunk* chunk)
+void lit_chunk_init(LitChunk* chunk)
 {
     chunk->count = 0;
     chunk->capacity = 0;
@@ -15,16 +15,16 @@ void lit_init_chunk(LitChunk* chunk)
     lit_vallist_init(&chunk->constants);
 }
 
-void lit_free_chunk(LitState* state, LitChunk* chunk)
+void lit_chunk_destroy(LitState* state, LitChunk* chunk)
 {
     LIT_FREE_ARRAY(state, sizeof(uint8_t), chunk->code, chunk->capacity);
     LIT_FREE_ARRAY(state, sizeof(uint16_t), chunk->lines, chunk->line_capacity);
 
     lit_vallist_destroy(state, &chunk->constants);
-    lit_init_chunk(chunk);
+    lit_chunk_init(chunk);
 }
 
-void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t line)
+void lit_chunk_push(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t line)
 {
     if(chunk->capacity < chunk->count + 1)
     {
@@ -71,7 +71,7 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
     chunk->lines[line_index + 1]++;
 }
 
-size_t lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant)
+size_t lit_chunk_addconst(LitState* state, LitChunk* chunk, LitValue constant)
 {
     LitState** cst;
     cst = &state;
@@ -90,7 +90,7 @@ size_t lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constan
     return lit_vallist_count(&chunk->constants) - 1;
 }
 
-size_t lit_chunk_get_line(LitChunk* chunk, size_t offset)
+size_t lit_chunk_getline(LitChunk* chunk, size_t offset)
 {
     if(!chunk->has_line_info)
     {
@@ -123,7 +123,7 @@ size_t lit_chunk_get_line(LitChunk* chunk, size_t offset)
     return line;
 }
 
-void lit_shrink_chunk(LitState* state, LitChunk* chunk)
+void lit_chunk_shrink(LitState* state, LitChunk* chunk)
 {
     if(chunk->capacity > chunk->count)
     {
@@ -142,18 +142,18 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk)
     }
 }
 
-void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte)
+void lit_chunk_emitbyte(LitState* state, LitChunk* chunk, uint8_t byte)
 {
-    lit_write_chunk(state, chunk, byte, 1);
+    lit_chunk_push(state, chunk, byte, 1);
 }
 
-void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b)
+void lit_chunk_emit2bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b)
 {
-    lit_write_chunk(state, chunk, a, 1);
-    lit_write_chunk(state, chunk, b, 1);
+    lit_chunk_push(state, chunk, a, 1);
+    lit_chunk_push(state, chunk, b, 1);
 }
 
-void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value)
+void lit_chunk_emitshort(LitState* state, LitChunk* chunk, uint16_t value)
 {
-    lit_emit_bytes(state, chunk, (uint8_t)((value >> 8) & 0xff), (uint8_t)(value & 0xff));
+    lit_chunk_emit2bytes(state, chunk, (uint8_t)((value >> 8) & 0xff), (uint8_t)(value & 0xff));
 }
