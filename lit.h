@@ -127,10 +127,10 @@
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE })
 
-#define LIT_GET_FIELD(id) lit_get_field(vm->state, &lit_value_asinstance(instance)->fields, id)
-#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &lit_value_asinstance(instance)->fields, id)
-#define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
-#define LIT_SET_MAP_FIELD(id, value) lit_set_map_field(vm->state, &lit_value_asinstance(instance)->fields, id, value)
+#define LIT_GET_FIELD(id) lit_state_getfield(vm->state, &lit_value_asinstance(instance)->fields, id)
+#define LIT_GET_MAP_FIELD(id) lit_state_getmapfield(vm->state, &lit_value_asinstance(instance)->fields, id)
+#define LIT_SET_FIELD(id, value) lit_state_setfield(vm->state, &lit_value_asinstance(instance)->fields, id, value)
+#define LIT_SET_MAP_FIELD(id, value) lit_state_setmapfield(vm->state, &lit_value_asinstance(instance)->fields, id, value)
 
 #define LIT_ENSURE_ARGS(count)                                                   \
     if(argc != count)                                                       \
@@ -745,7 +745,7 @@ struct LitFiber
     size_t arg_count;
     LitUpvalue* open_upvalues;
     LitModule* module;
-    LitValue error;
+    LitValue lit_emitter_raiseerror;
     bool abort;
     bool catcher;
 };
@@ -1355,6 +1355,7 @@ LitState* lit_make_state();
 /* frees a state, releasing associated memory. */
 int64_t lit_destroy_state(LitState* state);
 
+bool lit_state_ensurefiber(LitVM* vm, LitFiber* fiber);
 void lit_state_pushroot(LitState* state, LitObject* object);
 void lit_state_pushvalueroot(LitState* state, LitValue value);
 LitValue lit_state_peekroot(LitState* state, uint8_t distance);
@@ -1365,8 +1366,8 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value);
 
 
 /* lit_vm_callcallable a function in an instance */
-LitInterpretResult lit_instance_call_method(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
-LitValue lit_instance_get_method(LitState* state, LitValue callee, LitString* mthname);
+LitInterpretResult lit_state_callinstancemethod(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
+LitValue lit_state_getinstancemethod(LitState* state, LitValue callee, LitString* mthname);
 
 /* print a value to LitWriter */
 void lit_towriter_object(LitState* state, LitWriter* wr, LitValue value);
@@ -1531,50 +1532,50 @@ void lit_vmutil_callexitjump();
 bool lit_vmutil_setexitjump();
 
 
-LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_state_callfunction(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_state_callmethod(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_state_callvalue(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
+LitInterpretResult lit_state_findandcallmethod(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count, bool ignfiber);
 
-LitString* lit_to_string(LitState* state, LitValue object);
-LitValue lit_call_new(LitVM* vm, const char* name, LitValue* args, size_t arg_count, bool ignfiber);
-
-
-void lit_init_api(LitState* state);
-void lit_free_api(LitState* state);
-
-LitValue lit_get_global(LitState* state, LitString* name);
-LitFunction* lit_get_global_function(LitState* state, LitString* name);
-
-void lit_set_global(LitState* state, LitString* name, LitValue value);
-bool lit_global_exists(LitState* state, LitString* name);
-void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native);
-void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native);
-
-double lit_check_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-double lit_get_number(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
-
-bool lit_check_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-bool lit_get_bool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def);
-
-const char* lit_check_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-const char* lit_get_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
-
-LitString* lit_check_object_string(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitInstance* lit_check_instance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitValue* lit_check_reference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-
-void lit_ensure_bool(LitVM* vm, LitValue value, const char* error);
-void lit_ensure_string(LitVM* vm, LitValue value, const char* error);
-void lit_ensure_number(LitVM* vm, LitValue value, const char* error);
-void lit_ensure_object_type(LitVM* vm, LitValue value, LitObjType type, const char* error);
+LitString* lit_value_tostring(LitState* state, LitValue object);
+LitValue lit_value_callnew(LitVM* vm, const char* name, LitValue* args, size_t arg_count, bool ignfiber);
 
 
-LitValue lit_get_field(LitState* state, LitTable* table, const char* name);
-LitValue lit_get_map_field(LitState* state, LitMap* map, const char* name);
+void lit_api_init(LitState* state);
+void lit_api_destroy(LitState* state);
 
-void lit_set_field(LitState* state, LitTable* table, const char* name, LitValue value);
-void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue value);
+LitValue lit_state_getglobalvalue(LitState* state, LitString* name);
+LitFunction* lit_state_getglobalfunction(LitState* state, LitString* name);
+
+void lit_state_setglobal(LitState* state, LitString* name, LitValue value);
+bool lit_state_hasglobal(LitState* state, LitString* name);
+void lit_state_defnativefunc(LitState* state, const char* name, LitNativeFunctionFn native);
+void lit_state_defnativeprimitive(LitState* state, const char* name, LitNativePrimitiveFn native);
+
+double lit_value_checknumber(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+double lit_value_getnumber(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
+
+bool lit_value_checkbool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+bool lit_value_getbool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def);
+
+const char* lit_value_checkstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+const char* lit_value_getstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
+
+LitString* lit_value_checkobjstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitInstance* lit_value_checkinstance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitValue* lit_value_checkreference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+
+void lit_value_ensurebool(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
+void lit_value_ensurestring(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
+void lit_value_ensurenumber(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
+void lit_value_ensureobjtype(LitVM* vm, LitValue value, LitObjType type, const char* lit_emitter_raiseerror);
+
+
+LitValue lit_state_getfield(LitState* state, LitTable* table, const char* name);
+LitValue lit_state_getmapfield(LitState* state, LitMap* map, const char* name);
+
+void lit_state_setfield(LitState* state, LitTable* table, const char* name, LitValue value);
+void lit_state_setmapfield(LitState* state, LitMap* map, const char* name, LitValue value);
 void lit_disassemble_module(LitState* state, LitModule* module, const char* source);
 void lit_disassemble_chunk(LitState* state, LitChunk* chunk, const char* name, const char* source);
 size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offset, const char* source);
@@ -1645,8 +1646,8 @@ static inline bool lit_is_alpha(char c)
 }
 
 
-LitString* lit_vformat_error(LitState* state, size_t line, LitError error, va_list args);
-LitString* lit_format_error(LitState* state, size_t line, LitError error, ...);
+LitString* lit_vformat_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, va_list args);
+LitString* lit_format_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, ...);
 
 void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source);
 LitToken lit_scan_token(LitScanner* scanner);

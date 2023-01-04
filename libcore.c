@@ -28,7 +28,7 @@ void lit_open_libraries(LitState* state)
         LitValue argv[2]; \
         argv[0] = a; \
         argv[1] = b; \
-        LitInterpretResult r = lit_call(state, callee, argv, 2, false); \
+        LitInterpretResult r = lit_state_callvalue(state, callee, argv, 2, false); \
         if(r.type != LITRESULT_OK) \
         { \
             return; \
@@ -41,7 +41,7 @@ static LitInterpretResult COMPARE_inl(LitState* state, LitValue callee, LitValue
     LitValue argv[2];
     argv[0] = a;
     argv[1] = b;
-    return lit_call(state, callee, argv, 2, false);
+    return lit_state_callvalue(state, callee, argv, 2, false);
 }
 
 #define COMPARE(state, callee, a, b) \
@@ -164,7 +164,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b)
         return lit_value_asnumber(a) < lit_value_asnumber(b);
     }
     argv[0] = b;
-    return !lit_value_isfalsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
+    return !lit_value_isfalsey(lit_state_findandcallmethod(state, a, CONST_STRING(state, "<"), argv, 1, false).result);
 }
 
 void util_basic_quick_sort(LitState* state, LitValue* clist, int length)
@@ -490,7 +490,7 @@ static LitValue cfn_print(LitVM* vm, size_t argc, LitValue* argv)
     }
     for(i = 0; i < argc; i++)
     {
-        sv = lit_to_string(vm->state, argv[i]);
+        sv = lit_value_tostring(vm->state, argv[i]);
         written += fwrite(sv->chars, sizeof(char), lit_string_getlength(sv), stdout);
     }
     return lit_value_numbertovalue(vm->state, written);
@@ -509,7 +509,7 @@ static bool cfn_eval(LitVM* vm, size_t argc, LitValue* argv)
     LitString* sc;
     (void)argc;
     (void)argv;
-    sc = lit_check_object_string(vm, argv, argc, 0);
+    sc = lit_value_checkobjstring(vm, argv, argc, 0);
     return compile_and_interpret(vm, vm->fiber->module->name, sc->chars, lit_string_getlength(sc));
 }
 
@@ -524,7 +524,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
     char* index;
     LitString* name;
     LitString* modname;
-    name = lit_check_object_string(vm, argv, argc, 0);
+    name = lit_value_checkobjstring(vm, argv, argc, 0);
     ignore_previous = argc > 1 && lit_value_isbool(argv[1]) && lit_value_asbool(argv[1]);
     // First check, if a file with this name exists in the local path
     if(util_attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))
@@ -596,7 +596,7 @@ void lit_open_core_library(LitState* state)
             lit_class_bindgetset(state, klass, "chr", objfn_number_tochar, NULL, false);
             state->numbervalue_class = klass;
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);
@@ -611,19 +611,19 @@ void lit_open_core_library(LitState* state)
             lit_class_bindmethod(state, klass, "toString", objfn_bool_tostring);
             state->boolvalue_class = klass;
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);
         };
     }
     {
-        lit_define_native(state, "time", cfn_time);
-        lit_define_native(state, "systemTime", cfn_systemTime);
-        lit_define_native(state, "print", cfn_print);
-        lit_define_native(state, "println", cfn_println);
-        //lit_define_native_primitive(state, "require", cfn_require);
-        lit_define_native_primitive(state, "eval", cfn_eval);
-        lit_set_global(state, CONST_STRING(state, "globals"), lit_value_objectvalue(state->vm->globals));
+        lit_state_defnativefunc(state, "time", cfn_time);
+        lit_state_defnativefunc(state, "systemTime", cfn_systemTime);
+        lit_state_defnativefunc(state, "print", cfn_print);
+        lit_state_defnativefunc(state, "println", cfn_println);
+        //lit_state_defnativeprimitive(state, "require", cfn_require);
+        lit_state_defnativeprimitive(state, "eval", cfn_eval);
+        lit_state_setglobal(state, CONST_STRING(state, "globals"), lit_value_objectvalue(state->vm->globals));
     }
 }

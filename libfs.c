@@ -546,12 +546,12 @@ static LitValue objmethod_file_constructor(LitVM* vm, LitValue instance, size_t 
         }
         else
         {
-            path = lit_check_string(vm, argv, argc, 0);
-            mode = lit_get_string(vm, argv, argc, 1, "r");
+            path = lit_value_checkstring(vm, argv, argc, 0);
+            mode = lit_value_getstring(vm, argv, argc, 1, "r");
             hnd = fopen(path, mode);
             if(hnd == NULL)
             {
-                lit_vm_raiseexitingerror(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
+                lit_vm_raiseexitingerror(vm, "Failed to open file %s with mode %s (C lit_emitter_raiseerror: %s)", path, mode, strerror(errno));
             }
             data = (LitFileData*)LIT_INSERT_DATA(vm, instance, sizeof(LitFileData), cleanup_file);
             data->path = (char*)path;
@@ -591,7 +591,7 @@ static LitValue objmethod_file_exists(LitVM* vm, LitValue instance, size_t argc,
     }
     else
     {
-        file_name = (char*)lit_check_string(vm, argv, argc, 0);
+        file_name = (char*)lit_value_checkstring(vm, argv, argc, 0);
     }
     return lit_bool_to_value(vm->state, lit_file_exists(file_name));
 }
@@ -606,7 +606,7 @@ static LitValue objmethod_file_write(LitVM* vm, LitValue instance, size_t argc, 
     LIT_ENSURE_ARGS(1)
     size_t rt;
     LitString* value;
-    value = lit_to_string(vm->state, argv[0]);
+    value = lit_value_tostring(vm->state, argv[0]);
     rt = fwrite(value->chars, lit_string_getlength(value), 1, ((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle);
     return lit_value_numbertovalue(vm->state, rt);
 }
@@ -615,7 +615,7 @@ static LitValue objmethod_file_writebyte(LitVM* vm, LitValue instance, size_t ar
 {
     uint8_t rt;
     uint8_t byte;
-    byte = (uint8_t)lit_check_number(vm, argv, argc, 0);
+    byte = (uint8_t)lit_value_checknumber(vm, argv, argc, 0);
     rt = lit_write_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, byte);
     return lit_value_numbertovalue(vm->state, rt);
 }
@@ -624,7 +624,7 @@ static LitValue objmethod_file_writeshort(LitVM* vm, LitValue instance, size_t a
 {
     uint16_t rt;
     uint16_t shrt;
-    shrt = (uint16_t)lit_check_number(vm, argv, argc, 0);
+    shrt = (uint16_t)lit_value_checknumber(vm, argv, argc, 0);
     rt = lit_write_uint16_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, shrt);
     return lit_value_numbertovalue(vm->state, rt);
 }
@@ -633,7 +633,7 @@ static LitValue objmethod_file_writenumber(LitVM* vm, LitValue instance, size_t 
 {
     uint32_t rt;
     float num;
-    num = (float)lit_check_number(vm, argv, argc, 0);
+    num = (float)lit_value_checknumber(vm, argv, argc, 0);
     rt = lit_write_uint32_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, num);
     return lit_value_numbertovalue(vm->state, rt);
 }
@@ -642,7 +642,7 @@ static LitValue objmethod_file_writebool(LitVM* vm, LitValue instance, size_t ar
 {
     bool value;
     uint8_t rt;
-    value = lit_check_bool(vm, argv, argc, 0);
+    value = lit_value_checkbool(vm, argv, argc, 0);
     rt = lit_write_uint8_t(((LitFileData*)LIT_EXTRACT_DATA(vm, instance))->handle, (uint8_t)value ? '1' : '0');
     return lit_value_numbertovalue(vm->state, rt);
 }
@@ -651,7 +651,7 @@ static LitValue objmethod_file_writestring(LitVM* vm, LitValue instance, size_t 
 {
     LitString* string;
     LitFileData* data;
-    if(lit_check_string(vm, argv, argc, 0) == NULL)
+    if(lit_value_checkstring(vm, argv, argc, 0) == NULL)
     {
         return NULL_VALUE;
     }
@@ -716,7 +716,7 @@ static LitValue objmethod_file_readline(LitVM* vm, LitValue instance, size_t arg
     size_t max_length;
     char* line;
     LitFileData* data;
-    max_length = (size_t)lit_get_number(vm, argv, argc, 0, 128);
+    max_length = (size_t)lit_value_getnumber(vm, argv, argc, 0, 128);
     data = (LitFileData*)LIT_EXTRACT_DATA(vm, instance);
     line = LIT_ALLOCATE(vm->state, sizeof(char), max_length + 1);
     if(!fgets(line, max_length, data->handle))
@@ -788,7 +788,7 @@ static LitValue objmethod_file_getlastmodified(LitVM* vm, LitValue instance, siz
     }
     else
     {
-        file_name = (char*)lit_check_string(vm, argv, argc, 0);
+        file_name = (char*)lit_value_checkstring(vm, argv, argc, 0);
     }
 
     if(stat(file_name, &buffer) != 0)
@@ -809,7 +809,7 @@ static LitValue objmethod_file_getlastmodified(LitVM* vm, LitValue instance, siz
 
 static LitValue objfunction_directory_exists(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    const char* directory_name = lit_check_string(vm, argv, argc, 0);
+    const char* directory_name = lit_value_checkstring(vm, argv, argc, 0);
     struct stat buffer;
     (void)vm;
     (void)instance;
@@ -828,7 +828,7 @@ static LitValue objfunction_directory_listfiles(LitVM* vm, LitValue instance, si
     #if defined(__unix__) || defined(__linux__)
     {
         struct dirent* ep;
-        DIR* dir = opendir(lit_check_string(vm, argv, argc, 0));
+        DIR* dir = opendir(lit_value_checkstring(vm, argv, argc, 0));
         if(dir == NULL)
         {
             return lit_value_objectvalue(array);
@@ -856,7 +856,7 @@ static LitValue objfunction_directory_listdirs(LitVM* vm, LitValue instance, siz
     state = vm->state;
     array = lit_create_array(state);
 
-    if(lit_dir_open(&rd, lit_check_string(vm, argv, argc, 0)))
+    if(lit_dir_open(&rd, lit_value_checkstring(vm, argv, argc, 0)))
     {
         while(true)
         {
@@ -910,9 +910,9 @@ static void make_handle(LitState* state, LitValue fileval, const char* name, FIL
         descname = CONST_STRING(state, name);
         args[0] = lit_value_objectvalue(userhnd);
         args[1] = lit_value_objectvalue(descname);
-        res = lit_call(state, fileval, args, 2, false);
+        res = lit_state_callvalue(state, fileval, args, 2, false);
         //fprintf(stderr, "make_handle(%s, hnd=%p): res.type=%d, res.result=%s\n", name, hnd, res.type, lit_tostring_typename(res.result));
-        lit_set_global(state, varname, res.result);
+        lit_state_setglobal(state, varname, res.result);
     }
     state->vm->fiber = oldfiber;
 }
@@ -920,7 +920,7 @@ static void make_handle(LitState* state, LitValue fileval, const char* name, FIL
 static void make_stdhandles(LitState* state)
 {
     LitValue fileval;
-    fileval = lit_get_global(state, CONST_STRING(state, "File"));
+    fileval = lit_state_getglobalvalue(state, CONST_STRING(state, "File"));
     fprintf(stderr, "fileval=%s\n", lit_tostring_typename(fileval));
     {
         make_handle(state, fileval, "STDIN", stdin, true, false);
@@ -955,7 +955,7 @@ void lit_open_file_library(LitState* state)
             lit_class_bindmethod(state, klass, "getLastModified", objmethod_file_getlastmodified);
             lit_class_bindgetset(state, klass, "exists", objmethod_file_exists, NULL, false);
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);
@@ -968,7 +968,7 @@ void lit_open_file_library(LitState* state)
             lit_class_bindstaticmethod(state, klass, "listFiles", objfunction_directory_listfiles);
             lit_class_bindstaticmethod(state, klass, "listDirectories", objfunction_directory_listdirs);
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);

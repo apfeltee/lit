@@ -223,7 +223,7 @@ void lit_object_destroy(LitState* state, LitObject* object)
             break;
         default:
             {
-                fprintf(stderr, "internal error: trying to free something else!\n");
+                fprintf(stderr, "internal lit_emitter_raiseerror: trying to free something else!\n");
                 UNREACHABLE
             }
             break;
@@ -456,7 +456,7 @@ static LitValue objfn_object_iteratorvalue(LitVM* vm, LitValue instance, size_t 
 {
     size_t index;
     LitInstance* self;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     self = lit_value_asinstance(instance);
     return util_table_iterator_key(&self->fields, index);
 }
@@ -480,7 +480,7 @@ void lit_open_object_library(LitState* state)
         state->objectvalue_class = klass;
         state->objectvalue_class->super = state->classvalue_class;
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
     if(klass->super == NULL)
     {
         lit_class_inheritfrom(state, klass, state->objectvalue_class);

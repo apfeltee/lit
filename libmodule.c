@@ -90,7 +90,7 @@ void lit_open_module_library(LitState* state)
         lit_class_bindgetset(state, klass, "privates", objfn_module_privates, NULL, false);
         state->modulevalue_class = klass;
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
     if(klass->super == NULL)
     {
         lit_class_inheritfrom(state, klass, state->objectvalue_class);

@@ -353,7 +353,7 @@ static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, Li
 static LitValue objfn_map_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     size_t index;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     return util_table_iterator_key(&lit_value_asmap(instance)->values, index);
 }
 
@@ -418,7 +418,7 @@ static LitValue objfn_map_tostring(LitVM* vm, LitValue instance, size_t argc, Li
             // Special hidden key
             field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
             // This check is required to prevent infinite loops when playing with Module.privates and such
-            strobval = (lit_value_ismap(field) && lit_value_asmap(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+            strobval = (lit_value_ismap(field) && lit_value_asmap(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_value_tostring(state, field);
             lit_state_pushroot(state, (LitObject*)strobval);
             values_converted[i] = strobval;
             keys[i] = entry->key;
@@ -504,7 +504,7 @@ void lit_open_map_library(LitState* state)
         lit_class_bindgetset(state, klass, "length", objfn_map_length, NULL, false);
         state->mapvalue_class = klass;
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
     if(klass->super == NULL)
     {
         lit_class_inheritfrom(state, klass, state->objectvalue_class);

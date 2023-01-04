@@ -196,7 +196,7 @@ static LitValue objfn_class_iteratorvalue(LitVM* vm, LitValue instance, size_t a
     size_t index;
     size_t mthcap;
     LitClass* klass;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     klass = lit_value_asclass(instance);
     mthcap = klass->methods.capacity;
     fields = index >= mthcap;
@@ -302,7 +302,7 @@ void lit_open_class_library(LitState* state)
         lit_class_bindgetset(state, klass, "name", objfn_class_name, NULL, true);
         state->classvalue_class = klass;
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
 }
 
 

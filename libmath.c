@@ -16,61 +16,61 @@
 static LitValue math_abs(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, fabs(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, fabs(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_cos(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, cos(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, cos(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_sin(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, sin(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, sin(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_tan(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, tan(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, tan(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_acos(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, acos(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, acos(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_asin(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, asin(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, asin(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_atan(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, atan(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, atan(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_atan2(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, atan2(lit_check_number(vm, argv, argc, 0), lit_check_number(vm, argv, argc, 1)));
+    return lit_value_numbertovalue(vm->state, atan2(lit_value_checknumber(vm, argv, argc, 0), lit_value_checknumber(vm, argv, argc, 1)));
 }
 
 static LitValue math_floor(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, floor(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, floor(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_ceil(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, ceil(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, ceil(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_round(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -78,10 +78,10 @@ static LitValue math_round(LitVM* vm, LitValue instance, size_t argc, LitValue* 
     int places;
     double value;
     (void)instance;
-    value = lit_check_number(vm, argv, argc, 0);
+    value = lit_value_checknumber(vm, argv, argc, 0);
     if(argc > 1)
     {
-        places = (int)pow(10, lit_check_number(vm, argv, argc, 1));
+        places = (int)pow(10, lit_value_checknumber(vm, argv, argc, 1));
         return lit_value_numbertovalue(vm->state, round(value * places) / places);
     }
     return lit_value_numbertovalue(vm->state, round(value));
@@ -90,13 +90,13 @@ static LitValue math_round(LitVM* vm, LitValue instance, size_t argc, LitValue* 
 static LitValue math_min(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, fmin(lit_check_number(vm, argv, argc, 0), lit_check_number(vm, argv, argc, 1)));
+    return lit_value_numbertovalue(vm->state, fmin(lit_value_checknumber(vm, argv, argc, 0), lit_value_checknumber(vm, argv, argc, 1)));
 }
 
 static LitValue math_max(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, fmax(lit_check_number(vm, argv, argc, 0), lit_check_number(vm, argv, argc, 1)));
+    return lit_value_numbertovalue(vm->state, fmax(lit_value_checknumber(vm, argv, argc, 0), lit_value_checknumber(vm, argv, argc, 1)));
 }
 
 static LitValue math_mid(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -105,9 +105,9 @@ static LitValue math_mid(LitVM* vm, LitValue instance, size_t argc, LitValue* ar
     double y;
     double z;
     (void)instance;
-    x = lit_check_number(vm, argv, argc, 0);
-    y = lit_check_number(vm, argv, argc, 1);
-    z = lit_check_number(vm, argv, argc, 2);
+    x = lit_value_checknumber(vm, argv, argc, 0);
+    y = lit_value_checknumber(vm, argv, argc, 1);
+    z = lit_value_checknumber(vm, argv, argc, 2);
     if(x > y)
     {
         return lit_value_numbertovalue(vm->state, fmax(x, fmin(y, z)));
@@ -118,31 +118,31 @@ static LitValue math_mid(LitVM* vm, LitValue instance, size_t argc, LitValue* ar
 static LitValue math_toRadians(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, lit_check_number(vm, argv, argc, 0) * M_PI / 180.0);
+    return lit_value_numbertovalue(vm->state, lit_value_checknumber(vm, argv, argc, 0) * M_PI / 180.0);
 }
 
 static LitValue math_toDegrees(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, lit_check_number(vm, argv, argc, 0) * 180.0 / M_PI);
+    return lit_value_numbertovalue(vm->state, lit_value_checknumber(vm, argv, argc, 0) * 180.0 / M_PI);
 }
 
 static LitValue math_sqrt(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, sqrt(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, sqrt(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_log(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, exp(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, exp(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 static LitValue math_exp(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     (void)instance;
-    return lit_value_numbertovalue(vm->state, exp(lit_check_number(vm, argv, argc, 0)));
+    return lit_value_numbertovalue(vm->state, exp(lit_value_checknumber(vm, argv, argc, 0)));
 }
 
 /*
@@ -177,7 +177,7 @@ static LitValue random_constructor(LitVM* vm, LitValue instance, size_t argc, Li
 
     if(argc == 1)
     {
-        size_t number = (size_t)lit_check_number(vm, argv, argc, 0);
+        size_t number = (size_t)lit_value_checknumber(vm, argv, argc, 0);
         *data = number;
     }
     else
@@ -194,7 +194,7 @@ static LitValue random_setSeed(LitVM* vm, LitValue instance, size_t argc, LitVal
 
     if(argc == 1)
     {
-        size_t number = (size_t)lit_check_number(vm, argv, argc, 0);
+        size_t number = (size_t)lit_value_checknumber(vm, argv, argc, 0);
         *data = number;
     }
     else
@@ -211,13 +211,13 @@ static LitValue random_int(LitVM* vm, LitValue instance, size_t argc, LitValue* 
 
     if(argc == 1)
     {
-        int bound = (int)lit_get_number(vm, argv, argc, 0, 0);
+        int bound = (int)lit_value_getnumber(vm, argv, argc, 0, 0);
         return lit_value_numbertovalue(vm->state, rand_r((unsigned int*)data) % bound);
     }
     else if(argc == 2)
     {
-        int min = (int)lit_get_number(vm, argv, argc, 0, 0);
-        int max = (int)lit_get_number(vm, argv, argc, 1, 1);
+        int min = (int)lit_value_getnumber(vm, argv, argc, 0, 0);
+        int max = (int)lit_value_getnumber(vm, argv, argc, 1, 1);
 
         if(max - min == 0)
         {
@@ -237,13 +237,13 @@ static LitValue random_float(LitVM* vm, LitValue instance, size_t argc, LitValue
 
     if(argc == 1)
     {
-        int bound = (int)lit_get_number(vm, argv, argc, 0, 0);
+        int bound = (int)lit_value_getnumber(vm, argv, argc, 0, 0);
         return lit_value_numbertovalue(vm->state, value * bound);
     }
     else if(argc == 2)
     {
-        int min = (int)lit_get_number(vm, argv, argc, 0, 0);
-        int max = (int)lit_get_number(vm, argv, argc, 1, 1);
+        int min = (int)lit_value_getnumber(vm, argv, argc, 0, 0);
+        int max = (int)lit_value_getnumber(vm, argv, argc, 1, 1);
 
         if(max - min == 0)
         {
@@ -267,7 +267,7 @@ static LitValue random_bool(LitVM* vm, LitValue instance, size_t argc, LitValue*
 static LitValue random_chance(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     float c;
-    c = lit_get_number(vm, argv, argc, 0, 50);
+    c = lit_value_getnumber(vm, argv, argc, 0, 50);
     if((((float)rand_r((unsigned int*)extract_random_data(vm->state, instance))) / ((float)(RAND_MAX-1)) * 100) <= c)
     {
         return TRUE_VALUE;
@@ -360,7 +360,7 @@ void lit_open_math_library(LitState* state)
             lit_class_bindstaticmethod(state, klass, "log", math_log);
             lit_class_bindstaticmethod(state, klass, "exp", math_exp);
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);
@@ -384,7 +384,7 @@ void lit_open_math_library(LitState* state)
             lit_class_bindstaticmethod(state, klass, "chance", random_chance);
             lit_class_bindstaticmethod(state, klass, "pick", random_pick);
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);

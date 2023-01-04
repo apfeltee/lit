@@ -178,7 +178,7 @@ bool lit_vmutil_setexitjump(void);
         vm_returnerror(); \
     }
 
-#define vmexec_advinvokefromclass(zklass, mthname, argc, error, stat, ignoring, callee) \
+#define vmexec_advinvokefromclass(zklass, mthname, argc, lit_emitter_raiseerror, stat, ignoring, callee) \
     LitValue mthval; \
     if((lit_value_isinstance(callee) && (lit_table_get(&lit_value_asinstance(callee)->fields, mthname, &mthval))) \
        || lit_table_get(&zklass->stat, mthname, &mthval)) \
@@ -202,20 +202,20 @@ bool lit_vmutil_setexitjump(void);
     } \
     else \
     { \
-        if(error) \
+        if(lit_emitter_raiseerror) \
         { \
             vmexec_raiseerrorfmt("cannot lit_vm_callcallable undefined method '%s' of class '%s'", mthname->chars, \
                                zklass->name->chars) \
         } \
     } \
-    if(error) \
+    if(lit_emitter_raiseerror) \
     { \
         continue; \
     }
 
 // calls vm_recoverstate
-#define vmexec_invokefromclass(klass, mthname, argc, error, stat, ignoring) \
-    vmexec_advinvokefromclass(klass, mthname, argc, error, stat, ignoring, lit_vmexec_peek(fiber, argc))
+#define vmexec_invokefromclass(klass, mthname, argc, lit_emitter_raiseerror, stat, ignoring) \
+    vmexec_advinvokefromclass(klass, mthname, argc, lit_emitter_raiseerror, stat, ignoring, lit_vmexec_peek(fiber, argc))
 
 // calls vm_recoverstate
 #define vm_invokemethod(instance, mthname, argc) \
@@ -463,19 +463,19 @@ bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string)
     LitCallFrame* frame;
     LitFunction* function;
     LitChunk* chunk;
-    LitValue error;
+    LitValue lit_emitter_raiseerror;
     LitFiber* fiber;
     LitFiber* caller;
-    error = lit_value_objectvalue(error_string);
+    lit_emitter_raiseerror = lit_value_objectvalue(error_string);
     fiber = vm->fiber;
     while(fiber != NULL)
     {
-        fiber->error = error;
+        fiber->lit_emitter_raiseerror = lit_emitter_raiseerror;
         if(fiber->catcher)
         {
             vm->fiber = fiber->parent;
             vm->fiber->stack_top -= fiber->arg_count;
-            vm->fiber->stack_top[-1] = error;
+            vm->fiber->stack_top[-1] = lit_emitter_raiseerror;
             return true;
         }
         caller = fiber->parent;
@@ -484,7 +484,7 @@ bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string)
     }
     fiber = vm->fiber;
     fiber->abort = true;
-    fiber->error = error;
+    fiber->lit_emitter_raiseerror = lit_emitter_raiseerror;
     if(fiber->parent != NULL)
     {
         fiber->parent->abort = true;

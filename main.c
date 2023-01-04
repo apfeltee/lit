@@ -264,7 +264,7 @@ static int run_repl(LitState* state)
         LitInterpretResult result = lit_state_execsource(state, "repl", line, strlen(line));
         if(result.type == LITRESULT_OK && result.result != NULL_VALUE)
         {
-            printf("%s%s%s\n", COLOR_GREEN, lit_string_getdata(lit_to_string(state, result.result)), COLOR_RESET);
+            printf("%s%s%s\n", COLOR_GREEN, lit_string_getdata(lit_value_tostring(state, result.result)), COLOR_RESET);
         }
     }
     return 0;
@@ -323,7 +323,7 @@ int main(int argc, char* argv[])
             {
                 lit_vallist_push(state, &arg_array->list, OBJECT_CONST_STRING(state, fx.positional[i]));
             }
-            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
+            lit_state_setglobal(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             if(opts.codeline)
             {
                 result = lit_state_execsource(state, "<-e>", opts.codeline, strlen(opts.codeline)).type;
@@ -546,7 +546,7 @@ int oldmain(int argc, const char* argv[])
                 lit_vallist_push(state, &arg_array->list, OBJECT_CONST_STRING(state, arg_string));
             }
 
-            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
+            lit_state_setglobal(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             break;
         }
         else if(arg[0] == '-')
@@ -572,7 +572,7 @@ int oldmain(int argc, const char* argv[])
             {
                 arg_array = lit_create_array(state);
             }
-            lit_set_global(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
+            lit_state_setglobal(state, CONST_STRING(state, "args"), lit_value_objectvalue(arg_array));
             for(i = 0; i < num_files_to_run; i++)
             {
                 file = files_to_run[i];

@@ -5,6 +5,7 @@
 #include "lit.h"
 #include "priv.h"
 
+
 static bool measure_compilation_time;
 static double last_source_time = 0;
 
@@ -72,12 +73,12 @@ LitState* lit_make_state()
     state->parser = (LitParser*)malloc(sizeof(LitParser));
     lit_init_parser(state, (LitParser*)state->parser);
     state->emitter = (LitEmitter*)malloc(sizeof(LitEmitter));
-    lit_init_emitter(state, state->emitter);
+    lit_emitter_init(state, state->emitter);
     state->optimizer = (LitOptimizer*)malloc(sizeof(LitOptimizer));
     lit_init_optimizer(state, state->optimizer);
     state->vm = (LitVM*)malloc(sizeof(LitVM));
     lit_vm_init(state, state->vm);
-    lit_init_api(state);
+    lit_api_init(state);
     lit_open_core_library(state);
     return state;
 }
@@ -90,13 +91,13 @@ int64_t lit_destroy_state(LitState* state)
         free(state->roots);
         state->roots = NULL;
     }
-    lit_free_api(state);
+    lit_api_destroy(state);
     lit_preproc_destroy(state->preprocessor);
     free(state->preprocessor);
     free(state->scanner);
     lit_free_parser(state->parser);
     free(state->parser);
-    lit_free_emitter(state->emitter);
+    lit_emitter_destroy(state->emitter);
     free(state->emitter);
     free(state->optimizer);
     lit_vm_destroy(state->vm);
@@ -104,6 +105,455 @@ int64_t lit_destroy_state(LitState* state)
     amount = state->bytes_allocated;
     free(state);
     return amount;
+}
+
+void lit_api_init(LitState* state)
+{
+    state->api_name = lit_string_copy(state, "c", 1);
+    state->api_function = NULL;
+    state->api_fiber = NULL;
+}
+
+void lit_api_destroy(LitState* state)
+{
+    state->api_name = NULL;
+    state->api_function = NULL;
+    state->api_fiber = NULL;
+}
+
+LitValue lit_state_getglobalvalue(LitState* state, LitString* name)
+{
+    LitValue global;
+    if(!lit_table_get(&state->vm->globals->values, name, &global))
+    {
+        return NULL_VALUE;
+    }
+    return global;
+}
+
+LitFunction* lit_state_getglobalfunction(LitState* state, LitString* name)
+{
+    LitValue function = lit_state_getglobalvalue(state, name);
+    if(lit_value_isfunction(function))
+    {
+        return lit_value_asfunction(function);
+    }
+    return NULL;
+}
+
+void lit_state_setglobal(LitState* state, LitString* name, LitValue value)
+{
+    lit_state_pushroot(state, (LitObject*)name);
+    lit_state_pushvalueroot(state, value);
+    lit_table_set(state, &state->vm->globals->values, name, value);
+    lit_state_poproots(state, 2);
+}
+
+bool lit_state_hasglobal(LitState* state, LitString* name)
+{
+    LitValue global;
+    return lit_table_get(&state->vm->globals->values, name, &global);
+}
+
+void lit_state_defnativefunc(LitState* state, const char* name, LitNativeFunctionFn native)
+{
+    lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_function(state, native, lit_value_asstring(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_value_asstring(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_poproots(state, 2);
+}
+
+void lit_state_defnativeprimitive(LitState* state, const char* name, LitNativePrimitiveFn native)
+{
+    lit_state_pushroot(state, (LitObject*)CONST_STRING(state, name));
+    lit_state_pushroot(state, (LitObject*)lit_create_native_primitive(state, native, lit_value_asstring(lit_state_peekroot(state, 0))));
+    lit_table_set(state, &state->vm->globals->values, lit_value_asstring(lit_state_peekroot(state, 1)), lit_state_peekroot(state, 0));
+    lit_state_poproots(state, 2);
+}
+
+LitValue lit_state_getinstancemethod(LitState* state, LitValue callee, LitString* mthname)
+{
+    LitValue mthval;
+    LitClass* klass;
+    klass = lit_state_getclassfor(state, callee);
+    if((lit_value_isinstance(callee) && lit_table_get(&lit_value_asinstance(callee)->fields, mthname, &mthval)) || lit_table_get(&klass->methods, mthname, &mthval))
+    {
+        return mthval;
+    }
+    return NULL_VALUE;
+}
+
+LitInterpretResult lit_state_callinstancemethod(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc)
+{
+    LitValue mthval;
+    mthval = lit_state_getinstancemethod(state, callee, mthname);
+    if(!lit_value_isnull(mthval))
+    {
+        return lit_state_callvalue(state, mthval, argv, argc, false);
+    }
+    return INTERPRET_RUNTIME_FAIL;    
+}
+
+
+LitValue lit_state_getfield(LitState* state, LitTable* table, const char* name)
+{
+    LitValue value;
+
+    if(!lit_table_get(table, CONST_STRING(state, name), &value))
+    {
+        value = NULL_VALUE;
+    }
+
+    return value;
+}
+
+LitValue lit_state_getmapfield(LitState* state, LitMap* map, const char* name)
+{
+    LitValue value;
+
+    if(!lit_table_get(&map->values, CONST_STRING(state, name), &value))
+    {
+        value = NULL_VALUE;
+    }
+
+    return value;
+}
+
+void lit_state_setfield(LitState* state, LitTable* table, const char* name, LitValue value)
+{
+    lit_table_set(state, table, CONST_STRING(state, name), value);
+}
+
+void lit_state_setmapfield(LitState* state, LitMap* map, const char* name, LitValue value)
+{
+    lit_table_set(state, &map->values, CONST_STRING(state, name), value);
+}
+
+bool lit_state_ensurefiber(LitVM* vm, LitFiber* fiber)
+{
+    size_t newcapacity;
+    size_t osize;
+    size_t newsize;
+    if(fiber == NULL)
+    {
+        lit_vm_raiseerror(vm, "no fiber to run on");
+        return true;
+    }
+    if(fiber->frame_count == LIT_CALL_FRAMES_MAX)
+    {
+        lit_vm_raiseerror(vm, "fiber frame overflow");
+        return true;
+    }
+    if(fiber->frame_count + 1 > fiber->frame_capacity)
+    {
+        //newcapacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
+        newcapacity = (fiber->frame_capacity * 2) + 1;
+        osize = (sizeof(LitCallFrame) * fiber->frame_capacity);
+        newsize = (sizeof(LitCallFrame) * newcapacity);
+        fiber->frames = (LitCallFrame*)lit_gcmem_memrealloc(vm->state, fiber->frames, osize, newsize);
+        fiber->frame_capacity = newcapacity;
+    }
+
+    return false;
+}
+
+static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    bool vararg;
+    int amount;
+    size_t i;
+    size_t varargc;
+    size_t function_arg_count;
+    LitVM* vm;
+    LitFiber* fiber;
+    LitCallFrame* frame;
+    LitArray* array;
+    (void)argc;
+    (void)varargc;
+    vm = state->vm;
+    fiber = vm->fiber;
+    if(callee == NULL)
+    {
+        lit_vm_raiseerror(vm, "attempt to lit_vm_callcallable a null value");
+        return NULL;
+    }
+    if(ignfiber)
+    {
+        if(fiber == NULL)
+        {
+            fiber = state->api_fiber;
+        }
+    }
+    if(!ignfiber)
+    {
+        if(lit_state_ensurefiber(vm, fiber))
+        {
+            return NULL;
+        }        
+    }
+    lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int)(fiber->stack_top - fiber->stack));
+    frame = &fiber->frames[fiber->frame_count++];
+    frame->slots = fiber->stack_top;
+    PUSH(lit_value_objectvalue(callee));
+    for(i = 0; i < argc; i++)
+    {
+        PUSH(argv[i]);
+    }
+    function_arg_count = callee->arg_count;
+    if(argc != function_arg_count)
+    {
+        vararg = callee->vararg;
+        if(argc < function_arg_count)
+        {
+            amount = (int)function_arg_count - argc - (vararg ? 1 : 0);
+            for(i = 0; i < (size_t)amount; i++)
+            {
+                PUSH(NULL_VALUE);
+            }
+            if(vararg)
+            {
+                PUSH(lit_value_objectvalue(lit_create_array(vm->state)));
+            }
+        }
+        else if(callee->vararg)
+        {
+            array = lit_create_array(vm->state);
+            varargc = argc - function_arg_count + 1;
+            lit_vallist_ensuresize(vm->state, &array->list, varargc);
+            for(i = 0; i < varargc; i++)
+            {
+                lit_vallist_set(&array->list, i, fiber->stack_top[(int)i - (int)varargc]);
+            }
+
+            fiber->stack_top -= varargc;
+            lit_vm_push(vm, lit_value_objectvalue(array));
+        }
+        else
+        {
+            fiber->stack_top -= (argc - function_arg_count);
+        }
+    }
+    else if(callee->vararg)
+    {
+        array = lit_create_array(vm->state);
+        varargc = argc - function_arg_count + 1;
+        lit_vallist_push(vm->state, &array->list, *(fiber->stack_top - 1));
+        *(fiber->stack_top - 1) = lit_value_objectvalue(array);
+    }
+    frame->ip = callee->chunk.code;
+    frame->closure = NULL;
+    frame->function = callee;
+    frame->result_ignored = false;
+    frame->return_to_c = true;
+    return frame;
+}
+
+static inline LitInterpretResult execute_call(LitState* state, LitCallFrame* frame)
+{
+    LitFiber* fiber;
+    LitInterpretResult result;
+    if(frame == NULL)
+    {
+        RETURN_RUNTIME_ERROR();
+    }
+    fiber = state->vm->fiber;
+    result = lit_vm_execfiber(state, fiber);
+    if(fiber->lit_emitter_raiseerror != NULL_VALUE)
+    {
+        result.result = fiber->lit_emitter_raiseerror;
+    }
+    return result;
+}
+
+LitInterpretResult lit_state_callfunction(LitState* state, LitFunction* callee, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    return execute_call(state, setup_call(state, callee, argv, argc, ignfiber));
+}
+
+LitInterpretResult lit_state_callclosure(LitState* state, LitClosure* callee, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    LitCallFrame* frame;
+    frame = setup_call(state, callee->function, argv, argc, ignfiber);
+    if(frame == NULL)
+    {
+        RETURN_RUNTIME_ERROR();
+    }
+    frame->closure = callee;
+    return execute_call(state, frame);
+}
+
+LitInterpretResult lit_state_callmethod(LitState* state, LitValue instance, LitValue callee, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    uint8_t i;
+    LitVM* vm;
+    LitInterpretResult lir;
+    LitObjType type;
+    LitClass* klass;
+    LitFiber* fiber;
+    LitValue* slot;
+    LitNativeMethod* natmethod;
+    LitBoundMethod* bound_method;
+    LitValue mthval;
+    LitValue result;
+    lir.result = NULL_VALUE;
+    lir.type = LITRESULT_OK;
+    vm = state->vm;
+    if(lit_value_isobject(callee))
+    {
+        if(lit_vmutil_setexitjump())
+        {
+            RETURN_RUNTIME_ERROR();
+        }
+        type = lit_value_type(callee);
+
+        if(type == LITTYPE_FUNCTION)
+        {
+            return lit_state_callfunction(state, lit_value_asfunction(callee), argv, argc, ignfiber);
+        }
+        else if(type == LITTYPE_CLOSURE)
+        {
+            return lit_state_callclosure(state, lit_value_asclosure(callee), argv, argc, ignfiber);
+        }
+        fiber = vm->fiber;
+        if(ignfiber)
+        {
+            if(fiber == NULL)
+            {
+                fiber = state->api_fiber;
+            }
+        }
+        if(!ignfiber)
+        {
+            if(lit_state_ensurefiber(vm, fiber))
+            {
+                RETURN_RUNTIME_ERROR();
+            }
+        }
+        lit_ensure_fiber_stack(state, fiber, 3 + argc + (int)(fiber->stack_top - fiber->stack));
+        slot = fiber->stack_top;
+        PUSH(instance);
+        if(type != LITTYPE_CLASS)
+        {
+            for(i = 0; i < argc; i++)
+            {
+                PUSH(argv[i]);
+            }
+        }
+        switch(type)
+        {
+            case LITTYPE_NATIVE_FUNCTION:
+                {
+                    LitValue result = lit_value_asnativefunction(callee)->function(vm, argc, fiber->stack_top - argc);
+                    fiber->stack_top = slot;
+                    RETURN_OK(result);
+                }
+                break;
+            case LITTYPE_NATIVE_PRIMITIVE:
+                {
+                    lit_value_asnativeprimitive(callee)->function(vm, argc, fiber->stack_top - argc);
+                    fiber->stack_top = slot;
+                    RETURN_OK(NULL_VALUE);
+                }
+                break;
+            case LITTYPE_NATIVE_METHOD:
+                {
+                    natmethod = lit_value_asnativemethod(callee);
+                    result = natmethod->method(vm, *(fiber->stack_top - argc - 1), argc, fiber->stack_top - argc);
+                    fiber->stack_top = slot;
+                    RETURN_OK(result);
+                }
+                break;
+            case LITTYPE_CLASS:
+                {
+                    klass = lit_value_asclass(callee);
+                    *slot = lit_value_objectvalue(lit_create_instance(vm->state, klass));
+                    if(klass->init_method != NULL)
+                    {
+                        lir = lit_state_callmethod(state, *slot, lit_value_objectvalue(klass->init_method), argv, argc, ignfiber);
+                    }
+                    // TODO: when should this return *slot instead of lir?
+                    fiber->stack_top = slot;
+                    //RETURN_OK(*slot);
+                    return lir;
+                }
+                break;
+            case LITTYPE_BOUND_METHOD:
+                {
+                    bound_method = lit_value_asboundmethod(callee);
+                    mthval = bound_method->method;
+                    *slot = bound_method->receiver;
+                    if(lit_value_isnatmethod(mthval))
+                    {
+                        result = lit_value_asnativemethod(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
+                        fiber->stack_top = slot;
+                        RETURN_OK(result);
+                    }
+                    else if(lit_value_isprimmethod(mthval))
+                    {
+                        lit_value_asprimitivemethod(mthval)->method(vm, bound_method->receiver, argc, fiber->stack_top - argc);
+
+                        fiber->stack_top = slot;
+                        RETURN_OK(NULL_VALUE);
+                    }
+                    else
+                    {
+                        fiber->stack_top = slot;
+                        return lit_state_callfunction(state, lit_value_asfunction(mthval), argv, argc, ignfiber);
+                    }
+                }
+                break;
+            case LITTYPE_PRIMITIVE_METHOD:
+                {
+                    lit_value_asprimitivemethod(callee)->method(vm, *(fiber->stack_top - argc - 1), argc, fiber->stack_top - argc);
+                    fiber->stack_top = slot;
+                    RETURN_OK(NULL_VALUE);
+                }
+                break;
+            default:
+                {
+                }
+                break;
+        }
+    }
+    if(lit_value_isnull(callee))
+    {
+        lit_vm_raiseerror(vm, "attempt to lit_vm_callcallable a null value");
+    }
+    else
+    {
+        lit_vm_raiseerror(vm, "can only lit_vm_callcallable functions and classes");
+    }
+
+    RETURN_RUNTIME_ERROR();
+}
+
+LitInterpretResult lit_state_callvalue(LitState* state, LitValue callee, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    return lit_state_callmethod(state, callee, callee, argv, argc, ignfiber);
+}
+
+LitInterpretResult lit_state_findandcallmethod(LitState* state, LitValue callee, LitString* method_name, LitValue* argv, uint8_t argc, bool ignfiber)
+{
+    LitClass* klass;
+    LitVM* vm;
+    LitFiber* fiber;
+    LitValue mthval;
+    vm = state->vm;
+    fiber = vm->fiber;
+    if(fiber == NULL)
+    {
+        if(!ignfiber)
+        {
+            lit_vm_raiseerror(vm, "no fiber to run on");
+            RETURN_RUNTIME_ERROR();
+        }
+    }
+    klass = lit_state_getclassfor(state, callee);
+    if((lit_value_isinstance(callee) && lit_table_get(&lit_value_asinstance(callee)->fields, method_name, &mthval)) || lit_table_get(&klass->methods, method_name, &mthval))
+    {
+        return lit_state_callmethod(state, callee, mthval, argv, argc, ignfiber);
+    }
+    return (LitInterpretResult){ LITRESULT_INVALID, NULL_VALUE };
 }
 
 void lit_state_pushroot(LitState* state, LitObject* object)
@@ -308,7 +758,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
             printf("Optimization:   %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-        module = lit_emit(state->emitter, &statements, module_name);
+        module = lit_emitter_modemit(state->emitter, &statements, module_name);
         free_statements(state, &statements);
         if(measure_compilation_time)
         {

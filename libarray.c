@@ -288,8 +288,8 @@ static LitValue objfn_array_slice(LitVM* vm, LitValue instance, size_t argc, Lit
 {
     int from;
     int to;
-    from = lit_check_number(vm, argv, argc, 0);
-    to = lit_check_number(vm, argv, argc, 1);
+    from = lit_value_checknumber(vm, argv, argc, 0);
+    to = lit_value_checknumber(vm, argv, argc, 1);
     return objfn_array_splice(vm, lit_value_asarray(instance), from, to);
 }
 
@@ -385,7 +385,7 @@ static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, Li
     LitValueList* values;
     LIT_ENSURE_ARGS(2);
     values = &lit_value_asarray(instance)->list;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
 
     if(index < 0)
     {
@@ -453,7 +453,7 @@ static LitValue objfn_array_remove(LitVM* vm, LitValue instance, size_t argc, Li
 static LitValue objfn_array_removeat(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int index;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     if(index < 0)
     {
         return NULL_VALUE;
@@ -500,7 +500,7 @@ static LitValue objfn_array_iteratorvalue(LitVM* vm, LitValue instance, size_t a
 {
     size_t index;
     LitValueList* values;
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     values = &lit_value_asarray(instance)->list;
     if(lit_vallist_count(values) <= index)
     {
@@ -533,7 +533,7 @@ static LitValue objfn_array_join(LitVM* vm, LitValue instance, size_t argc, LitV
     strings = LIT_ALLOCATE(vm->state, sizeof(LitString*), lit_vallist_count(values)+1);
     for(i = 0; i < lit_vallist_count(values); i++)
     {
-        string = lit_to_string(vm->state, lit_vallist_get(values, i));
+        string = lit_value_tostring(vm->state, lit_vallist_get(values, i));
         strings[i] = string;
         length += lit_string_getlength(string);
         if(joinee != NULL)
@@ -655,7 +655,7 @@ static LitValue objfn_array_tostring(LitVM* vm, LitValue instance, size_t argc, 
         }
         else
         {
-            stringified = lit_to_string(state, val);
+            stringified = lit_value_tostring(state, val);
         }
         part = stringified;
         buffer = sdscatlen(buffer, part->chars, lit_string_getlength(part));
@@ -733,7 +733,7 @@ void lit_open_array_library(LitState* state)
         lit_class_bindgetset(state, klass, "length", objfn_array_length, NULL, false);
         state->arrayvalue_class = klass;
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
     if(klass->super == NULL)
     {
         lit_class_inheritfrom(state, klass, state->objectvalue_class);

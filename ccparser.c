@@ -283,24 +283,24 @@ static void string_error(LitParser* parser, LitToken* token, const char* message
     sync(parser);
 }
 
-static void error_at(LitParser* parser, LitToken* token, LitError error, va_list args)
+static void error_at(LitParser* parser, LitToken* token, LitError lit_emitter_raiseerror, va_list args)
 {
-    string_error(parser, token, lit_vformat_error(parser->state, token->line, error, args)->chars);
+    string_error(parser, token, lit_vformat_error(parser->state, token->line, lit_emitter_raiseerror, args)->chars);
 }
 
-static void error_at_current(LitParser* parser, LitError error, ...)
+static void error_at_current(LitParser* parser, LitError lit_emitter_raiseerror, ...)
 {
     va_list args;
-    va_start(args, error);
-    error_at(parser, &parser->current, error, args);
+    va_start(args, lit_emitter_raiseerror);
+    error_at(parser, &parser->current, lit_emitter_raiseerror, args);
     va_end(args);
 }
 
-static void prs_error(LitParser* parser, LitError error, ...)
+static void prs_error(LitParser* parser, LitError lit_emitter_raiseerror, ...)
 {
     va_list args;
-    va_start(args, error);
-    error_at(parser, &parser->previous, error, args);
+    va_start(args, lit_emitter_raiseerror);
+    error_at(parser, &parser->previous, lit_emitter_raiseerror, args);
     va_end(args);
 }
 
@@ -426,7 +426,7 @@ static void ignore_new_lines(LitParser* parser, bool checksemi)
     match_new_line(parser);
 }
 
-static void consume(LitParser* parser, LitTokType type, const char* error)
+static void consume(LitParser* parser, LitTokType type, const char* lit_emitter_raiseerror)
 {
     bool line;
     size_t olen;
@@ -441,7 +441,7 @@ static void consume(LitParser* parser, LitTokType type, const char* error)
     line = parser->previous.type == LITTOK_NEW_LINE;
     olen = (line ? 8 : parser->previous.length);
     otext = (line ? "new line" : parser->previous.start);
-    fmt = lit_format_error(parser->state, parser->current.line, LITERROR_EXPECTATION_UNMET, error, olen, otext)->chars;
+    fmt = lit_format_error(parser->state, parser->current.line, LITERROR_EXPECTATION_UNMET, lit_emitter_raiseerror, olen, otext)->chars;
     string_error(parser, &parser->current,fmt);
 }
 

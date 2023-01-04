@@ -61,7 +61,7 @@ void* lit_gcmem_memrealloc(LitState* state, void* pointer, size_t old_size, size
     ptr = (void*)realloc(pointer, new_size);
     if(ptr == NULL)
     {
-        lit_state_raiseerror(state, RUNTIME_ERROR, "Fatal error:\nOut of memory\nProgram terminated");
+        lit_state_raiseerror(state, RUNTIME_ERROR, "Fatal lit_emitter_raiseerror:\nOut of memory\nProgram terminated");
         exit(111);
     }
     return ptr;
@@ -219,7 +219,7 @@ void lit_gcmem_vmblackobject(LitVM* vm, LitObject* object)
                 {
                     lit_gcmem_markobject(vm, (LitObject*)upvalue);
                 }
-                lit_gcmem_markvalue(vm, fiber->error);
+                lit_gcmem_markvalue(vm, fiber->lit_emitter_raiseerror);
                 lit_gcmem_markobject(vm, (LitObject*)fiber->module);
                 lit_gcmem_markobject(vm, (LitObject*)fiber->parent);
             }
@@ -304,7 +304,7 @@ void lit_gcmem_vmblackobject(LitVM* vm, LitObject* object)
             break;
         default:
             {
-                fprintf(stderr, "internal error: trying to blacken something else!\n");
+                fprintf(stderr, "internal lit_emitter_raiseerror: trying to blacken something else!\n");
                 UNREACHABLE
             }
             break;
@@ -425,7 +425,7 @@ void lit_open_gc_library(LitState* state)
         lit_class_bindgetset(state, klass, "nextRound", objfn_gc_next_round, NULL, true);
         lit_class_bindstaticmethod(state, klass, "trigger", objfn_gc_trigger);
     }
-    lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+    lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
     if(klass->super == NULL)
     {
         lit_class_inheritfrom(state, klass, state->objectvalue_class);

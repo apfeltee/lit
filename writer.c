@@ -381,11 +381,11 @@ void lit_towriter_value(LitState* state, LitWriter* wr, LitValue value)
     fprintf(stderr, "lit_towriter_value: checking if toString() exists for '%s' ...\n", lit_tostring_typename(value));
     if(lit_value_asclass(value) != NULL)
     {
-        mthtostring = lit_instance_get_method(state, value, mthname);
+        mthtostring = lit_state_getinstancemethod(state, value, mthname);
         if(!lit_value_isnull(mthtostring))
         {
             fprintf(stderr, "lit_towriter_value: we got toString()! now checking if calling it works ...\n");
-            inret = lit_instance_call_method(state, value, mthname, args, 0);
+            inret = lit_state_callinstancemethod(state, value, mthname, args, 0);
             if(inret.type == LITRESULT_OK)
             {
                 fprintf(stderr, "lit_towriter_value: calling toString() succeeded! but is it a string? ...\n");

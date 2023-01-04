@@ -28,6 +28,13 @@
 #endif
 
 
+#define PUSH(value) (*fiber->stack_top++ = value)
+#define RETURN_OK(r) return (LitInterpretResult){ LITRESULT_OK, r };
+
+#define RETURN_RUNTIME_ERROR() return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
+
+
+
 enum LitOpCode
 {
 #define OPCODE(name, effect) OP_##name,
@@ -455,10 +462,10 @@ void lit_ast_destroy_allocdexprlist(LitState* state, LitExprList* expressions);
 
 LitExprList* lit_ast_allocate_stmtlist(LitState* state);
 void lit_ast_destry_allocdstmtlist(LitState* state, LitExprList* statements);
-void lit_init_emitter(LitState* state, LitEmitter* emitter);
-void lit_free_emitter(LitEmitter* emitter);
+void lit_emitter_init(LitState* state, LitEmitter* emitter);
+void lit_emitter_destroy(LitEmitter* emitter);
 
-LitModule* lit_emit(LitEmitter* emitter, LitExprList* statements, LitString* module_name);
+LitModule* lit_emitter_modemit(LitEmitter* emitter, LitExprList* statements, LitString* module_name);
 
 void lit_init_parser(LitState* state, LitParser* parser);
 void lit_free_parser(LitParser* parser);

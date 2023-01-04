@@ -523,7 +523,7 @@ LitValue lit_string_format(LitState* state, const char* format, ...)
                     else
                     {
                         //fprintf(stderr, "format: not a string, but a '%s'\n", lit_tostring_typename(val));
-                        //string = lit_to_string(state, val);
+                        //string = lit_value_tostring(state, val);
                         goto default_ending_copying;
                     }
                     if(string != NULL)
@@ -593,7 +593,7 @@ static LitValue objfn_string_plus(LitVM* vm, LitValue instance, size_t argc, Lit
     }
     else
     {
-        strval = lit_to_string(vm->state, value);
+        strval = lit_value_tostring(vm->state, value);
     }
     result = lit_string_makeempty(vm->state, lit_string_getlength(selfstr) + lit_string_getlength(strval), false);
     lit_string_appendobj(result, selfstr);
@@ -636,7 +636,7 @@ static LitValue objfn_string_subscript(LitVM* vm, LitValue instance, size_t argc
         return objfn_string_splice(vm, lit_value_asstring(instance), range->from, range->to);
     }
     string = lit_value_asstring(instance);
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     if(argc != 1)
     {
         lit_vm_raiseexitingerror(vm, "cannot modify strings with the subscript op");
@@ -688,12 +688,12 @@ static LitValue objfn_string_compare(LitVM* vm, LitValue instance, size_t argc, 
 
 static LitValue objfn_string_less(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return lit_bool_to_value(vm->state, strcmp(lit_value_asstring(instance)->chars, lit_check_string(vm, argv, argc, 0)) < 0);
+    return lit_bool_to_value(vm->state, strcmp(lit_value_asstring(instance)->chars, lit_value_checkstring(vm, argv, argc, 0)) < 0);
 }
 
 static LitValue objfn_string_greater(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    return lit_bool_to_value(vm->state, strcmp(lit_value_asstring(instance)->chars, lit_check_string(vm, argv, argc, 0)) > 0);
+    return lit_bool_to_value(vm->state, strcmp(lit_value_asstring(instance)->chars, lit_value_checkstring(vm, argv, argc, 0)) > 0);
 }
 
 static LitValue objfn_string_tostring(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
@@ -777,7 +777,7 @@ static LitValue objfn_string_contains(LitVM* vm, LitValue instance, size_t argc,
     LitString* sub;
     LitString* string;
     string = lit_value_asstring(instance);
-    sub = lit_check_object_string(vm, argv, argc, 0);
+    sub = lit_value_checkobjstring(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -791,7 +791,7 @@ static LitValue objfn_string_startswith(LitVM* vm, LitValue instance, size_t arg
     LitString* sub;
     LitString* string;
     string = lit_value_asstring(instance);
-    sub = lit_check_object_string(vm, argv, argc, 0);
+    sub = lit_value_checkobjstring(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -817,7 +817,7 @@ static LitValue objfn_string_endswith(LitVM* vm, LitValue instance, size_t argc,
     LitString* sub;
     LitString* string;
     string = lit_value_asstring(instance);
-    sub = lit_check_object_string(vm, argv, argc, 0);
+    sub = lit_value_checkobjstring(vm, argv, argc, 0);
     if(sub == string)
     {
         return TRUE_VALUE;
@@ -892,8 +892,8 @@ static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc
 {
     int to;
     int from;
-    from = lit_check_number(vm, argv, argc, 0);
-    to = lit_check_number(vm, argv, argc, 1);
+    from = lit_value_checknumber(vm, argv, argc, 0);
+    to = lit_value_checknumber(vm, argv, argc, 1);
     return objfn_string_splice(vm, lit_value_asstring(instance), from, to);
 }
 
@@ -901,7 +901,7 @@ static LitValue objfn_string_substring(LitVM* vm, LitValue instance, size_t argc
 static LitValue objfn_string_byteat(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
     int idx;
-    idx = lit_check_number(vm, argv, argc, 0);
+    idx = lit_value_checknumber(vm, argv, argc, 0);
     return lit_value_numbertovalue(vm->state, lit_value_asstring(instance)->chars[idx]);
 }
 
@@ -926,7 +926,7 @@ static LitValue objfn_string_iterator(LitVM* vm, LitValue instance, size_t argc,
         }
         return lit_value_numbertovalue(vm->state, 0);
     }
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     if(index < 0)
     {
         return NULL_VALUE;
@@ -948,7 +948,7 @@ static LitValue objfn_string_iteratorvalue(LitVM* vm, LitValue instance, size_t 
     uint32_t index;
     LitString* string;
     string = lit_value_asstring(instance);
-    index = lit_check_number(vm, argv, argc, 0);
+    index = lit_value_checknumber(vm, argv, argc, 0);
     if(index == UINT32_MAX)
     {
         return false;
@@ -1029,7 +1029,7 @@ static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, L
                             }
                             if(lit_value_isnumber(argv[ai]))
                             {
-                                iv = lit_check_number(vm, argv, argc, ai);
+                                iv = lit_value_checknumber(vm, argv, argc, ai);
                                 buf = sdscatfmt(buf, "%i", iv);
                             }
                             break;
@@ -1046,7 +1046,7 @@ static LitValue objfn_string_format(LitVM* vm, LitValue instance, size_t argc, L
                                 sdsfree(buf);
                                 lit_vm_raiseexitingerror(vm, "flag 'c' expects a number");
                             }
-                            iv = lit_check_number(vm, argv, argc, ai);
+                            iv = lit_value_checknumber(vm, argv, argc, ai);
                             /* TODO: both of these use the same amount of memory. but which is faster? */
                             #if 0
                                 buf = sdscatfmt(buf, "%c", iv);
@@ -1122,7 +1122,7 @@ void lit_open_string_library(LitState* state)
             lit_class_bindmethod(state, klass, "format", objfn_string_format);
             state->stringvalue_class = klass;
         }
-        lit_set_global(state, klass->name, lit_value_objectvalue(klass));
+        lit_state_setglobal(state, klass->name, lit_value_objectvalue(klass));
         if(klass->super == NULL)
         {
             lit_class_inheritfrom(state, klass, state->objectvalue_class);

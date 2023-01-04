@@ -83,10 +83,10 @@ const char* lit_error_getformatstring(LitError e)
         default:
             break;
     }
-    return "unknown error code";
+    return "unknown lit_emitter_raiseerror code";
 }
 
-LitString* lit_vformat_error(LitState* state, size_t line, LitError error, va_list args)
+LitString* lit_vformat_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, va_list args)
 {
     int error_id;
     size_t buffer_size;
@@ -94,7 +94,7 @@ LitString* lit_vformat_error(LitState* state, size_t line, LitError error, va_li
     const char* error_message;
     LitString* rt;
     va_list args_copy;
-    error_id = (int)error;
+    error_id = (int)lit_emitter_raiseerror;
     error_message = lit_error_getformatstring(error_id);
     va_copy(args_copy, args);
     buffer_size = vsnprintf(NULL, 0, error_message, args_copy) + 1;
@@ -114,12 +114,12 @@ LitString* lit_vformat_error(LitState* state, size_t line, LitError error, va_li
     return rt;
 }
 
-LitString* lit_format_error(LitState* state, size_t line, LitError error, ...)
+LitString* lit_format_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, ...)
 {
     va_list args;
     LitString* result;
-    va_start(args, error);
-    result = lit_vformat_error(state, line, error, args);
+    va_start(args, lit_emitter_raiseerror);
+    result = lit_vformat_error(state, line, lit_emitter_raiseerror, args);
     va_end(args);
 
     return result;
