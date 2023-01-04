@@ -1,7 +1,6 @@
 
 #include <string.h>
 #include "lit.h"
-#include "priv.h"
 
 static bool lit_emitter_emitexpression(LitEmitter* emitter, LitExpression* expression);
 static void lit_emitter_resolvestmt(LitEmitter* emitter, LitExpression* statement);
@@ -233,7 +232,7 @@ static void lit_compiler_compiler(LitEmitter* emitter, LitCompiler* compiler, Li
 
     emitter->chunk = &compiler->function->chunk;
 
-    if(lit_is_optimization_enabled(LITOPTSTATE_LINE_INFO))
+    if(lit_astopt_isoptenabled(LITOPTSTATE_LINE_INFO))
     {
         emitter->chunk->has_line_info = false;
     }
@@ -1877,7 +1876,7 @@ LitModule* lit_emitter_modemit(LitEmitter* emitter, LitExprList* statements, Lit
         }
     }
     lit_privlist_destroy(emitter->state, &emitter->privates);
-    if(lit_is_optimization_enabled(LITOPTSTATE_PRIVATE_NAMES))
+    if(lit_astopt_isoptenabled(LITOPTSTATE_PRIVATE_NAMES))
     {
         lit_table_destroy(emitter->state, &emitter->module->private_names->values);
     }

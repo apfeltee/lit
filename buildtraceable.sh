@@ -12,7 +12,6 @@
 [[ $ZSH_EVAL_CONTEXT =~ :file ]] && return
 
 srclib=(
-  api.c
   ccast.c
   ccemit.c
   ccopt.c
@@ -57,11 +56,13 @@ linkflags=(
 cflags=(
   -no-pie
   -fPIC
+
 )
 
 ldmagicshit=(
   -Wl,-z,relro
   -Wl,-z,now
+  #-Wl,-z,global
   -O0
 )
 

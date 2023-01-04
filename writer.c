@@ -1,7 +1,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include "priv.h"
+#include "lit.h"
 #include "sds.h"
 
 static void litwr_cb_writebyte(LitWriter* wr, int byte)

@@ -526,7 +526,7 @@ static bool cfn_require(LitVM* vm, size_t argc, LitValue* argv)
     LitString* modname;
     name = lit_value_checkobjstring(vm, argv, argc, 0);
     ignore_previous = argc > 1 && lit_value_isbool(argv[1]) && lit_value_asbool(argv[1]);
-    // First check, if a file with this name exists in the local path
+    // First lit_parser_check, if a file with this name exists in the local path
     if(util_attempt_to_require(vm, argv, argc, name->chars, ignore_previous, false))
     {
         return should_update_locals;

@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-#include "priv.h"
+#include "lit.h"
 
 void lit_disassemble_module(LitState* state, LitModule* module, const char* source)
 {

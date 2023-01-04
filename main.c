@@ -17,7 +17,7 @@
     #endif
 #endif
 
-#include "priv.h"
+#include "lit.h"
 
 #define LIT_EXIT_CODE_ARGUMENT_ERROR 1
 #define LIT_EXIT_CODE_MEM_LEAK 2
@@ -144,13 +144,13 @@ static void show_optimization_help()
     printf("Here is a list of all supported optimizations:\n\n");
     for(i = 0; i < LITOPTSTATE_TOTAL; i++)
     {
-        printf(" %s  %s\n", lit_get_optimization_name((LitOptimization)i),
-               lit_get_optimization_description((LitOptimization)i));
+        printf(" %s  %s\n", lit_astopt_getoptname((LitOptimization)i),
+               lit_astopt_getoptdescr((LitOptimization)i));
     }
     printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.\n\n");
     for(i = 0; i < LITOPTLEVEL_TOTAL; i++)
     {
-        printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptLevel)i));
+        printf("\t-O%i\t\t%s\n", i, lit_astopt_getoptleveldescr((LitOptLevel)i));
     }
 }
 
@@ -251,7 +251,7 @@ static int run_repl(LitState* state)
     repl_state = state;
     signal(SIGINT, interupt_handler);
     //signal(SIGTSTP, interupt_handler);
-    lit_set_optimization_level(LITOPTLEVEL_REPL);
+    lit_astopt_setoptlevel(LITOPTLEVEL_REPL);
     printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
     while(true)
     {
@@ -439,7 +439,7 @@ int oldmain(int argc, const char* argv[])
 
                 if(c >= '0' && c <= '4')
                 {
-                    lit_set_optimization_level((LitOptLevel)(c - '0'));
+                    lit_astopt_setoptlevel((LitOptLevel)(c - '0'));
                     continue;
                 }
             }
@@ -451,7 +451,7 @@ int oldmain(int argc, const char* argv[])
             }
             else if(strcmp(optimization_name, "all") == 0)
             {
-                lit_set_all_optimization_enabled(enable_optimization);
+                lit_astopt_setalloptenabled(enable_optimization);
             }
             else
             {
@@ -459,10 +459,10 @@ int oldmain(int argc, const char* argv[])
                 // Yes I know, this is not the fastest way, and what now?
                 for(j = 0; j < LITOPTSTATE_TOTAL; j++)
                 {
-                    if(strcmp(lit_get_optimization_name((LitOptimization)j), optimization_name) == 0)
+                    if(strcmp(lit_astopt_getoptname((LitOptimization)j), optimization_name) == 0)
                     {
                         found = true;
-                        lit_set_optimization_enabled((LitOptimization)j, enable_optimization);
+                        lit_astopt_setoptenabled((LitOptimization)j, enable_optimization);
 
                         break;
                     }
@@ -534,7 +534,7 @@ int oldmain(int argc, const char* argv[])
             }
 
             bytecode_file = (char*)argv[++i];
-            lit_set_optimization_level(LITOPTLEVEL_EXTREME);
+            lit_astopt_setoptlevel(LITOPTLEVEL_EXTREME);
         }
         else if(match_arg(arg, "-p", "--pass"))
         {

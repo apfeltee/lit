@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-#include "priv.h"
+#include "lit.h"
 
 const char* lit_error_getformatstring(LitError e)
 {

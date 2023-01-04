@@ -3,12 +3,9 @@
 #include <math.h>
 #include <string.h>
 #include <setjmp.h>
-#include "priv.h"
+#include "lit.h"
 
 #define LIT_VM_INLINE
-
-
-typedef struct LitExecState LitExecState;
 
 enum
 {
@@ -17,16 +14,6 @@ enum
     RECOVER_NOTHING
 };
 
-struct LitExecState
-{
-    LitValue* slots;
-    LitValue* privates;
-    LitUpvalue** upvalues;
-    uint8_t* ip;
-    LitCallFrame* frame;
-    LitChunk* current_chunk;
-
-};
 
 
 //#define LIT_TRACE_EXECUTION
@@ -1021,7 +1008,7 @@ LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber)
         * which may invalidate the stack, and while the same is technically true for switch/case, they
         * could end up executing completely unrelated instructions.
         * think, declaring a block for OP_BUILDHOUSE, and the next block is OP_SETHOUSEONFIRE.
-        * an easy mistake to make, but crucial to check.
+        * an easy mistake to make, but crucial to lit_parser_check.
         */
         {
             op_case(OP_POP)

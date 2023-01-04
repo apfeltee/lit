@@ -1,7 +1,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include "priv.h"
+#include "lit.h"
 
 LitValue lit_value_objectvalue_actual(uintptr_t obj)
 {

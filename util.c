@@ -27,7 +27,7 @@ uint64_t pack754(long double f, unsigned bits, unsigned expbits)
     {
         return 0;
     }
-    /* check sign and begin normalization */
+    /* lit_parser_check sign and begin normalization */
     if(f < 0)
     {
         sign = 1;

@@ -8,7 +8,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
     LitCallFrame* frame;
     LitCallFrame* frames;
     LitFiber* fiber;
-    // Allocate in advance, just in case GC is triggered
+    // Allocate in lit_lex_advance, just in case GC is triggered
     stack_capacity = function == NULL ? 1 : (size_t)lit_util_closestpowof2(function->max_slots + 1);
     stack = LIT_ALLOCATE(state, sizeof(LitValue), stack_capacity);
     frames = LIT_ALLOCATE(state, sizeof(LitCallFrame), LIT_INITIAL_CALL_FRAMES);

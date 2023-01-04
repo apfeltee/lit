@@ -1,7 +1,6 @@
 
 #include <stdio.h>
 #include "lit.h"
-#include "priv.h"
 
 void lit_preproc_init(LitState* state, LitPreprocessor* preprocessor)
 {

@@ -235,7 +235,7 @@ static inline void* sdsAllocPtr(sdstring_t* s);
  * oldlen = sdslen(s);
  * s = sdsMakeRoomFor(s, BUFFER_SIZE);
  * nread = read(fd, s+oldlen, BUFFER_SIZE);
- * ... check for nread <= 0 and handle it ...
+ * ... lit_parser_check for nread <= 0 and handle it ...
  * sdsIncrLen(s, nread);
  */
 static inline void sdsIncrLen(sdstring_t* s, ssize_t incr);

@@ -1,105 +1,81 @@
-  # void lit_init_api(LitState *state);
-  "lit_init_api": "lit_api_init"
+  # void optdbg(const char *fmt, ...);
+  "optdbg": "lit_astopt_optdbg"
 
-  # void lit_free_api(LitState *state);
-  "lit_free_api": "lit_api_destroy"
+  # void lit_varlist_init(LitVarList *array);
+  "lit_varlist_init": "lit_varlist_init"
 
-  # LitValue lit_get_global(LitState *state, LitString *name);
-  "lit_get_global": "lit_state_getglobalvalue"
+  # void lit_varlist_destroy(LitState *state, LitVarList *array);
+  "lit_varlist_destroy": "lit_varlist_destroy"
 
-  # LitFunction * lit_get_global_function(LitState *state, LitString *name);
-  "lit_get_global_function": "lit_state_getglobalfunction"
+  # void lit_varlist_push(LitState *state, LitVarList *array, LitVariable value);
+  "lit_varlist_push": "lit_varlist_push"
 
-  # void lit_set_global(LitState *state, LitString *name, LitValue value);
-  "lit_set_global": "lit_state_setglobal"
+  # void lit_init_optimizer(LitState *state, LitOptimizer *optimizer);
+  "lit_init_optimizer": "lit_astopt_init"
 
-  # _Bool lit_global_exists(LitState *state, LitString *name);
-  "lit_global_exists": "lit_state_hasglobal"
+  # static void opt_begin_scope(LitOptimizer *optimizer);
+  "opt_begin_scope": "lit_astopt_beginscope"
 
-  # void lit_define_native(LitState *state, const char *name, LitNativeFunctionFn native);
-  "lit_define_native": "lit_state_defnativefunc"
+  # static void opt_end_scope(LitOptimizer *optimizer);
+  "opt_end_scope": "lit_astopt_endscope"
 
-  # void lit_define_native_primitive(LitState *state, const char *name, LitNativePrimitiveFn native);
-  "lit_define_native_primitive": "lit_state_defnativeprimitive"
+  # static LitVariable * add_variable(LitOptimizer *optimizer, const char *name, size_t length, _Bool constant, LitExpression **declaration);
+  "add_variable": "lit_astopt_addvar"
 
-  # LitValue lit_instance_get_method(LitState *state, LitValue callee, LitString *mthname);
-  "lit_instance_get_method": "lit_state_getinstancemethod"
+  # static LitVariable * resolve_variable(LitOptimizer *optimizer, const char *name, size_t length);
+  "resolve_variable": "lit_astopt_resolvevar"
 
-  # LitInterpretResult lit_instance_call_method(LitState *state, LitValue callee, LitString *mthname, LitValue *argv, size_t argc);
-  "lit_instance_call_method": "lit_state_callinstancemethod"
+  # static _Bool is_empty(LitExpression *statement);
+  "is_empty": "lit_astopt_isemptyexpr"
 
-  # double lit_check_number(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_number": "lit_value_checknumber"
+  # static LitValue evaluate_unary_op(LitOptimizer *optimizer, LitValue value, LitTokType op);
+  "evaluate_unary_op": "lit_astopt_evalunaryop"
 
-  # double lit_get_number(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id, double def);
-  "lit_get_number": "lit_value_getnumber"
+  # static LitValue evaluate_binary_op(LitOptimizer *optimizer, LitValue a, LitValue b, LitTokType op);
+  "evaluate_binary_op": "lit_astopt_evalbinaryop"
 
-  # _Bool lit_check_bool(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_bool": "lit_value_checkbool"
+  # static LitValue attempt_to_optimize_binary(LitOptimizer *optimizer, LitBinaryExpr *expression, LitValue value, _Bool left);
+  "attempt_to_optimize_binary": "lit_astopt_attemptoptbinary"
 
-  # _Bool lit_get_bool(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id, _Bool def);
-  "lit_get_bool": "lit_value_getbool"
+  # static LitValue evaluate_expression(LitOptimizer *optimizer, LitExpression *expression);
+  "evaluate_expression": "lit_astopt_evalexpr"
 
-  # const char * lit_check_string(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_string": "lit_value_checkstring"
+  # static void optimize_expression(LitOptimizer *optimizer, LitExpression **slot);
+  "optimize_expression": "lit_astopt_optexpression"
 
-  # const char * lit_get_string(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id, const char *def);
-  "lit_get_string": "lit_value_getstring"
+  # static void optimize_expressions(LitOptimizer *optimizer, LitExprList *expressions);
+  "optimize_expressions": "lit_astopt_optexprlist"
 
-  # LitString * lit_check_object_string(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_object_string": "lit_value_checkobjstring"
+  # static void optimize_statement(LitOptimizer *optimizer, LitExpression **slot);
+  "optimize_statement": "lit_asdtopt_optstatement"
 
-  # LitInstance * lit_check_instance(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_instance": "lit_value_checkinstance"
+  # static void optimize_statements(LitOptimizer *optimizer, LitExprList *statements);
+  "optimize_statements": "lit_astopt_optstmtlist"
 
-  # LitValue * lit_check_reference(LitVM *vm, LitValue *args, uint8_t arg_count, uint8_t id);
-  "lit_check_reference": "lit_value_checkreference"
+  # void lit_optimize(LitOptimizer *optimizer, LitExprList *statements);
+  "lit_optimize": "lit_astopt_optast"
 
-  # void lit_ensure_bool(LitVM *vm, LitValue value, const char *lit_emitter_raiseerror);
-  "lit_ensure_bool": "lit_value_ensurebool"
+  # static void setup_optimization_states(void);
+  "setup_optimization_states": "lit_astopt_setupstates"
 
-  # void lit_ensure_string(LitVM *vm, LitValue value, const char *lit_emitter_raiseerror);
-  "lit_ensure_string": "lit_value_ensurestring"
+  # _Bool lit_is_optimization_enabled(LitOptimization optimization);
+  "lit_is_optimization_enabled": "lit_astopt_isoptenabled"
 
-  # void lit_ensure_number(LitVM *vm, LitValue value, const char *lit_emitter_raiseerror);
-  "lit_ensure_number": "lit_value_ensurenumber"
+  # void lit_set_optimization_enabled(LitOptimization optimization, _Bool enabled);
+  "lit_set_optimization_enabled": "lit_astopt_setoptenabled"
 
-  # void lit_ensure_object_type(LitVM *vm, LitValue value, LitObjType type, const char *lit_emitter_raiseerror);
-  "lit_ensure_object_type": "lit_value_ensureobjtype"
+  # void lit_set_all_optimization_enabled(_Bool enabled);
+  "lit_set_all_optimization_enabled": "lit_astopt_setalloptenabled"
 
-  # LitValue lit_get_field(LitState *state, LitTable *table, const char *name);
-  "lit_get_field": "lit_state_getfield"
+  # void lit_set_optimization_level(LitOptLevel level);
+  "lit_set_optimization_level": "lit_astopt_setoptlevel"
 
-  # LitValue lit_get_map_field(LitState *state, LitMap *map, const char *name);
-  "lit_get_map_field": "lit_state_getmapfield"
+  # const char * lit_get_optimization_name(LitOptimization optimization);
+  "lit_get_optimization_name": "lit_astopt_getoptname"
 
-  # void lit_set_field(LitState *state, LitTable *table, const char *name, LitValue value);
-  "lit_set_field": "lit_state_setfield"
+  # const char * lit_get_optimization_description(LitOptimization optimization);
+  "lit_get_optimization_description": "lit_astopt_getoptdescr"
 
-  # void lit_set_map_field(LitState *state, LitMap *map, const char *name, LitValue value);
-  "lit_set_map_field": "lit_state_setmapfield"
-
-  # static _Bool ensure_fiber(LitVM *vm, LitFiber *fiber);
-  "ensure_fiber": "lit_vm_ensurefiber"
-
-  # LitInterpretResult lit_call_function(LitState *state, LitFunction *callee, LitValue *argv, uint8_t argc, _Bool ignfiber);
-  "lit_call_function": "lit_state_callfunction"
-
-  # LitInterpretResult lit_call_closure(LitState *state, LitClosure *callee, LitValue *argv, uint8_t argc, _Bool ignfiber);
-  "lit_call_closure": "lit_state_callclosure"
-
-  # LitInterpretResult lit_call_method(LitState *state, LitValue instance, LitValue callee, LitValue *argv, uint8_t argc, _Bool ignfiber);
-  "lit_call_method": "lit_state_callmethod"
-
-  # LitInterpretResult lit_call(LitState *state, LitValue callee, LitValue *argv, uint8_t argc, _Bool ignfiber);
-  "lit_call": "lit_state_callvalue"
-
-  # LitInterpretResult lit_find_and_call_method(LitState *state, LitValue callee, LitString *method_name, LitValue *argv, uint8_t argc, _Bool ignfiber);
-  "lit_find_and_call_method": "lit_state_findandcallmethod"
-
-  # LitString * lit_to_string(LitState *state, LitValue object);
-  "lit_to_string": "lit_value_tostring"
-
-  # LitValue lit_call_new(LitVM *vm, const char *name, LitValue *args, size_t argc, _Bool ignfiber);
-  "lit_call_new": "lit_value_callnew"
+  # const char * lit_get_optimization_level_description(LitOptLevel level);
+  "lit_get_optimization_level_description": "lit_astopt_getoptleveldescr"
 

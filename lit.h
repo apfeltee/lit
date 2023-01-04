@@ -153,6 +153,46 @@
         return NULL_VALUE;                                                               \
     }
 
+
+#if !defined(LIT_DISABLE_COLOR) && !defined(LIT_ENABLE_COLOR) && !(defined(LIT_OS_WINDOWS) || defined(EMSCRIPTEN))
+    #define LIT_ENABLE_COLOR
+#endif
+
+#ifdef LIT_ENABLE_COLOR
+    #define COLOR_RESET "\x1B[0m"
+    #define COLOR_RED "\x1B[31m"
+    #define COLOR_GREEN "\x1B[32m"
+    #define COLOR_YELLOW "\x1B[33m"
+    #define COLOR_BLUE "\x1B[34m"
+    #define COLOR_MAGENTA "\x1B[35m"
+    #define COLOR_CYAN "\x1B[36m"
+    #define COLOR_WHITE "\x1B[37m"
+#else
+    #define COLOR_RESET ""
+    #define COLOR_RED ""
+    #define COLOR_GREEN ""
+    #define COLOR_YELLOW ""
+    #define COLOR_BLUE ""
+    #define COLOR_MAGENTA ""
+    #define COLOR_CYAN ""
+    #define COLOR_WHITE ""
+#endif
+
+
+#define PUSH(value) (*fiber->stack_top++ = value)
+#define RETURN_OK(r) return (LitInterpretResult){ LITRESULT_OK, r };
+
+#define RETURN_RUNTIME_ERROR() return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
+
+
+
+enum LitOpCode
+{
+#define OPCODE(name, effect) OP_##name,
+#include "opcodes.inc"
+#undef OPCODE
+};
+
 enum LitExprType
 {
     LITEXPR_LITERAL,
@@ -431,6 +471,7 @@ enum LitObjType
 };
 
 typedef uint64_t LitValue;
+typedef enum /**/LitOpCode LitOpCode;
 typedef enum /**/LitExprType LitExprType;
 typedef enum /**/LitOptLevel LitOptLevel;
 typedef enum /**/LitOptimization LitOptimization;
@@ -443,6 +484,7 @@ typedef enum /**/LitFuncType LitFuncType;
 typedef enum /**/LitObjType LitObjType;
 typedef struct /**/LitScanner LitScanner;
 typedef struct /**/LitPreprocessor LitPreprocessor;
+typedef struct /**/LitExecState LitExecState;
 typedef struct /**/LitVM LitVM;
 typedef struct /**/LitParser LitParser;
 typedef struct /**/LitEmitter LitEmitter;
@@ -494,6 +536,50 @@ typedef struct /**/LitParamList LitParamList;
 typedef struct /**/LitPrivList LitPrivList;
 typedef struct /**/LitLocList LitLocList;
 typedef struct /**/LitDataList LitDataList;
+typedef struct /**/LitByteList LitByteList;
+
+/* ast/compiler types */
+typedef struct /**/LitLiteralExpr LitLiteralExpr;
+typedef struct /**/LitBinaryExpr LitBinaryExpr;
+typedef struct /**/LitUnaryExpr LitUnaryExpr;
+typedef struct /**/LitVarExpr LitVarExpr;
+typedef struct /**/LitAssignExpr LitAssignExpr;
+typedef struct /**/LitCallExpr LitCallExpr;
+typedef struct /**/LitGetExpr LitGetExpr;
+typedef struct /**/LitSetExpr LitSetExpr;
+typedef struct /**/LitParameter LitParameter;
+typedef struct /**/LitLambdaExpr LitLambdaExpr;
+typedef struct /**/LitArrayExpr LitArrayExpr;
+typedef struct /**/LitObjectExpr LitObjectExpr;
+typedef struct /**/LitSubscriptExpr LitSubscriptExpr;
+typedef struct /**/LitThisExpr LitThisExpr;
+typedef struct /**/LitSuperExpr LitSuperExpr;
+typedef struct /**/LitRangeExpr LitRangeExpr;
+typedef struct /**/LitTernaryExpr LitTernaryExpr;
+typedef struct /**/LitInterpolationExpr LitInterpolationExpr;
+typedef struct /**/LitReferenceExpr LitReferenceExpr;
+typedef struct /**/LitExpressionExpr LitExpressionExpr;
+typedef struct /**/LitBlockExpr LitBlockExpr;
+typedef struct /**/LitAssignVarExpr LitAssignVarExpr;
+typedef struct /**/LitIfExpr LitIfExpr;
+typedef struct /**/LitWhileExpr LitWhileExpr;
+typedef struct /**/LitForExpr LitForExpr;
+typedef struct /**/LitContinueExpr LitContinueExpr;
+typedef struct /**/LitBreakExpr LitBreakExpr;
+typedef struct /**/LitFunctionExpr LitFunctionExpr;
+typedef struct /**/LitReturnExpr LitReturnExpr;
+typedef struct /**/LitMethodExpr LitMethodExpr;
+typedef struct /**/LitClassExpr LitClassExpr;
+typedef struct /**/LitFieldExpr LitFieldExpr;
+typedef struct /**/LitPrivate LitPrivate;
+
+/* forward decls to make prot.inc work */
+typedef struct /**/LitDirReader LitDirReader;
+typedef struct /**/LitDirItem LitDirItem;
+
+
+typedef LitExpression* (*LitPrefixParseFn)(LitParser*, bool);
+typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*, bool);
 
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM*, size_t, LitValue*);
@@ -524,6 +610,33 @@ struct LitDataList
     intptr_t* values;
 };
 
+
+struct LitVarList
+{
+    size_t capacity;
+    size_t count;
+    LitVariable* values;
+};
+
+
+struct LitUintList
+{
+    LitDataList list;
+};
+
+struct LitValueList
+{
+    LitDataList list;
+};
+
+/* TODO: using DataList messes with the string its supposed to collect. no clue why, though. */
+struct LitByteList
+{
+    size_t capacity;
+    size_t count;
+    uint8_t* values;
+};
+
 struct LitWriter
 {
     LitState* state;
@@ -548,6 +661,313 @@ struct LitWriter
 };
 
 
+struct LitExpression
+{
+    LitExprType type;
+    size_t line;
+};
+
+
+
+struct LitPrivate
+{
+    bool initialized;
+    bool constant;
+};
+
+struct LitPrivList
+{
+    size_t capacity;
+    size_t count;
+    LitPrivate* values;
+};
+
+struct LitEmitter
+{
+    LitState* state;
+    LitChunk* chunk;
+    LitCompiler* compiler;
+    size_t last_line;
+    size_t loop_start;
+    LitPrivList privates;
+    LitUintList breaks;
+    LitUintList continues;
+    LitModule* module;
+    LitString* class_name;
+    bool class_has_super;
+    bool previous_was_expression_statement;
+    int emit_reference;
+};
+
+struct LitParseRule
+{
+    LitPrefixParseFn prefix;
+    LitInfixParseFn infix;
+    LitPrecedence precedence;
+};
+
+/*
+ * Expressions
+ */
+struct LitExprList
+{
+    size_t capacity;
+    size_t count;
+    LitExpression** values;
+};
+
+struct LitLiteralExpr
+{
+    LitExpression exobj;
+    LitValue value;
+};
+
+struct LitBinaryExpr
+{
+    LitExpression exobj;
+    LitExpression* left;
+    LitExpression* right;
+    LitTokType op;
+    bool ignore_left;
+};
+
+struct LitUnaryExpr
+{
+    LitExpression exobj;
+    LitExpression* right;
+    LitTokType op;
+};
+
+struct LitVarExpr
+{
+    LitExpression exobj;
+    const char* name;
+    size_t length;
+};
+
+struct LitAssignExpr
+{
+    LitExpression exobj;
+    LitExpression* to;
+    LitExpression* value;
+};
+
+struct LitCallExpr
+{
+    LitExpression exobj;
+    LitExpression* callee;
+    LitExprList args;
+    LitExpression* init;
+};
+
+struct LitGetExpr
+{
+    LitExpression exobj;
+    LitExpression* where;
+    const char* name;
+    size_t length;
+    int jump;
+    bool ignore_emit;
+    bool ignore_result;
+};
+
+struct LitSetExpr
+{
+    LitExpression exobj;
+    LitExpression* where;
+    const char* name;
+    size_t length;
+    LitExpression* value;
+};
+
+struct LitParameter
+{
+    const char* name;
+    size_t length;
+    LitExpression* default_value;
+};
+
+struct LitParamList
+{
+    size_t capacity;
+    size_t count;
+    LitParameter* values;
+};
+
+
+struct LitLambdaExpr
+{
+    LitExpression exobj;
+    LitParamList parameters;
+    LitExpression* body;
+};
+
+struct LitArrayExpr
+{
+    LitExpression exobj;
+    LitExprList values;
+};
+
+struct LitObjectExpr
+{
+    LitExpression exobj;
+    LitValueList keys;
+    LitExprList values;
+};
+
+struct LitSubscriptExpr
+{
+    LitExpression exobj;
+    LitExpression* array;
+    LitExpression* index;
+};
+
+struct LitThisExpr
+{
+    LitExpression exobj;
+};
+
+struct LitSuperExpr
+{
+    LitExpression exobj;
+    LitString* method;
+    bool ignore_emit;
+    bool ignore_result;
+};
+
+struct LitRangeExpr
+{
+    LitExpression exobj;
+    LitExpression* from;
+    LitExpression* to;
+};
+
+struct LitTernaryExpr
+{
+    LitExpression exobj;
+    LitExpression* condition;
+    LitExpression* if_branch;
+    LitExpression* else_branch;
+};
+
+struct LitInterpolationExpr
+{
+    LitExpression exobj;
+    LitExprList expressions;
+};
+
+struct LitReferenceExpr
+{
+    LitExpression exobj;
+    LitExpression* to;
+};
+
+/*
+ * Statements
+ */
+
+struct LitExpressionExpr
+{
+    LitExpression exobj;
+    LitExpression* expression;
+    bool pop;
+};
+
+struct LitBlockExpr
+{
+    LitExpression exobj;
+    LitExprList statements;
+};
+
+struct LitAssignVarExpr
+{
+    LitExpression exobj;
+    const char* name;
+    size_t length;
+    bool constant;
+    LitExpression* init;
+};
+
+struct LitIfExpr
+{
+    LitExpression exobj;
+    LitExpression* condition;
+    LitExpression* if_branch;
+    LitExpression* else_branch;
+    LitExprList* elseif_conditions;
+    LitExprList* elseif_branches;
+};
+
+struct LitWhileExpr
+{
+    LitExpression exobj;
+    LitExpression* condition;
+    LitExpression* body;
+};
+
+struct LitForExpr
+{
+    LitExpression exobj;
+    LitExpression* init;
+    LitExpression* var;
+    LitExpression* condition;
+    LitExpression* increment;
+    LitExpression* body;
+    bool c_style;
+};
+
+struct LitContinueExpr
+{
+    LitExpression exobj;
+};
+
+struct LitBreakExpr
+{
+    LitExpression exobj;
+};
+
+struct LitFunctionExpr
+{
+    LitExpression exobj;
+    const char* name;
+    size_t length;
+    LitParamList parameters;
+    LitExpression* body;
+    bool exported;
+};
+
+struct LitReturnExpr
+{
+    LitExpression exobj;
+    LitExpression* expression;
+};
+
+struct LitMethodExpr
+{
+    LitExpression exobj;
+    LitString* name;
+    LitParamList parameters;
+    LitExpression* body;
+    bool is_static;
+};
+
+struct LitClassExpr
+{
+    LitExpression exobj;
+    LitString* name;
+    LitString* parent;
+    LitExprList fields;
+};
+
+struct LitFieldExpr
+{
+    LitExpression exobj;
+    LitString* name;
+    LitExpression* getter;
+    LitExpression* setter;
+    bool is_static;
+};
+
 struct LitVariable
 {
     const char* name;
@@ -559,28 +979,6 @@ struct LitVariable
     LitExpression** declaration;
 };
 
-struct LitVarList
-{
-    size_t capacity;
-    size_t count;
-    LitVariable* values;
-};
-
-struct LitExpression
-{
-    LitExprType type;
-    size_t line;
-};
-
-struct LitUintList
-{
-    LitDataList list;
-};
-
-struct LitValueList
-{
-    LitDataList list;
-};
 
 struct LitChunk
 {
@@ -872,6 +1270,18 @@ struct LitState
     LitModule* last_module;
 };
 
+
+struct LitExecState
+{
+    LitValue* slots;
+    LitValue* privates;
+    LitUpvalue** upvalues;
+    uint8_t* ip;
+    LitCallFrame* frame;
+    LitChunk* current_chunk;
+
+};
+
 struct LitVM
 {
     /* the current state */
@@ -999,115 +1409,15 @@ struct LitPreprocessor
 };
 
 
+#include "prot.inc"
 
-LitClass* lit_create_classobject(LitState* state, const char* name);
-void lit_class_inheritfrom(LitState* state, LitClass* current, LitClass* other);
-void lit_class_bindconstructor(LitState* state, LitClass* cl, LitNativeMethodFn fn);
-LitNativeMethod* lit_class_bindmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn);
-LitPrimitiveMethod* lit_class_bindprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn);
-LitNativeMethod* lit_class_bindstaticmethod(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn fn);
-LitPrimitiveMethod* lit_class_bindstaticprimitive(LitState* state, LitClass* cl, const char* name, LitPrimitiveMethodFn fn);
-void lit_class_setstaticfield(LitState* state, LitClass* cl, const char* name, LitValue val);
-LitField* lit_class_bindgetset(LitState* state, LitClass* cl, const char* name, LitNativeMethodFn getfn, LitNativeMethodFn setfn, bool isstatic);
-
-
-/**
-* LitWriter stuff
-*/
-/*
-* creates a LitWriter that writes to the given FILE.
-* if $forceflush is true, then fflush() is called after each i/o operation.
-*/
-void lit_writer_init_file(LitState* state, LitWriter* wr, FILE* fh, bool forceflush);
-
-/*
-* creates a LitWriter that writes to a buffer.
-*/
-void lit_writer_init_string(LitState* state, LitWriter* wr);
-
-/* emit a printf-style formatted string */
-void lit_writer_writeformat(LitWriter* wr, const char* fmt, ...);
-
-/* emit a string */
-void lit_writer_writestringl(LitWriter* wr, const char* str, size_t len);
-
-/* like lit_writer_writestringl, but calls strlen() on str */
-void lit_writer_writestring(LitWriter* wr, const char* str);
-
-/* emit a single byte */
-void lit_writer_writebyte(LitWriter* wr, int byte);
-
-/*
-* returns a LitString* if this LitWriter was initiated via lit_writer_init_string, otherwise NULL.
-*/
-LitString* lit_writer_get_string(LitWriter* wr);
-
-/**
-* utility functions
-*/
-double lit_util_uinttofloat(unsigned int val);
-unsigned int lit_util_floattouint(double val);
-int lit_util_numbertoint32(double n);
-int lit_util_doubletoint(double n);
-unsigned int lit_util_numbertouint32(double n);
-int lit_util_ucharoffset(char* str, int index);
-int lit_util_encodenumbytes(int value);
-int lit_util_decodenumbytes(uint8_t byte);
-char* lit_util_readfile(const char* path, size_t* dlen);
-/* get hash sum of given string */
-uint32_t lit_util_hashstring(const char* key, size_t length);
-int lit_util_closestpowof2(int n);
-char* lit_util_copystring(const char* string);
-char* lit_util_patchfilename(char* file_name);
-
-
-void util_custom_quick_sort(LitVM *vm, LitValue *l, int length, LitValue callee);
-int util_table_iterator(LitTable *table, int number);
-LitValue util_table_iterator_key(LitTable *table, int index);
-bool util_is_fiber_done(LitFiber *fiber);
-void util_run_fiber(LitVM *vm, LitFiber *fiber, LitValue *argv, size_t argc, bool catcher);
-void util_basic_quick_sort(LitState *state, LitValue *clist, int length);
-bool util_interpret(LitVM *vm, LitModule *module);
-bool util_test_file_exists(const char *filename);
-bool util_attempt_to_require(LitVM *vm, LitValue *argv, size_t argc, const char *path, bool ignore_previous, bool folders);
-bool util_attempt_to_require_combined(LitVM *vm, LitValue *argv, size_t argc, const char *a, const char *b, bool ignore_previous);
-LitValue util_invalid_constructor(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-
-
-/**
-* array functions 
-*/
-/* retrieve the index of $value in this array */
-int lit_array_indexof(LitArray *array, LitValue value);
-
-/* remove the value at $index */
-LitValue lit_array_removeat(LitArray *array, size_t index);
-
-LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, bool islight);
-
-bool lit_value_compare(LitState* state, const LitValue a, const LitValue b);
 #define lit_value_objectvalue(obj) lit_value_objectvalue_actual((uintptr_t)obj)
-
-LitValue lit_value_objectvalue_actual(uintptr_t obj);
-LitObject* lit_value_asobject(LitValue v);
-LitValue lit_bool_to_value(LitState* state, bool b);
-
-/* turn the given value to a number */
-double lit_value_asnumber(LitValue v);
-
-/* turn a number into a value*/
-LitValue lit_value_numbertovalue(LitState* state, double num);
-
-bool lit_value_isbool(LitValue v);
-bool lit_value_isobject(LitValue v);
 
 #define lit_value_istype(value, t) \
     (lit_value_isobject(value) && (lit_value_asobject(value) != NULL) && (lit_value_asobject(value)->type == t))
 
 #define lit_value_isnull(v) \
     ((v) == NULL_VALUE)
-
-bool lit_value_isnumber(LitValue v);
 
 #define lit_value_isstring(value) \
     lit_value_istype(value, LITTYPE_STRING)
@@ -1180,8 +1490,6 @@ static inline bool lit_value_isfalsey(LitValue v)
 {
     return (lit_value_isbool(v) && (v == FALSE_VALUE)) || lit_value_isnull(v) || (lit_value_isnumber(v) && lit_value_asnumber(v) == 0);
 }
-
-LitObjType lit_value_type(LitValue v);
 
 static inline bool lit_value_asbool(LitValue v)
 {
@@ -1288,11 +1596,6 @@ static inline LitReference* lit_value_asreference(LitValue v)
     return (LitReference*)lit_value_asobject(v);
 }
 
-
-/* copy a string, creating a full newly allocated LitString. */
-LitString* lit_string_copy(LitState* state, const char* chars, size_t length);
-
-
 static inline LitValue OBJECT_CONST_STRING(LitState* state, const char* text)
 {
     return lit_value_objectvalue(lit_string_copy((state), (text), strlen(text)));
@@ -1302,209 +1605,6 @@ static inline LitString* CONST_STRING(LitState* state, const char* text)
 {
     return lit_string_copy(state, text, strlen(text));
 }
-
-/**
-* memory data functions
-*/
-
-
-void lit_datalist_init(LitDataList *array, size_t typsz);
-void lit_datalist_destroy(LitState *state, LitDataList *array);
-size_t lit_datalist_count(LitDataList *arr);
-size_t lit_datalist_size(LitDataList *arr);
-size_t lit_datalist_capacity(LitDataList *arr);
-void lit_datalist_clear(LitDataList *arr);
-void lit_datalist_setcount(LitDataList *arr, size_t nc);
-void lit_datalist_deccount(LitDataList *arr);
-intptr_t lit_datalist_get(LitDataList *arr, size_t idx);
-intptr_t lit_datalist_set(LitDataList *arr, size_t idx, intptr_t val);
-void lit_datalist_push(LitState *state, LitDataList *array, intptr_t value);
-void lit_datalist_ensuresize(LitState *state, LitDataList *array, size_t size);
-
-void lit_vallist_init(LitValueList *array);
-void lit_vallist_destroy(LitState *state, LitValueList *array);
-size_t lit_vallist_size(LitValueList *arr);
-size_t lit_vallist_count(LitValueList *arr);
-size_t lit_vallist_capacity(LitValueList *arr);
-void lit_vallist_setcount(LitValueList *arr, size_t nc);
-void lit_vallist_clear(LitValueList *arr);
-void lit_vallist_deccount(LitValueList *arr);
-LitValue lit_vallist_set(LitValueList *arr, size_t idx, LitValue val);
-LitValue lit_vallist_get(LitValueList *arr, size_t idx);
-void lit_vallist_push(LitState *state, LitValueList *array, LitValue value);
-void lit_vallist_ensuresize(LitState *state, LitValueList *values, size_t size);
-
-/* ------ */
-
-void lit_init_chunk(LitChunk* chunk);
-void lit_free_chunk(LitState* state, LitChunk* chunk);
-void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t line);
-size_t lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant);
-size_t lit_chunk_get_line(LitChunk* chunk, size_t offset);
-void lit_shrink_chunk(LitState* state, LitChunk* chunk);
-void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte);
-void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b);
-void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value);
-
-/**
-* state functions
-*/
-/* creates a new state. */
-LitState* lit_make_state();
-
-/* frees a state, releasing associated memory. */
-int64_t lit_destroy_state(LitState* state);
-
-bool lit_state_ensurefiber(LitVM* vm, LitFiber* fiber);
-void lit_state_pushroot(LitState* state, LitObject* object);
-void lit_state_pushvalueroot(LitState* state, LitValue value);
-LitValue lit_state_peekroot(LitState* state, uint8_t distance);
-void lit_state_poproot(LitState* state);
-void lit_state_poproots(LitState* state, uint8_t amount);
-
-LitClass* lit_state_getclassfor(LitState* state, LitValue value);
-
-
-/* lit_vm_callcallable a function in an instance */
-LitInterpretResult lit_state_callinstancemethod(LitState* state, LitValue callee, LitString* mthname, LitValue* argv, size_t argc);
-LitValue lit_state_getinstancemethod(LitState* state, LitValue callee, LitString* mthname);
-
-/* print a value to LitWriter */
-void lit_towriter_object(LitState* state, LitWriter* wr, LitValue value);
-void lit_towriter_value(LitState* state, LitWriter* wr, LitValue value);
-void lit_towriter_ast(LitState* state, LitWriter* wr, LitExprList* exlist);
-/* returns the static string name of this type. does *not* represent class name, et al. just the LitValueType name! */
-const char* lit_tostring_typename(LitValue value);
-
-/* allocate/reallocate memory. if new_size is 0, frees the pointer, and returns NULL. */
-void* lit_gcmem_memrealloc(LitState* state, void* pointer, size_t old_size, size_t new_size);
-
-/* releases given objects, and their subobjects. */
-void lit_object_destroylistof(LitState* state, LitObject* objects);
-
-/* run garbage collector */
-uint64_t lit_gcmem_collectgarbage(LitVM* vm);
-
-/* mark an object for collection. */
-void lit_gcmem_markobject(LitVM* vm, LitObject* object);
-
-/* mark a value for collection. */
-void lit_gcmem_markvalue(LitVM* vm, LitValue value);
-
-/* free a object */
-void lit_object_destroy(LitState* state, LitObject* object);
-
-
-
-void lit_table_init(LitState* state, LitTable* table);
-void lit_table_destroy(LitState* state, LitTable* table);
-bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue value);
-bool lit_table_get(LitTable* table, LitString* key, LitValue* value);
-bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value);
-bool lit_table_delete(LitTable* table, LitString* key);
-LitString* lit_table_find_string(LitTable* table, const char* chars, size_t length, uint32_t hash);
-void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
-void lit_table_removewhite(LitTable* table);
-void lit_gcmem_marktable(LitVM* vm, LitTable* table);
-bool lit_is_callable_function(LitValue value);
-
-/**
-* string methods
-*/
-
-/*
-* create a LitString by reusing $chars. ONLY use this if you're certain that $chars isn't being freed.
-* if $wassds is true, then the sds instance is reused as-is.
-*/
-LitString* lit_string_take(LitState* state, char* chars, size_t length, bool wassds);
-
-/*
-* creates a formatted string. is NOT printf-compatible!
-*
-* #: assume number, or use toString()
-* $: assume string, or use toString()
-* @: value toString()-ified
-*
-* e.g.:
-*   foo = (LitString instance) "bar"
-*   lit_string_format("foo=@", foo)
-*   => "foo=bar"
-*
-* it's extremely rudimentary, and the idea is to quickly join values.
-*/
-LitValue lit_string_format(LitState* state, const char* format, ...);
-
-/* turn a given number to LitValue'd LitString. */
-LitValue lit_string_numbertostring(LitState* state, double value);
-
-/* registers a string in the string table. */
-void lit_state_regstring(LitState* state, LitString* string);
-
-
-/*
-* create a new string instance.
-* if $reuse is false, then a new sds-string is created, otherwise $chars is set to NULL.
-* this is to avoid double-allocating, which would create a sds-instance that cannot be freed.
-*/
-LitString* lit_string_makeempty(LitState* state, size_t length, bool reuse);
-
-/* get length of this string */
-size_t lit_string_getlength(LitString* ls);
-const char* lit_string_getdata(LitString* ls);
-void lit_string_appendlen(LitString* ls, const char* s, size_t len);
-void lit_string_appendobj(LitString* ls, LitString* other);
-void lit_string_appendchar(LitString* ls, char ch);
-bool lit_string_equal(LitState* state, LitString* a, LitString* b);
-
-
-LitFunction* lit_create_function(LitState* state, LitModule* module);
-LitValue lit_get_function_name(LitVM* vm, LitValue instance);
-LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot);
-LitClosure* lit_create_closure(LitState* state, LitFunction* function);
-LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name);
-LitNativePrimFunction* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function, LitString* name);
-LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn function, LitString* name);
-LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method, LitString* name);
-LitMap* lit_create_map(LitState* state);
-bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value);
-bool lit_map_get(LitMap* map, LitString* key, LitValue* value);
-bool lit_map_delete(LitMap* map, LitString* key);
-void lit_map_add_all(LitState* state, LitMap* from, LitMap* to);
-LitModule* lit_create_module(LitState* state, LitString* name);
-LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
-void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, size_t needed);
-LitClass* lit_create_class(LitState* state, LitString* name);
-LitInstance* lit_create_instance(LitState* state, LitClass* klass);
-LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitValue method);
-LitArray* lit_create_array(LitState* state);
-LitUserdata* lit_create_userdata(LitState* state, size_t size, bool ispointeronly);
-LitRange* lit_create_range(LitState* state, double from, double to);
-LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter);
-LitReference* lit_create_reference(LitState* state, LitValue* slot);
-
-void lit_array_push(LitState* state, LitArray* array, LitValue val);
-
-
-/*
- * Please, do not provide a const string source to the compiler, because it will
- * get modified, if it has any macros in it!
- */
-LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, const char* code, size_t len);
-LitModule* lit_state_getmodule(LitState* state, const char* name);
-
-LitInterpretResult lit_state_internexecsource(LitState* state, LitString* module_name, const char* code, size_t len);
-LitInterpretResult lit_state_execsource(LitState* state, const char* module_name, const char* code, size_t len);
-LitInterpretResult lit_state_execfile(LitState* state, const char* file);
-LitInterpretResult lit_state_dumpfile(LitState* state, const char* file);
-bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, const char* output_file);
-
-void lit_state_raiseerror(LitState* state, LitErrType type, const char* message, ...);
-void lit_state_printf(LitState* state, const char* message, ...);
-void lit_enable_compilation_time_measurement();
-
-void lit_vm_init(LitState* state, LitVM* vm);
-void lit_vm_destroy(LitVM* vm);
-void lit_vm_tracestack(LitVM* vm, LitWriter* wr);
 
 static inline void lit_vm_push(LitVM* vm, LitValue value)
 {
@@ -1521,119 +1621,6 @@ static inline LitValue lit_vm_pop(LitVM* vm)
     return rt;
 }
 
-LitInterpretResult lit_vm_execmodule(LitState* state, LitModule* module);
-LitInterpretResult lit_vm_execfiber(LitState* state, LitFiber* fiber);
-bool lit_vm_handleruntimeerror(LitVM* vm, LitString* error_string);
-bool lit_vm_vraiseerror(LitVM* vm, const char* format, va_list args);
-bool lit_vm_raiseerror(LitVM* vm, const char* format, ...);
-bool lit_vm_raiseexitingerror(LitVM* vm, const char* format, ...);
-
-void lit_vmutil_callexitjump();
-bool lit_vmutil_setexitjump();
-
-
-LitInterpretResult lit_state_callfunction(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_state_callmethod(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_state_callvalue(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-LitInterpretResult lit_state_findandcallmethod(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count, bool ignfiber);
-
-LitString* lit_value_tostring(LitState* state, LitValue object);
-LitValue lit_value_callnew(LitVM* vm, const char* name, LitValue* args, size_t arg_count, bool ignfiber);
-
-
-void lit_api_init(LitState* state);
-void lit_api_destroy(LitState* state);
-
-LitValue lit_state_getglobalvalue(LitState* state, LitString* name);
-LitFunction* lit_state_getglobalfunction(LitState* state, LitString* name);
-
-void lit_state_setglobal(LitState* state, LitString* name, LitValue value);
-bool lit_state_hasglobal(LitState* state, LitString* name);
-void lit_state_defnativefunc(LitState* state, const char* name, LitNativeFunctionFn native);
-void lit_state_defnativeprimitive(LitState* state, const char* name, LitNativePrimitiveFn native);
-
-double lit_value_checknumber(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-double lit_value_getnumber(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
-
-bool lit_value_checkbool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-bool lit_value_getbool(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def);
-
-const char* lit_value_checkstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-const char* lit_value_getstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
-
-LitString* lit_value_checkobjstring(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitInstance* lit_value_checkinstance(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-LitValue* lit_value_checkreference(LitVM* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-
-void lit_value_ensurebool(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
-void lit_value_ensurestring(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
-void lit_value_ensurenumber(LitVM* vm, LitValue value, const char* lit_emitter_raiseerror);
-void lit_value_ensureobjtype(LitVM* vm, LitValue value, LitObjType type, const char* lit_emitter_raiseerror);
-
-
-LitValue lit_state_getfield(LitState* state, LitTable* table, const char* name);
-LitValue lit_state_getmapfield(LitState* state, LitMap* map, const char* name);
-
-void lit_state_setfield(LitState* state, LitTable* table, const char* name, LitValue value);
-void lit_state_setmapfield(LitState* state, LitMap* map, const char* name, LitValue value);
-void lit_disassemble_module(LitState* state, LitModule* module, const char* source);
-void lit_disassemble_chunk(LitState* state, LitChunk* chunk, const char* name, const char* source);
-size_t lit_disassemble_instruction(LitState* state, LitChunk* chunk, size_t offset, const char* source);
-
-void lit_trace_frame(LitFiber* fiber, LitWriter* wr);
-
-
-
-bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitExprList* statements);
-
-bool lit_file_exists(const char* path);
-bool lit_dir_exists(const char* path);
-
-size_t lit_write_uint8_t(FILE* file, uint8_t byte);
-size_t lit_write_uint16_t(FILE* file, uint16_t byte);
-size_t lit_write_uint32_t(FILE* file, uint32_t byte);
-size_t lit_write_double(FILE* file, double byte);
-size_t lit_write_string(FILE* file, LitString* string);
-
-uint8_t lit_read_uint8_t(FILE* file);
-uint16_t lit_read_uint16_t(FILE* file);
-uint32_t lit_read_uint32_t(FILE* file);
-double lit_read_double(FILE* file);
-LitString* lit_read_string(LitState* state, FILE* file);
-
-void lit_init_emulated_file(LitEmulatedFile* file, const char* source, size_t len);
-
-uint8_t lit_read_euint8_t(LitEmulatedFile* file);
-uint16_t lit_read_euint16_t(LitEmulatedFile* file);
-uint32_t lit_read_euint32_t(LitEmulatedFile* file);
-double lit_read_edouble(LitEmulatedFile* file);
-LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
-
-void lit_save_module(LitModule* module, FILE* file);
-LitModule* lit_load_module(LitState* state, const char* input, size_t len);
-bool lit_generate_source_file(const char* file, const char* output);
-void lit_build_native_runner(const char* bytecode_file);
-
-void lit_open_libraries(LitState* state);
-void lit_open_core_library(LitState* state);
-
-void lit_open_math_library(LitState* state);
-
-void lit_open_file_library(LitState* state);
-
-void lit_open_gc_library(LitState* state);
-
-
-
-int lit_ustring_length(LitString* string);
-
-int lit_ustring_decode(const uint8_t* bytes, uint32_t length);
-int lit_ustring_encode(int value, uint8_t* bytes);
-
-LitString* lit_ustring_codepointat(LitState* state, LitString* string, uint32_t index);
-LitString* lit_ustring_fromcodepoint(LitState* state, int value);
-LitString* lit_ustring_fromrange(LitState* state, LitString* source, int start, uint32_t count);
-
 
 static inline bool lit_is_digit(char c)
 {
@@ -1644,27 +1631,3 @@ static inline bool lit_is_alpha(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
-
-
-LitString* lit_vformat_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, va_list args);
-LitString* lit_format_error(LitState* state, size_t line, LitError lit_emitter_raiseerror, ...);
-
-void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source);
-LitToken lit_scan_token(LitScanner* scanner);
-LitToken lit_scan_rollback(LitScanner* scanner);
-void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
-void lit_optimize(LitOptimizer* optimizer, LitExprList* statements);
-const char* lit_get_optimization_level_description(LitOptLevel level);
-
-bool lit_is_optimization_enabled(LitOptimization optimization);
-void lit_set_optimization_enabled(LitOptimization optimization, bool enabled);
-void lit_set_all_optimization_enabled(bool enabled);
-void lit_set_optimization_level(LitOptLevel level);
-
-const char* lit_get_optimization_name(LitOptimization optimization);
-const char* lit_get_optimization_description(LitOptimization optimization);
-void lit_preproc_init(LitState* state, LitPreprocessor* preprocessor);
-void lit_preproc_destroy(LitPreprocessor* preprocessor);
-void lit_preproc_setdef(LitState* state, const char* name);
-
-bool lit_preproc_run(LitPreprocessor* preprocessor, char* source);

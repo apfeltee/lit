@@ -4,32 +4,21 @@
 #include <stdio.h>
 #include <errno.h>
 #include "lit.h"
-#include "priv.h"
 
-
-/* TODO: using DataList messes with the string its supposed to collect. no clue why, though. */
-typedef struct LitByteList LitByteList;
-struct LitByteList
-{
-    size_t capacity;
-    size_t count;
-    uint8_t* values;
-};
-
-void lit_init_bytes(LitByteList* bl)
+void lit_bytelist_init(LitByteList* bl)
 {
     bl->values = NULL;
     bl->capacity = 0;
     bl->count = 0;
 }
 
-void lit_free_bytes(LitState* state, LitByteList* bl)
+void lit_bytelist_destroy(LitState* state, LitByteList* bl)
 {
     LIT_FREE_ARRAY(state, sizeof(uint8_t), bl->values, bl->capacity);
-    lit_init_bytes(bl);
+    lit_bytelist_init(bl);
 }
 
-void lit_bytes_write(LitState* state, LitByteList* bl, uint8_t value)
+void lit_bytelist_push(LitState* state, LitByteList* bl, uint8_t value)
 {
     size_t oldcap;
     if(bl->capacity < bl->count + 1)
@@ -42,7 +31,7 @@ void lit_bytes_write(LitState* state, LitByteList* bl, uint8_t value)
     bl->count++;
 }
 
-void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source)
+void lit_lex_init(LitState* state, LitScanner* scanner, const char* file_name, const char* source)
 {
     scanner->line = 1;
     scanner->start = source;
@@ -53,7 +42,7 @@ void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_nam
     scanner->had_error = false;
 }
 
-static LitToken make_token(LitScanner* scanner, LitTokType type)
+static LitToken lit_lex_maketoken(LitScanner* scanner, LitTokType type)
 {
     LitToken token;
     token.type = type;
@@ -63,7 +52,7 @@ static LitToken make_token(LitScanner* scanner, LitTokType type)
     return token;
 }
 
-static LitToken make_error_token(LitScanner* scanner, LitError lit_emitter_raiseerror, ...)
+static LitToken lit_lex_makeerrortoken(LitScanner* scanner, LitError lit_emitter_raiseerror, ...)
 {
     va_list args;
     LitToken token;
@@ -79,20 +68,20 @@ static LitToken make_error_token(LitScanner* scanner, LitError lit_emitter_raise
     return token;
 }
 
-static bool is_at_end(LitScanner* scanner)
+static bool lit_lex_isatend(LitScanner* scanner)
 {
     return *scanner->current == '\0';
 }
 
-static char advance(LitScanner* scanner)
+static char lit_lex_advance(LitScanner* scanner)
 {
     scanner->current++;
     return scanner->current[-1];
 }
 
-static bool match(LitScanner* scanner, char expected)
+static bool lit_lex_matchchar(LitScanner* scanner, char expected)
 {
-    if(is_at_end(scanner))
+    if(lit_lex_isatend(scanner))
     {
         return false;
     }
@@ -105,31 +94,31 @@ static bool match(LitScanner* scanner, char expected)
     return true;
 }
 
-static LitToken match_token(LitScanner* scanner, char c, LitTokType a, LitTokType b)
+static LitToken lit_lex_matchtoken(LitScanner* scanner, char c, LitTokType a, LitTokType b)
 {
-    return make_token(scanner, match(scanner, c) ? a : b);
+    return lit_lex_maketoken(scanner, lit_lex_matchchar(scanner, c) ? a : b);
 }
 
-static LitToken match_tokens(LitScanner* scanner, char cr, char cb, LitTokType a, LitTokType b, LitTokType c)
+static LitToken lit_lex_matchntoken(LitScanner* scanner, char cr, char cb, LitTokType a, LitTokType b, LitTokType c)
 {
-    return make_token(scanner, match(scanner, cr) ? a : (match(scanner, cb) ? b : c));
+    return lit_lex_maketoken(scanner, lit_lex_matchchar(scanner, cr) ? a : (lit_lex_matchchar(scanner, cb) ? b : c));
 }
 
-static char peek(LitScanner* scanner)
+static char lit_lex_peekcurrent(LitScanner* scanner)
 {
     return *scanner->current;
 }
 
-static char peek_next(LitScanner* scanner)
+static char lit_lex_peeknext(LitScanner* scanner)
 {
-    if(is_at_end(scanner))
+    if(lit_lex_isatend(scanner))
     {
         return '\0';
     }
     return scanner->current[1];
 }
 
-static bool skip_whitespace(LitScanner* scanner)
+static bool lit_lex_skipspace(LitScanner* scanner)
 {
     char a;
     char b;
@@ -138,50 +127,50 @@ static bool skip_whitespace(LitScanner* scanner)
     (void)b;
     while(true)
     {
-        c = peek(scanner);
+        c = lit_lex_peekcurrent(scanner);
         switch(c)
         {
             case ' ':
             case '\r':
             case '\t':
                 {
-                    advance(scanner);
+                    lit_lex_advance(scanner);
                 }
                 break;
             case '\n':
                 {
                     scanner->start = scanner->current;
-                    advance(scanner);
+                    lit_lex_advance(scanner);
                     return true;
                 }
                 break;
             case '/':
                 {
-                    if(peek_next(scanner) == '/')
+                    if(lit_lex_peeknext(scanner) == '/')
                     {
-                        while(peek(scanner) != '\n' && !is_at_end(scanner))
+                        while(lit_lex_peekcurrent(scanner) != '\n' && !lit_lex_isatend(scanner))
                         {
-                            advance(scanner);
+                            lit_lex_advance(scanner);
                         }
-                        return skip_whitespace(scanner);
+                        return lit_lex_skipspace(scanner);
                     }
-                    else if(peek_next(scanner) == '*')
+                    else if(lit_lex_peeknext(scanner) == '*')
                     {
-                        advance(scanner);
-                        advance(scanner);
-                        a = peek(scanner);
-                        b = peek_next(scanner);
-                        while((peek(scanner) != '*' || peek_next(scanner) != '/') && !is_at_end(scanner))
+                        lit_lex_advance(scanner);
+                        lit_lex_advance(scanner);
+                        a = lit_lex_peekcurrent(scanner);
+                        b = lit_lex_peeknext(scanner);
+                        while((lit_lex_peekcurrent(scanner) != '*' || lit_lex_peeknext(scanner) != '/') && !lit_lex_isatend(scanner))
                         {
-                            if(peek(scanner) == '\n')
+                            if(lit_lex_peekcurrent(scanner) == '\n')
                             {
                                 scanner->line++;
                             }
-                            advance(scanner);
+                            lit_lex_advance(scanner);
                         }
-                        advance(scanner);
-                        advance(scanner);
-                        return skip_whitespace(scanner);
+                        lit_lex_advance(scanner);
+                        lit_lex_advance(scanner);
+                        return lit_lex_skipspace(scanner);
                     }
                     return false;
                 }
@@ -194,7 +183,7 @@ static bool skip_whitespace(LitScanner* scanner)
     }
 }
 
-static LitToken scan_string(LitScanner* scanner, bool interpolation)
+static LitToken lit_lex_scanstring(LitScanner* scanner, bool interpolation)
 {
     char c;
     LitState* state;
@@ -203,10 +192,10 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
     LitTokType string_type;
     state = scanner->state;
     string_type = LITTOK_STRING;
-    lit_init_bytes(&bytes);
+    lit_bytelist_init(&bytes);
     while(true)
     {
-        c = advance(scanner);
+        c = lit_lex_advance(scanner);
         if(c == '\"')
         {
             break;
@@ -215,7 +204,7 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
         {
             if(scanner->num_braces >= LIT_MAX_INTERPOLATION_NESTING)
             {
-                return make_error_token(scanner, LITERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
+                return lit_lex_makeerrortoken(scanner, LITERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
             }
             string_type = LITTOK_INTERPOLATION;
             scanner->braces[scanner->num_braces++] = 1;
@@ -225,77 +214,77 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
         {
             case '\0':
                 {
-                    return make_error_token(scanner, LITERROR_UNTERMINATED_STRING);
+                    return lit_lex_makeerrortoken(scanner, LITERROR_UNTERMINATED_STRING);
                 }
                 break;
             case '\n':
                 {
                     scanner->line++;
-                    lit_bytes_write(state, &bytes, c);
+                    lit_bytelist_push(state, &bytes, c);
                 }
                 break;
             case '\\':
                 {
-                    switch(advance(scanner))
+                    switch(lit_lex_advance(scanner))
                     {
                         case '\"':
                             {
-                                lit_bytes_write(state, &bytes, '\"');
+                                lit_bytelist_push(state, &bytes, '\"');
                             }
                             break;
                         case '\\':
                             {
-                                lit_bytes_write(state, &bytes, '\\');
+                                lit_bytelist_push(state, &bytes, '\\');
                             }
                             break;
                         case '0':
                             {
-                                lit_bytes_write(state, &bytes, '\0');
+                                lit_bytelist_push(state, &bytes, '\0');
                             }
                             break;
                         case '{':
                             {
-                                lit_bytes_write(state, &bytes, '{');
+                                lit_bytelist_push(state, &bytes, '{');
                             }
                             break;
                         case 'a':
                             {
-                                lit_bytes_write(state, &bytes, '\a');
+                                lit_bytelist_push(state, &bytes, '\a');
                             }
                             break;
                         case 'b':
                             {
-                                lit_bytes_write(state, &bytes, '\b');
+                                lit_bytelist_push(state, &bytes, '\b');
                             }
                             break;
                         case 'f':
                             {
-                                lit_bytes_write(state, &bytes, '\f');
+                                lit_bytelist_push(state, &bytes, '\f');
                             }
                             break;
                         case 'n':
                             {
-                                lit_bytes_write(state, &bytes, '\n');
+                                lit_bytelist_push(state, &bytes, '\n');
                             }
                             break;
                         case 'r':
                             {
-                                lit_bytes_write(state, &bytes, '\r');
+                                lit_bytelist_push(state, &bytes, '\r');
                             }
                             break;
                         case 't':
                             {
-                                lit_bytes_write(state, &bytes, '\t');
+                                lit_bytelist_push(state, &bytes, '\t');
                             }
                             break;
                         case 'v':
                             {
-                                lit_bytes_write(state, &bytes, '\v');
+                                lit_bytelist_push(state, &bytes, '\v');
                             }
                             break;
                         default:
                             {
-                                return make_error_token(scanner, LITERROR_INVALID_ESCAPE_CHAR, scanner->current[-1]);
+                                return lit_lex_makeerrortoken(scanner, LITERROR_INVALID_ESCAPE_CHAR, scanner->current[-1]);
                             }
                             break;
                     }
@@ -303,21 +292,21 @@ static LitToken scan_string(LitScanner* scanner, bool interpolation)
                 break;
             default:
                 {
-                    lit_bytes_write(state, &bytes, c);
+                    lit_bytelist_push(state, &bytes, c);
                 }
                 break;
         }
     }
-    token = make_token(scanner, string_type);
+    token = lit_lex_maketoken(scanner, string_type);
     token.value = lit_value_objectvalue(lit_string_copy(state, (const char*)bytes.values, bytes.count));
-    lit_free_bytes(state, &bytes);
+    lit_bytelist_destroy(state, &bytes);
     return token;
 }
 
-static int scan_hexdigit(LitScanner* scanner)
+static int lit_lex_scanhexdigit(LitScanner* scanner)
 {
     char c;
-    c = advance(scanner);
+    c = lit_lex_advance(scanner);
     if((c >= '0') && (c <= '9'))
     {
         return (c - '0');
@@ -334,10 +323,10 @@ static int scan_hexdigit(LitScanner* scanner)
     return -1;
 }
 
-static int scan_binarydigit(LitScanner* scanner)
+static int lit_lex_scanbinarydigit(LitScanner* scanner)
 {
     char c;
-    c = advance(scanner);
+    c = lit_lex_advance(scanner);
     if(c >= '0' && c <= '1')
     {
         return c - '0';
@@ -346,7 +335,7 @@ static int scan_binarydigit(LitScanner* scanner)
     return -1;
 }
 
-static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_binary)
+static LitToken lit_lex_makenumbertoken(LitScanner* scanner, bool is_hex, bool is_binary)
 {
     LitToken token;
     LitValue value;
@@ -367,49 +356,49 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_bina
     if(errno == ERANGE)
     {
         errno = 0;
-        return make_error_token(scanner, LITERROR_NUMBER_IS_TOO_BIG);
+        return lit_lex_makeerrortoken(scanner, LITERROR_NUMBER_IS_TOO_BIG);
     }
-    token = make_token(scanner, LITTOK_NUMBER);
+    token = lit_lex_maketoken(scanner, LITTOK_NUMBER);
     token.value = value;
     return token;
 }
 
-static LitToken scan_number(LitScanner* scanner)
+static LitToken lit_lex_scannumber(LitScanner* scanner)
 {
-    if(match(scanner, 'x'))
+    if(lit_lex_matchchar(scanner, 'x'))
     {
-        while(scan_hexdigit(scanner) != -1)
+        while(lit_lex_scanhexdigit(scanner) != -1)
         {
             continue;
         }
-        return make_number_token(scanner, true, false);
+        return lit_lex_makenumbertoken(scanner, true, false);
     }
-    if(match(scanner, 'b'))
+    if(lit_lex_matchchar(scanner, 'b'))
     {
-        while(scan_binarydigit(scanner) != -1)
+        while(lit_lex_scanbinarydigit(scanner) != -1)
         {
             continue;
         }
-        return make_number_token(scanner, false, true);
+        return lit_lex_makenumbertoken(scanner, false, true);
     }
-    while(lit_is_digit(peek(scanner)))
+    while(lit_is_digit(lit_lex_peekcurrent(scanner)))
     {
-        advance(scanner);
+        lit_lex_advance(scanner);
     }
     // Look for a fractional part.
-    if(peek(scanner) == '.' && lit_is_digit(peek_next(scanner)))
+    if(lit_lex_peekcurrent(scanner) == '.' && lit_is_digit(lit_lex_peeknext(scanner)))
     {
         // Consume the '.'
-        advance(scanner);
-        while(lit_is_digit(peek(scanner)))
+        lit_lex_advance(scanner);
+        while(lit_is_digit(lit_lex_peekcurrent(scanner)))
         {
-            advance(scanner);
+            lit_lex_advance(scanner);
         }
     }
-    return make_number_token(scanner, false, false);
+    return lit_lex_makenumbertoken(scanner, false, false);
 }
 
-static LitTokType check_keyword(LitScanner* scanner, int start, int length, const char* rest, LitTokType type)
+static LitTokType lit_lex_checkkeyword(LitScanner* scanner, int start, int length, const char* rest, LitTokType type)
 {
     if(scanner->current - scanner->start == start + length && memcmp(scanner->start + start, rest, length) == 0)
     {
@@ -418,12 +407,12 @@ static LitTokType check_keyword(LitScanner* scanner, int start, int length, cons
     return LITTOK_IDENTIFIER;
 }
 
-static LitTokType scan_identtype(LitScanner* scanner)
+static LitTokType lit_lex_scanidenttype(LitScanner* scanner)
 {
     switch(scanner->start[0])
     {
         case 'b':
-            return check_keyword(scanner, 1, 4, "reak", LITTOK_BREAK);
+            return lit_lex_checkkeyword(scanner, 1, 4, "reak", LITTOK_BREAK);
 
         case 'c':
             {
@@ -432,7 +421,7 @@ static LitTokType scan_identtype(LitScanner* scanner)
                     switch(scanner->start[1])
                     {
                         case 'l':
-                            return check_keyword(scanner, 2, 3, "ass", LITTOK_CLASS);
+                            return lit_lex_checkkeyword(scanner, 2, 3, "ass", LITTOK_CLASS);
                         case 'o':
                         {
                             if(scanner->current - scanner->start > 3)
@@ -440,9 +429,9 @@ static LitTokType scan_identtype(LitScanner* scanner)
                                 switch(scanner->start[3])
                                 {
                                     case 's':
-                                        return check_keyword(scanner, 2, 3, "nst", LITTOK_CONST);
+                                        return lit_lex_checkkeyword(scanner, 2, 3, "nst", LITTOK_CONST);
                                     case 't':
-                                        return check_keyword(scanner, 2, 6, "ntinue", LITTOK_CONTINUE);
+                                        return lit_lex_checkkeyword(scanner, 2, 6, "ntinue", LITTOK_CONTINUE);
                                 }
                             }
                         }
@@ -457,9 +446,9 @@ static LitTokType scan_identtype(LitScanner* scanner)
                     switch(scanner->start[1])
                     {
                         case 'l':
-                            return check_keyword(scanner, 2, 2, "se", LITTOK_ELSE);
+                            return lit_lex_checkkeyword(scanner, 2, 2, "se", LITTOK_ELSE);
                         case 'x':
-                            return check_keyword(scanner, 2, 4, "port", LITTOK_EXPORT);
+                            return lit_lex_checkkeyword(scanner, 2, 4, "port", LITTOK_EXPORT);
                     }
                 }
             }
@@ -471,11 +460,11 @@ static LitTokType scan_identtype(LitScanner* scanner)
                     switch(scanner->start[1])
                     {
                         case 'a':
-                            return check_keyword(scanner, 2, 3, "lse", LITTOK_FALSE);
+                            return lit_lex_checkkeyword(scanner, 2, 3, "lse", LITTOK_FALSE);
                         case 'o':
-                            return check_keyword(scanner, 2, 1, "r", LITTOK_FOR);
+                            return lit_lex_checkkeyword(scanner, 2, 1, "r", LITTOK_FOR);
                         case 'u':
-                            return check_keyword(scanner, 2, 6, "nction", LITTOK_FUNCTION);
+                            return lit_lex_checkkeyword(scanner, 2, 6, "nction", LITTOK_FUNCTION);
                     }
                 }
             }
@@ -487,11 +476,11 @@ static LitTokType scan_identtype(LitScanner* scanner)
                     switch(scanner->start[1])
                     {
                         case 's':
-                            return check_keyword(scanner, 2, 0, "", LITTOK_IS);
+                            return lit_lex_checkkeyword(scanner, 2, 0, "", LITTOK_IS);
                         case 'f':
-                            return check_keyword(scanner, 2, 0, "", LITTOK_IF);
+                            return lit_lex_checkkeyword(scanner, 2, 0, "", LITTOK_IF);
                         case 'n':
-                            return check_keyword(scanner, 2, 0, "", LITTOK_IN);
+                            return lit_lex_checkkeyword(scanner, 2, 0, "", LITTOK_IN);
                     }
                 }
             }
@@ -503,9 +492,9 @@ static LitTokType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'u':
-                        return check_keyword(scanner, 2, 2, "ll", LITTOK_NULL);
+                        return lit_lex_checkkeyword(scanner, 2, 2, "ll", LITTOK_NULL);
                     case 'e':
-                        return check_keyword(scanner, 2, 1, "w", LITTOK_NEW);
+                        return lit_lex_checkkeyword(scanner, 2, 1, "w", LITTOK_NEW);
                 }
             }
 
@@ -519,9 +508,9 @@ static LitTokType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[2])
                 {
                     case 'f':
-                        return check_keyword(scanner, 3, 0, "", LITTOK_REF);
+                        return lit_lex_checkkeyword(scanner, 3, 0, "", LITTOK_REF);
                     case 't':
-                        return check_keyword(scanner, 3, 3, "urn", LITTOK_RETURN);
+                        return lit_lex_checkkeyword(scanner, 3, 3, "urn", LITTOK_RETURN);
                 }
             }
 
@@ -529,7 +518,7 @@ static LitTokType scan_identtype(LitScanner* scanner)
         }
 
         case 'o':
-            return check_keyword(scanner, 1, 7, "perator", LITTOK_OPERATOR);
+            return lit_lex_checkkeyword(scanner, 1, 7, "perator", LITTOK_OPERATOR);
 
         case 's':
         {
@@ -538,11 +527,11 @@ static LitTokType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'u':
-                        return check_keyword(scanner, 2, 3, "per", LITTOK_SUPER);
+                        return lit_lex_checkkeyword(scanner, 2, 3, "per", LITTOK_SUPER);
                     case 't':
-                        return check_keyword(scanner, 2, 4, "atic", LITTOK_STATIC);
+                        return lit_lex_checkkeyword(scanner, 2, 4, "atic", LITTOK_STATIC);
                     case 'e':
-                        return check_keyword(scanner, 2, 1, "t", LITTOK_SET);
+                        return lit_lex_checkkeyword(scanner, 2, 1, "t", LITTOK_SET);
                 }
             }
 
@@ -556,9 +545,9 @@ static LitTokType scan_identtype(LitScanner* scanner)
                 switch(scanner->start[1])
                 {
                     case 'h':
-                        return check_keyword(scanner, 2, 2, "is", LITTOK_THIS);
+                        return lit_lex_checkkeyword(scanner, 2, 2, "is", LITTOK_THIS);
                     case 'r':
-                        return check_keyword(scanner, 2, 2, "ue", LITTOK_TRUE);
+                        return lit_lex_checkkeyword(scanner, 2, 2, "ue", LITTOK_TRUE);
                 }
             }
 
@@ -566,36 +555,36 @@ static LitTokType scan_identtype(LitScanner* scanner)
         }
 
         case 'v':
-            return check_keyword(scanner, 1, 2, "ar", LITTOK_VAR);
+            return lit_lex_checkkeyword(scanner, 1, 2, "ar", LITTOK_VAR);
         case 'w':
-            return check_keyword(scanner, 1, 4, "hile", LITTOK_WHILE);
+            return lit_lex_checkkeyword(scanner, 1, 4, "hile", LITTOK_WHILE);
         case 'g':
-            return check_keyword(scanner, 1, 2, "et", LITTOK_GET);
+            return lit_lex_checkkeyword(scanner, 1, 2, "et", LITTOK_GET);
     }
 
     return LITTOK_IDENTIFIER;
 }
 
-static LitToken scan_identifier(LitScanner* scanner)
+static LitToken lit_lex_scanidentifier(LitScanner* scanner)
 {
-    while(lit_is_alpha(peek(scanner)) || lit_is_digit(peek(scanner)))
+    while(lit_is_alpha(lit_lex_peekcurrent(scanner)) || lit_is_digit(lit_lex_peekcurrent(scanner)))
     {
-        advance(scanner);
+        lit_lex_advance(scanner);
     }
 
-    return make_token(scanner, scan_identtype(scanner));
+    return lit_lex_maketoken(scanner, lit_lex_scanidenttype(scanner));
 }
 
-LitToken lit_scan_rollback(LitScanner* scanner)
+LitToken lit_lex_rollback(LitScanner* scanner)
 {
     //scanner->current--;
 }
 
-LitToken lit_scan_token(LitScanner* scanner)
+LitToken lit_lex_scantoken(LitScanner* scanner)
 {
-    if(skip_whitespace(scanner))
+    if(lit_lex_skipspace(scanner))
     {
-        LitToken token = make_token(scanner, LITTOK_NEW_LINE);
+        LitToken token = lit_lex_maketoken(scanner, LITTOK_NEW_LINE);
         scanner->line++;
 
         return token;
@@ -603,29 +592,29 @@ LitToken lit_scan_token(LitScanner* scanner)
 
     scanner->start = scanner->current;
 
-    if(is_at_end(scanner))
+    if(lit_lex_isatend(scanner))
     {
-        return make_token(scanner, LITTOK_EOF);
+        return lit_lex_maketoken(scanner, LITTOK_EOF);
     }
 
-    char c = advance(scanner);
+    char c = lit_lex_advance(scanner);
 
     if(lit_is_digit(c))
     {
-        return scan_number(scanner);
+        return lit_lex_scannumber(scanner);
     }
 
     if(lit_is_alpha(c))
     {
-        return scan_identifier(scanner);
+        return lit_lex_scanidentifier(scanner);
     }
 
     switch(c)
     {
         case '(':
-            return make_token(scanner, LITTOK_LEFT_PAREN);
+            return lit_lex_maketoken(scanner, LITTOK_LEFT_PAREN);
         case ')':
-            return make_token(scanner, LITTOK_RIGHT_PAREN);
+            return lit_lex_maketoken(scanner, LITTOK_RIGHT_PAREN);
 
         case '{':
         {
@@ -634,7 +623,7 @@ LitToken lit_scan_token(LitScanner* scanner)
                 scanner->braces[scanner->num_braces - 1]++;
             }
 
-            return make_token(scanner, LITTOK_LEFT_BRACE);
+            return lit_lex_maketoken(scanner, LITTOK_LEFT_BRACE);
         }
 
         case '}':
@@ -642,80 +631,80 @@ LitToken lit_scan_token(LitScanner* scanner)
             if(scanner->num_braces > 0 && --scanner->braces[scanner->num_braces - 1] == 0)
             {
                 scanner->num_braces--;
-                return scan_string(scanner, true);
+                return lit_lex_scanstring(scanner, true);
             }
 
-            return make_token(scanner, LITTOK_RIGHT_BRACE);
+            return lit_lex_maketoken(scanner, LITTOK_RIGHT_BRACE);
         }
 
         case '[':
-            return make_token(scanner, LITTOK_LEFT_BRACKET);
+            return lit_lex_maketoken(scanner, LITTOK_LEFT_BRACKET);
         case ']':
-            return make_token(scanner, LITTOK_RIGHT_BRACKET);
+            return lit_lex_maketoken(scanner, LITTOK_RIGHT_BRACKET);
         case ';':
-            return make_token(scanner, LITTOK_SEMICOLON);
+            return lit_lex_maketoken(scanner, LITTOK_SEMICOLON);
         case ',':
-            return make_token(scanner, LITTOK_COMMA);
+            return lit_lex_maketoken(scanner, LITTOK_COMMA);
         case ':':
-            return make_token(scanner, LITTOK_COLON);
+            return lit_lex_maketoken(scanner, LITTOK_COLON);
         case '~':
-            return make_token(scanner, LITTOK_TILDE);
+            return lit_lex_maketoken(scanner, LITTOK_TILDE);
 
         case '+':
-            return match_tokens(scanner, '=', '+', LITTOK_PLUS_EQUAL, LITTOK_PLUS_PLUS, LITTOK_PLUS);
+            return lit_lex_matchntoken(scanner, '=', '+', LITTOK_PLUS_EQUAL, LITTOK_PLUS_PLUS, LITTOK_PLUS);
         case '-':
-            return match(scanner, '>') ? make_token(scanner, LITTOK_SMALL_ARROW) :
-                                         match_tokens(scanner, '=', '-', LITTOK_MINUS_EQUAL, LITTOK_MINUS_MINUS, LITTOK_MINUS);
+            return lit_lex_matchchar(scanner, '>') ? lit_lex_maketoken(scanner, LITTOK_SMALL_ARROW) :
+                                         lit_lex_matchntoken(scanner, '=', '-', LITTOK_MINUS_EQUAL, LITTOK_MINUS_MINUS, LITTOK_MINUS);
         case '/':
-            return match_token(scanner, '=', LITTOK_SLASH_EQUAL, LITTOK_SLASH);
+            return lit_lex_matchtoken(scanner, '=', LITTOK_SLASH_EQUAL, LITTOK_SLASH);
         case '#':
-            return match_token(scanner, '=', LITTOK_SHARP_EQUAL, LITTOK_SHARP);
+            return lit_lex_matchtoken(scanner, '=', LITTOK_SHARP_EQUAL, LITTOK_SHARP);
         case '!':
-            return match_token(scanner, '=', LITTOK_BANG_EQUAL, LITTOK_BANG);
+            return lit_lex_matchtoken(scanner, '=', LITTOK_BANG_EQUAL, LITTOK_BANG);
         case '?':
-            return match_token(scanner, '?', LITTOK_QUESTION_QUESTION, LITTOK_QUESTION);
+            return lit_lex_matchtoken(scanner, '?', LITTOK_QUESTION_QUESTION, LITTOK_QUESTION);
         case '%':
-            return match_token(scanner, '=', LITTOK_PERCENT_EQUAL, LITTOK_PERCENT);
+            return lit_lex_matchtoken(scanner, '=', LITTOK_PERCENT_EQUAL, LITTOK_PERCENT);
         case '^':
-            return match_token(scanner, '=', LITTOK_CARET_EQUAL, LITTOK_CARET);
+            return lit_lex_matchtoken(scanner, '=', LITTOK_CARET_EQUAL, LITTOK_CARET);
 
         case '>':
-            return match_tokens(scanner, '=', '>', LITTOK_GREATER_EQUAL, LITTOK_GREATER_GREATER, LITTOK_GREATER);
+            return lit_lex_matchntoken(scanner, '=', '>', LITTOK_GREATER_EQUAL, LITTOK_GREATER_GREATER, LITTOK_GREATER);
         case '<':
-            return match_tokens(scanner, '=', '<', LITTOK_LESS_EQUAL, LITTOK_LESS_LESS, LITTOK_LESS);
+            return lit_lex_matchntoken(scanner, '=', '<', LITTOK_LESS_EQUAL, LITTOK_LESS_LESS, LITTOK_LESS);
         case '*':
-            return match_tokens(scanner, '=', '*', LITTOK_STAR_EQUAL, LITTOK_STAR_STAR, LITTOK_STAR);
+            return lit_lex_matchntoken(scanner, '=', '*', LITTOK_STAR_EQUAL, LITTOK_STAR_STAR, LITTOK_STAR);
         case '=':
-            return match_tokens(scanner, '=', '>', LITTOK_EQUAL_EQUAL, LITTOK_ARROW, LITTOK_EQUAL);
+            return lit_lex_matchntoken(scanner, '=', '>', LITTOK_EQUAL_EQUAL, LITTOK_ARROW, LITTOK_EQUAL);
         case '|':
-            return match_tokens(scanner, '=', '|', LITTOK_BAR_EQUAL, LITTOK_BAR_BAR, LITTOK_BAR);
+            return lit_lex_matchntoken(scanner, '=', '|', LITTOK_BAR_EQUAL, LITTOK_BAR_BAR, LITTOK_BAR);
         case '&':
-            return match_tokens(scanner, '=', '&', LITTOK_AMPERSAND_EQUAL, LITTOK_AMPERSAND_AMPERSAND, LITTOK_AMPERSAND);
+            return lit_lex_matchntoken(scanner, '=', '&', LITTOK_AMPERSAND_EQUAL, LITTOK_AMPERSAND_AMPERSAND, LITTOK_AMPERSAND);
 
 
         case '.':
         {
-            if(!match(scanner, '.'))
+            if(!lit_lex_matchchar(scanner, '.'))
             {
-                return make_token(scanner, LITTOK_DOT);
+                return lit_lex_maketoken(scanner, LITTOK_DOT);
             }
 
-            return match_token(scanner, '.', LITTOK_DOT_DOT_DOT, LITTOK_DOT_DOT);
+            return lit_lex_matchtoken(scanner, '.', LITTOK_DOT_DOT_DOT, LITTOK_DOT_DOT);
         }
 
         case '$':
         {
-            if(!match(scanner, '\"'))
+            if(!lit_lex_matchchar(scanner, '\"'))
             {
-                return make_error_token(scanner, LITERROR_CHAR_EXPECTATION_UNMET, '\"', '$', peek(scanner));
+                return lit_lex_makeerrortoken(scanner, LITERROR_CHAR_EXPECTATION_UNMET, '\"', '$', lit_lex_peekcurrent(scanner));
             }
 
-            return scan_string(scanner, true);
+            return lit_lex_scanstring(scanner, true);
         }
 
         case '"':
-            return scan_string(scanner, false);
+            return lit_lex_scanstring(scanner, false);
     }
 
-    return make_error_token(scanner, LITERROR_UNEXPECTED_CHAR, c);
+    return lit_lex_makeerrortoken(scanner, LITERROR_UNEXPECTED_CHAR, c);
 }

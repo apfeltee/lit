@@ -3,8 +3,6 @@
 #include <string.h>
 #include <time.h>
 #include "lit.h"
-#include "priv.h"
-
 
 static bool measure_compilation_time;
 static double last_source_time = 0;
@@ -71,11 +69,11 @@ LitState* lit_make_state()
     lit_preproc_init(state, state->preprocessor);
     state->scanner = (LitScanner*)malloc(sizeof(LitScanner));
     state->parser = (LitParser*)malloc(sizeof(LitParser));
-    lit_init_parser(state, (LitParser*)state->parser);
+    lit_parser_init(state, (LitParser*)state->parser);
     state->emitter = (LitEmitter*)malloc(sizeof(LitEmitter));
     lit_emitter_init(state, state->emitter);
     state->optimizer = (LitOptimizer*)malloc(sizeof(LitOptimizer));
-    lit_init_optimizer(state, state->optimizer);
+    lit_astopt_init(state, state->optimizer);
     state->vm = (LitVM*)malloc(sizeof(LitVM));
     lit_vm_init(state, state->vm);
     lit_api_init(state);
@@ -95,7 +93,7 @@ int64_t lit_destroy_state(LitState* state)
     lit_preproc_destroy(state->preprocessor);
     free(state->preprocessor);
     free(state->scanner);
-    lit_free_parser(state->parser);
+    lit_parser_destroy(state->parser);
     free(state->parser);
     lit_emitter_destroy(state->emitter);
     free(state->emitter);
@@ -738,7 +736,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
             t = clock();
         }
         lit_exprlist_init(&statements);
-        if(lit_parse(state->parser, module_name->chars, code, &statements))
+        if(lit_parser_parsesource(state->parser, module_name->chars, code, &statements))
         {
             free_statements(state, &statements);
             return NULL;
@@ -752,7 +750,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
             printf("Parsing:        %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
             t = clock();
         }
-        lit_optimize(state->optimizer, &statements);
+        lit_astopt_optast(state->optimizer, &statements);
         if(measure_compilation_time)
         {
             printf("Optimization:   %gms\n", (double)(clock() - t) / CLOCKS_PER_SEC * 1000);
@@ -827,7 +825,7 @@ bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, 
     LitModule* module;
     LitModule** compiled_modules;
     compiled_modules = LIT_ALLOCATE(state, sizeof(LitModule*), num_files+1);
-    lit_set_optimization_level(LITOPTLEVEL_EXTREME);
+    lit_astopt_setoptlevel(LITOPTLEVEL_EXTREME);
     for(i = 0; i < num_files; i++)
     {
         file_name = lit_util_copystring(files[i]);

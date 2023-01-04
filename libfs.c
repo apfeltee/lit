@@ -1,6 +1,4 @@
 
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -418,7 +416,7 @@ void lit_save_module(LitModule* module, FILE* file)
     size_t i;
     bool disabled;
     LitTable* privates;
-    disabled = lit_is_optimization_enabled(LITOPTSTATE_PRIVATE_NAMES);
+    disabled = lit_astopt_isoptenabled(LITOPTSTATE_PRIVATE_NAMES);
     lit_write_string(file, module->name);
     lit_write_uint16_t(file, module->private_count);
     lit_write_uint8_t(file, (uint8_t)disabled);
