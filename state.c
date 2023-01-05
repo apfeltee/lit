@@ -716,7 +716,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
     // This is a lbc format
     if((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER)
     {
-        module = lit_load_module(state, code, len);
+        module = lit_ioutil_readmodule(state, code, len);
     }
     else
     {
@@ -852,14 +852,14 @@ bool lit_state_compileandsave(LitState* state, char* files[], size_t num_files, 
         lit_state_raiseerror(state, COMPILE_ERROR, "failed to open file '%s' for writing", output_file);
         return false;
     }
-    lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
-    lit_write_uint8_t(file, LIT_BYTECODE_VERSION);
-    lit_write_uint16_t(file, num_files);
+    lit_ioutil_writeuint16(file, LIT_BYTECODE_MAGIC_NUMBER);
+    lit_ioutil_writeuint8(file, LIT_BYTECODE_VERSION);
+    lit_ioutil_writeuint16(file, num_files);
     for(i = 0; i < num_files; i++)
     {
-        lit_save_module(compiled_modules[i], file);
+        lit_ioutil_writemodule(compiled_modules[i], file);
     }
-    lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
+    lit_ioutil_writeuint16(file, LIT_BYTECODE_END_NUMBER);
     LIT_FREE(state, sizeof(LitModule), compiled_modules);
     fclose(file);
     return true;

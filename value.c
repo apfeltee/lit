@@ -3,15 +3,23 @@
 #include <stdio.h>
 #include "lit.h"
 
+
 LitValue lit_value_objectvalue_actual(uintptr_t obj)
 {
     return (LitValue)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj));
 }
 
+bool lit_value_isobject(LitValue v)
+{
+    return ((v & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT));
+}
+
+
 LitObject* lit_value_asobject(LitValue v)
 {
     return ((LitObject*)(uintptr_t)((v) & ~(SIGN_BIT | QNAN)));
 }
+
 
 LitValue lit_bool_to_value(LitState* state, bool b) 
 {
@@ -39,10 +47,6 @@ bool lit_value_isnull(LitValue v)
     return (v == NULL_VALUE);
 }
 
-bool lit_value_isobject(LitValue v)
-{
-    return ((v & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT));
-}
 
 LitObjType lit_value_type(LitValue v)
 {
@@ -64,7 +68,9 @@ LitObjType lit_value_type(LitValue v)
 double lit_value_asnumber(LitValue v)
 {
     #if defined(USE_NUMBEROBJECT) && (USE_NUMBEROBJECT == 1)
-        return ((LitNumber*)lit_value_asobject(v))->num;
+        LitObject* tmp;
+        tmp = lit_value_asobject(v);
+        return ((LitNumber*)tmp)->num;
     #else
         return *((double*)&v);
     #endif
@@ -75,11 +81,8 @@ LitValue lit_value_numbertovalue(LitState* state, double num)
     (void)state;
     #if defined(USE_NUMBEROBJECT) && (USE_NUMBEROBJECT == 1)
         #if 1
-            LitObject* o;
             LitNumber* nobj;
-            o = lit_gcmem_allocobject(state, sizeof(LitNumber), LITTYPE_NUMBER, true);
-            o->type = LITTYPE_NUMBER;
-            nobj = (LitNumber*)o;
+            nobj = (LitNumber*)lit_gcmem_allocobject(state, sizeof(LitNumber), LITTYPE_NUMBER, true);
             nobj->num = num;
             return lit_value_objectvalue(nobj);
         #else
@@ -127,14 +130,18 @@ bool lit_value_compare(LitState* state, const LitValue a, const LitValue b)
             return false;
         }
     }
-    //t1 = lit_value_type(a);
-    //t2 = lit_value_type(b);
-    //fprintf(stderr, "compare: t1=%d t2=%d\n", t1, t2);
-    //if(t1 == t2)
+    t1 = lit_value_type(a);
+    t2 = lit_value_type(b);
+    fprintf(stderr, "compare: t1=%d t2=%d\n", t1, t2);
+    if(t1 == t2)
     {
+        if(t1 == LITTYPE_NUMBER && t2 == LITTYPE_NUMBER)
+        {
+            return (lit_value_asnumber(a) == lit_value_asnumber(b));
+        }
         return (a == b);
     }
-    //return false;
+    return false;
 }
 
 LitString* lit_value_tostring(LitState* state, LitValue object)

@@ -37,7 +37,7 @@ struct LitDirItem
     bool isfile;
 };
 
-bool lit_dir_open(LitDirReader* rd, const char* path)
+bool lit_fs_diropen(LitDirReader* rd, const char* path)
 {
     #if defined(LITDIR_ISUNIX)
         if((rd->handle = opendir(path)) == NULL)
@@ -49,7 +49,7 @@ bool lit_dir_open(LitDirReader* rd, const char* path)
     return false;
 }
 
-bool lit_dir_read(LitDirReader* rd, LitDirItem* itm)
+bool lit_fs_dirread(LitDirReader* rd, LitDirItem* itm)
 {
     itm->isdir = false;
     itm->isfile = false;
@@ -74,7 +74,7 @@ bool lit_dir_read(LitDirReader* rd, LitDirItem* itm)
     return false;
 }
 
-bool lit_dir_close(LitDirReader* rd)
+bool lit_fs_dirclose(LitDirReader* rd)
 {
     #if defined(LITDIR_ISUNIX)
         closedir((DIR*)(rd->handle));

@@ -5,13 +5,14 @@
 #include "lit.h"
 
 #if 1
-    static LitObject g_stackmem[1024 * (1024 * 4)];
-    static size_t g_objcount = 0;
+    LitObject g_stackmem[1024 * (1024 * 4)];
+    size_t g_objcount = 0;
 #endif
 
 LitObject* lit_gcmem_allocobject(LitState* state, size_t size, LitObjType type, bool islight)
 {
     LitObject* obj;
+    //islight = false;
     if(islight)
     {
         #if 0

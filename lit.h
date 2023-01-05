@@ -105,10 +105,6 @@
 
 #define LIT_TESTS_DIRECTORY "tests"
 
-#define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
-#define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
-#define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
-
 #define LIT_GROW_CAPACITY(capacity) \
     ((capacity) < 8 ? 8 : (capacity)*2)
 
@@ -184,7 +180,9 @@
 
 #define RETURN_RUNTIME_ERROR() return (LitInterpretResult){ LITRESULT_RUNTIME_ERROR, NULL_VALUE };
 
-
+#define FALSE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_FALSE))
+#define TRUE_VALUE ((LitValue)(uint64_t)(QNAN | TAG_TRUE))
+#define NULL_VALUE ((LitValue)(uint64_t)(QNAN | TAG_NULL))
 
 enum LitOpCode
 {
@@ -468,6 +466,7 @@ enum LitObjType
     LITTYPE_FIELD,
     LITTYPE_REFERENCE,
     LITTYPE_NUMBER,
+    LITTYPE_BOOL,
 };
 
 
@@ -578,7 +577,6 @@ typedef struct /**/LitDirReader LitDirReader;
 typedef struct /**/LitDirItem LitDirItem;
 
 typedef uint64_t LitValue;
-//typedef LitObject LitValue;
 
 typedef LitExpression* (*LitPrefixParseFn)(LitParser*, bool);
 typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*, bool);
@@ -605,6 +603,8 @@ struct LitObject
     LitObject* next;
     bool marked;
     bool mustfree;
+
+
 };
 
 struct LitDataList

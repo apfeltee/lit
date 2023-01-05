@@ -290,7 +290,7 @@ bool util_attempt_to_require(LitVM* vm, LitValue* argv, size_t argc, const char*
     }
     // You can require dirs if they have init.lit in them
     modname[length] = '\0';
-    if(lit_dir_exists(modname))
+    if(lit_fs_direxists(modname))
     {
         if(folders)
         {
