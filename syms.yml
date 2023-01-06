@@ -1,165 +1,33 @@
-  # _Bool lit_dir_open(LitDirReader *rd, const char *path);
-  "lit_dir_open": "lit_fs_diropen"
 
-  # _Bool lit_dir_read(LitDirReader *rd, LitDirItem *itm);
-  "lit_dir_read": "lit_fs_dirread"
-
-  # _Bool lit_dir_close(LitDirReader *rd);
-  "lit_dir_close": "lit_fs_dirclose"
-
-  # static void * LIT_INSERT_DATA(LitVM *vm, LitValue instance, size_t typsz, CleanupFunc cleanup);
-  "LIT_INSERT_DATA": "lit_util_instancedataset"
-
-  # static void * LIT_EXTRACT_DATA(LitVM *vm, LitValue instance);
-  "LIT_EXTRACT_DATA": "lit_util_instancedataget"
-
-  # char * lit_util_readfile(const char *path, size_t *dlen);
-  "lit_util_readfile": "lit_util_readfile"
-
-  # _Bool lit_file_exists(const char *path);
-  "lit_file_exists": "lit_fs_fileexists"
-
-  # _Bool lit_dir_exists(const char *path);
-  "lit_dir_exists": "lit_fs_direxists"
-
-  # size_t lit_write_uint8_t(FILE *file, uint8_t byte);
-  "lit_write_uint8_t": "lit_ioutil_writeuint8"
-
-  # size_t lit_write_uint16_t(FILE *file, uint16_t byte);
-  "lit_write_uint16_t": "lit_ioutil_writeuint16"
-
-  # size_t lit_write_uint32_t(FILE *file, uint32_t byte);
-  "lit_write_uint32_t": "lit_ioutil_writeuint32"
-
-  # size_t lit_write_double(FILE *file, double byte);
-  "lit_write_double": "lit_ioutil_writedouble"
-
-  # size_t lit_write_string(FILE *file, LitString *string);
-  "lit_write_string": "lit_ioutil_writestring"
-
-  # uint8_t lit_read_uint8_t(FILE *file);
-  "lit_read_uint8_t": "lit_ioutil_readuint8"
-
-  # uint16_t lit_read_uint16_t(FILE *file);
-  "lit_read_uint16_t": "lit_ioutil_readuint16"
-
-  # uint32_t lit_read_uint32_t(FILE *file);
-  "lit_read_uint32_t": "lit_ioutil_readuint32"
-
-  # double lit_read_double(FILE *file);
-  "lit_read_double": "lit_ioutil_readdouble"
-
-  # LitString * lit_read_string(LitState *state, FILE *file);
-  "lit_read_string": "lit_ioutil_readstring"
-
-  # void lit_init_emulated_file(LitEmulatedFile *file, const char *source, size_t len);
-  "lit_init_emulated_file": "lit_emufile_init"
-
-  # uint8_t lit_read_euint8_t(LitEmulatedFile *file);
-  "lit_read_euint8_t": "lit_emufile_readuint8"
-
-  # uint16_t lit_read_euint16_t(LitEmulatedFile *file);
-  "lit_read_euint16_t": "lit_emufile_readuint16"
-
-  # uint32_t lit_read_euint32_t(LitEmulatedFile *file);
-  "lit_read_euint32_t": "lit_emufile_readuint32"
-
-  # double lit_read_edouble(LitEmulatedFile *file);
-  "lit_read_edouble": "lit_emufile_readdouble"
-
-  # LitString * lit_read_estring(LitState *state, LitEmulatedFile *file);
-  "lit_read_estring": "lit_emufile_readstring"
-
-  # static void save_function(FILE *file, LitFunction *function);
-  "save_function": "lit_ioutil_writefunction"
-
-  # static LitFunction * load_function(LitState *state, LitEmulatedFile *file, LitModule *module);
-  "load_function": "lit_ioutil_readfunction"
-
-  # static void save_chunk(FILE *file, LitChunk *chunk);
-  "save_chunk": "lit_ioutil_writechunk"
-
-  # static void load_chunk(LitState *state, LitEmulatedFile *file, LitModule *module, LitChunk *chunk);
-  "load_chunk": "lit_ioutil_readchunk"
-
-  # void lit_save_module(LitModule *module, FILE *file);
-  "lit_save_module": "lit_ioutil_writemodule"
-
-  # LitModule * lit_load_module(LitState *state, const char *input, size_t len);
-  "lit_load_module": "lit_ioutil_readmodule"
-
-  # void cleanup_file(LitState *state, LitUserdata *data, _Bool mark);
-  "cleanup_file": "lit_userfile_cleanup"
-
-  # static LitValue objmethod_file_constructor(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_constructor": "objmethod_file_constructor"
-
-  # static LitValue objmethod_file_close(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_close": "objmethod_file_close"
-
-  # static LitValue objmethod_file_exists(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_exists": "objmethod_file_exists"
-
-  # static LitValue objmethod_file_write(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_write": "objmethod_file_write"
-
-  # static LitValue objmethod_file_writebyte(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_writebyte": "objmethod_file_writebyte"
-
-  # static LitValue objmethod_file_writeshort(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_writeshort": "objmethod_file_writeshort"
-
-  # static LitValue objmethod_file_writenumber(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_writenumber": "objmethod_file_writenumber"
-
-  # static LitValue objmethod_file_writebool(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_writebool": "objmethod_file_writebool"
-
-  # static LitValue objmethod_file_writestring(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_writestring": "objmethod_file_writestring"
-
-  # static LitValue objmethod_file_readall(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readall": "objmethod_file_readall"
-
-  # static LitValue objmethod_file_readline(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readline": "objmethod_file_readline"
-
-  # static LitValue objmethod_file_readbyte(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readbyte": "objmethod_file_readbyte"
-
-  # static LitValue objmethod_file_readshort(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readshort": "objmethod_file_readshort"
-
-  # static LitValue objmethod_file_readnumber(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readnumber": "objmethod_file_readnumber"
-
-  # static LitValue objmethod_file_readbool(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readbool": "objmethod_file_readbool"
-
-  # static LitValue objmethod_file_readstring(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_readstring": "objmethod_file_readstring"
-
-  # static LitValue objmethod_file_getlastmodified(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objmethod_file_getlastmodified": "objmethod_file_getlastmodified"
-
-  # static LitValue objfunction_directory_exists(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objfunction_directory_exists": "objfunction_directory_exists"
-
-  # static LitValue objfunction_directory_listfiles(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objfunction_directory_listfiles": "objfunction_directory_listfiles"
-
-  # static LitValue objfunction_directory_listdirs(LitVM *vm, LitValue instance, size_t argc, LitValue *argv);
-  "objfunction_directory_listdirs": "objfunction_directory_listdirs"
-
-  # static void free_handle(LitState *state, LitUserdata *userdata, _Bool mark);
-  "free_handle": "lit_userfile_destroyhandle"
-
-  # static void make_handle(LitState *state, LitValue fileval, const char *name, FILE *hnd, _Bool canread, _Bool canwrite);
-  "make_handle": "lit_userfile_makehandle"
-
-  # static void make_stdhandles(LitState *state);
-  "make_stdhandles": "lit_userfile_makestdhandles"
-
-  # void lit_open_file_library(LitState *state);
-  "lit_open_file_library": "lit_open_file_library"
-
+  "LitExpression": "LitAstExpression"
+  "LitLiteralExpr": "LitAstLiteralExpr"
+  "LitBinaryExpr": "LitAstBinaryExpr"
+  "LitUnaryExpr": "LitAstUnaryExpr"
+  "LitVarExpr": "LitAstVarExpr"
+  "LitAssignExpr": "LitAstAssignExpr"
+  "LitCallExpr": "LitAstCallExpr"
+  "LitGetExpr": "LitAstGetExpr"
+  "LitSetExpr": "LitAstSetExpr"
+  "LitLambdaExpr": "LitAstLambdaExpr"
+  "LitArrayExpr": "LitAstArrayExpr"
+  "LitObjectExpr": "LitAstObjectExpr"
+  "LitSubscriptExpr": "LitAstIndexExpr"
+  "LitThisExpr": "LitAstThisExpr"
+  "LitSuperExpr": "LitAstSuperExpr"
+  "LitRangeExpr": "LitAstRangeExpr"
+  "LitTernaryExpr": "LitAstTernaryExpr"
+  "LitInterpolationExpr": "LitAstStrInterExpr"
+  "LitReferenceExpr": "LitAstRefExpr"
+  "LitExpressionExpr": "LitAstExprExpr"
+  "LitBlockExpr": "LitAstBlockExpr"
+  "LitAssignVarExpr": "LitAstAssignVarExpr"
+  "LitIfExpr": "LitAstIfExpr"
+  "LitWhileExpr": "LitAstWhileExpr"
+  "LitForExpr": "LitAstForExpr"
+  "LitContinueExpr": "LitAstContinueExpr"
+  "LitBreakExpr": "LitAstBreakExpr"
+  "LitFunctionExpr": "LitAstFunctionExpr"
+  "LitReturnExpr": "LitAstReturnExpr"
+  "LitMethodExpr": "LitAstMethodExpr"
+  "LitClassExpr": "LitAstClassExpr"
+  "LitFieldExpr": "LitAstFieldExpr"

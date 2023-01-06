@@ -578,7 +578,7 @@ const char* lit_tostring_optok(LitTokType t)
 #define as_type(varname, fromname, tname) \
     tname* varname = (tname*)fromname
 
-void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
+void lit_towriter_expr(LitState* state, LitWriter* wr, LitAstExpression* expr)
 {
     size_t i;
     if(expr == NULL)
@@ -591,13 +591,13 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
     {
         case LITEXPR_LITERAL:
             {
-                as_type(exlit, expr, LitLiteralExpr);
+                as_type(exlit, expr, LitAstLiteralExpr);
                 lit_towriter_value(state, wr, exlit->value);
             }
             break;
         case LITEXPR_BINARY:
             {
-                as_type(exbin, expr, LitBinaryExpr);
+                as_type(exbin, expr, LitAstBinaryExpr);
                 if(exbin->ignore_left)
                 {
                     lit_towriter_expr(state, wr, exbin->left);
@@ -608,7 +608,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_UNARY:
             {
-                as_type(exun, expr, LitUnaryExpr);
+                as_type(exun, expr, LitAstUnaryExpr);
                 lit_writer_writestring(wr, lit_tostring_optok(exun->op));
                 lit_towriter_expr(state, wr, exun->right);
                 /*
@@ -621,13 +621,13 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_VAREXPR:
             {
-                as_type(exvarex, expr, LitVarExpr);
+                as_type(exvarex, expr, LitAstVarExpr);
                 lit_writer_writeformat(wr, "%.*s", exvarex->length, exvarex->name);
             }
             break;
         case LITEXPR_ASSIGN:
             {
-                as_type(exassign, expr, LitAssignExpr);
+                as_type(exassign, expr, LitAstAssignExpr);
                 lit_towriter_expr(state, wr, exassign->to);
                 lit_writer_writestring(wr, " = ");
                 lit_towriter_expr(state, wr, exassign->value);
@@ -636,7 +636,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_CALL:
             {
-                as_type(excall, expr, LitCallExpr);
+                as_type(excall, expr, LitAstCallExpr);
                 lit_towriter_expr(state, wr, excall->callee);
                 lit_writer_writestring(wr, "(");
                 for(i=0; i<excall->args.count; i++)
@@ -652,7 +652,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_SET:
             {
-                as_type(exset, expr, LitSetExpr);
+                as_type(exset, expr, LitAstSetExpr);
                 lit_towriter_expr(state, wr, exset->where);
                 lit_writer_writeformat(wr, ".%s = ", exset->name);
                 lit_towriter_expr(state, wr, exset->value);
@@ -660,14 +660,14 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_GET:
             {
-                as_type(exget, expr, LitGetExpr);
+                as_type(exget, expr, LitAstGetExpr);
                 lit_towriter_expr(state, wr, exget->where);
                 lit_writer_writeformat(wr, ".%s", exget->name);
             }
             break;
         case LITEXPR_LAMBDA:
             {
-                as_type(exlam, expr, LitLambdaExpr);
+                as_type(exlam, expr, LitAstLambdaExpr);
                 lit_writer_writeformat(wr, "(");
                 for(i=0; i<exlam->parameters.count; i++)
                 {
@@ -688,7 +688,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_ARRAY:
             {
-                as_type(exarr, expr, LitArrayExpr);
+                as_type(exarr, expr, LitAstArrayExpr);
                 lit_writer_writeformat(wr, "[");
                 for(i=0; i<exarr->values.count; i++)
                 {
@@ -703,7 +703,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_OBJECT:
             {
-                as_type(exobj, expr, LitObjectExpr);
+                as_type(exobj, expr, LitAstObjectExpr);
                 lit_writer_writeformat(wr, "{");
                 for(i=0; i<lit_vallist_count(&exobj->keys); i++)
                 {
@@ -720,7 +720,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_SUBSCRIPT:
             {
-                as_type(exsub, expr, LitSubscriptExpr);
+                as_type(exsub, expr, LitAstIndexExpr);
                 lit_towriter_expr(state, wr, exsub->array);
                 lit_writer_writestring(wr, "[");
                 lit_towriter_expr(state, wr, exsub->index);
@@ -734,13 +734,13 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_SUPER:
             {
-                as_type(exsuper, expr, LitSuperExpr);
+                as_type(exsuper, expr, LitAstSuperExpr);
                 lit_writer_writeformat(wr, "super(%s)", exsuper->method->chars);
             }
             break;
         case LITEXPR_RANGE:
             {
-                as_type(exrange, expr, LitRangeExpr);
+                as_type(exrange, expr, LitAstRangeExpr);
                 lit_writer_writestring(wr, "[");
                 lit_towriter_expr(state, wr, exrange->from);
                 lit_writer_writestring(wr, " .. ");
@@ -750,7 +750,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_TERNARY:
             {
-                as_type(exif, expr, LitTernaryExpr);
+                as_type(exif, expr, LitAstTernaryExpr);
                 lit_writer_writestring(wr, "if(");
                 lit_towriter_expr(state, wr, exif->condition);
                 lit_writer_writestring(wr, ")");
@@ -764,7 +764,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_INTERPOLATION:
             {
-                as_type(exint, expr, LitInterpolationExpr);
+                as_type(exint, expr, LitAstStrInterExpr);
                 lit_writer_writestring(wr, "\"\"+");
                 for(i=0; i<exint->expressions.count; i++)
                 {
@@ -786,13 +786,13 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_EXPRESSION:
             {
-                as_type(exexpr, expr, LitExpressionExpr);
+                as_type(exexpr, expr, LitAstExprExpr);
                 lit_towriter_expr(state, wr, exexpr->expression);
             }
             break;
         case LITEXPR_BLOCK:
             {
-                as_type(exblock, expr, LitBlockExpr);
+                as_type(exblock, expr, LitAstBlockExpr);
                 lit_writer_writestring(wr, "{");
                 for(i=0; i<exblock->statements.count; i++)
                 {
@@ -808,7 +808,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
             break;
         case LITEXPR_WHILE:
             {
-                as_type(wl, expr, LitWhileExpr);
+                as_type(wl, expr, LitAstWhileExpr);
                 lit_writer_writeformat(wr, "while(");
                 lit_towriter_expr(state, wr, wl->condition);
                 lit_writer_writeformat(wr, ")");
@@ -868,7 +868,7 @@ void lit_towriter_expr(LitState* state, LitWriter* wr, LitExpression* expr)
     }
 }
 
-void lit_towriter_ast(LitState* state, LitWriter* wr, LitExprList* exlist)
+void lit_towriter_ast(LitState* state, LitWriter* wr, LitAstExprList* exlist)
 {
     size_t i;
     lit_writer_writeformat(wr, "begin AST dump (list of %d expressions):\n", exlist->count);

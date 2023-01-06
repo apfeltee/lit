@@ -691,7 +691,7 @@ LitClass* lit_state_getclassfor(LitState* state, LitValue value)
     return NULL;
 }
 
-static void free_statements(LitState* state, LitExprList* statements)
+static void free_statements(LitState* state, LitAstExprList* statements)
 {
     size_t i;
     for(i = 0; i < statements->count; i++)
@@ -708,7 +708,7 @@ LitModule* lit_state_compilemodule(LitState* state, LitString* module_name, cons
     clock_t total_t;
     bool allowed_gc;
     LitModule* module;
-    LitExprList statements;
+    LitAstExprList statements;
     allowed_gc = state->allow_gc;
     state->allow_gc = false;
     state->had_error = false;

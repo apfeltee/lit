@@ -516,7 +516,7 @@ typedef struct /**/LitRange LitRange;
 typedef struct /**/LitField LitField;
 typedef struct /**/LitReference LitReference;
 typedef struct /**/LitToken LitToken;
-typedef struct /**/LitExpression LitExpression;
+typedef struct /**/LitAstExpression LitAstExpression;
 typedef struct /**/LitCompilerUpvalue LitCompilerUpvalue;
 typedef struct /**/LitCompiler LitCompiler;
 typedef struct /**/LitParseRule LitParseRule;
@@ -530,46 +530,46 @@ typedef struct /**/LitConfig LitConfig;
 typedef struct /**/LitVarList LitVarList;
 typedef struct /**/LitUintList LitUintList;
 typedef struct /**/LitValueList LitValueList;
-typedef struct /**/LitExprList LitExprList;
-typedef struct /**/LitParamList LitParamList;
+typedef struct /**/LitAstExprList LitAstExprList;
+typedef struct /**/LitAstParamList LitAstParamList;
 typedef struct /**/LitPrivList LitPrivList;
 typedef struct /**/LitLocList LitLocList;
 typedef struct /**/LitDataList LitDataList;
 typedef struct /**/LitByteList LitByteList;
 
 /* ast/compiler types */
-typedef struct /**/LitLiteralExpr LitLiteralExpr;
-typedef struct /**/LitBinaryExpr LitBinaryExpr;
-typedef struct /**/LitUnaryExpr LitUnaryExpr;
-typedef struct /**/LitVarExpr LitVarExpr;
-typedef struct /**/LitAssignExpr LitAssignExpr;
-typedef struct /**/LitCallExpr LitCallExpr;
-typedef struct /**/LitGetExpr LitGetExpr;
-typedef struct /**/LitSetExpr LitSetExpr;
-typedef struct /**/LitParameter LitParameter;
-typedef struct /**/LitLambdaExpr LitLambdaExpr;
-typedef struct /**/LitArrayExpr LitArrayExpr;
-typedef struct /**/LitObjectExpr LitObjectExpr;
-typedef struct /**/LitSubscriptExpr LitSubscriptExpr;
-typedef struct /**/LitThisExpr LitThisExpr;
-typedef struct /**/LitSuperExpr LitSuperExpr;
-typedef struct /**/LitRangeExpr LitRangeExpr;
-typedef struct /**/LitTernaryExpr LitTernaryExpr;
-typedef struct /**/LitInterpolationExpr LitInterpolationExpr;
-typedef struct /**/LitReferenceExpr LitReferenceExpr;
-typedef struct /**/LitExpressionExpr LitExpressionExpr;
-typedef struct /**/LitBlockExpr LitBlockExpr;
-typedef struct /**/LitAssignVarExpr LitAssignVarExpr;
-typedef struct /**/LitIfExpr LitIfExpr;
-typedef struct /**/LitWhileExpr LitWhileExpr;
-typedef struct /**/LitForExpr LitForExpr;
-typedef struct /**/LitContinueExpr LitContinueExpr;
-typedef struct /**/LitBreakExpr LitBreakExpr;
-typedef struct /**/LitFunctionExpr LitFunctionExpr;
-typedef struct /**/LitReturnExpr LitReturnExpr;
-typedef struct /**/LitMethodExpr LitMethodExpr;
-typedef struct /**/LitClassExpr LitClassExpr;
-typedef struct /**/LitFieldExpr LitFieldExpr;
+typedef struct /**/LitAstLiteralExpr LitAstLiteralExpr;
+typedef struct /**/LitAstBinaryExpr LitAstBinaryExpr;
+typedef struct /**/LitAstUnaryExpr LitAstUnaryExpr;
+typedef struct /**/LitAstVarExpr LitAstVarExpr;
+typedef struct /**/LitAstAssignExpr LitAstAssignExpr;
+typedef struct /**/LitAstCallExpr LitAstCallExpr;
+typedef struct /**/LitAstGetExpr LitAstGetExpr;
+typedef struct /**/LitAstSetExpr LitAstSetExpr;
+typedef struct /**/LitAstParameter LitAstParameter;
+typedef struct /**/LitAstLambdaExpr LitAstLambdaExpr;
+typedef struct /**/LitAstArrayExpr LitAstArrayExpr;
+typedef struct /**/LitAstObjectExpr LitAstObjectExpr;
+typedef struct /**/LitAstIndexExpr LitAstIndexExpr;
+typedef struct /**/LitAstThisExpr LitAstThisExpr;
+typedef struct /**/LitAstSuperExpr LitAstSuperExpr;
+typedef struct /**/LitAstRangeExpr LitAstRangeExpr;
+typedef struct /**/LitAstTernaryExpr LitAstTernaryExpr;
+typedef struct /**/LitAstStrInterExpr LitAstStrInterExpr;
+typedef struct /**/LitAstRefExpr LitAstRefExpr;
+typedef struct /**/LitAstExprExpr LitAstExprExpr;
+typedef struct /**/LitAstBlockExpr LitAstBlockExpr;
+typedef struct /**/LitAstAssignVarExpr LitAstAssignVarExpr;
+typedef struct /**/LitAstIfExpr LitAstIfExpr;
+typedef struct /**/LitAstWhileExpr LitAstWhileExpr;
+typedef struct /**/LitAstForExpr LitAstForExpr;
+typedef struct /**/LitAstContinueExpr LitAstContinueExpr;
+typedef struct /**/LitAstBreakExpr LitAstBreakExpr;
+typedef struct /**/LitAstFunctionExpr LitAstFunctionExpr;
+typedef struct /**/LitAstReturnExpr LitAstReturnExpr;
+typedef struct /**/LitAstMethodExpr LitAstMethodExpr;
+typedef struct /**/LitAstClassExpr LitAstClassExpr;
+typedef struct /**/LitAstFieldExpr LitAstFieldExpr;
 typedef struct /**/LitPrivate LitPrivate;
 
 /* forward decls to make prot.inc work */
@@ -578,8 +578,8 @@ typedef struct /**/LitDirItem LitDirItem;
 
 typedef uint64_t LitValue;
 
-typedef LitExpression* (*LitPrefixParseFn)(LitParser*, bool);
-typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*, bool);
+typedef LitAstExpression* (*LitPrefixParseFn)(LitParser*, bool);
+typedef LitAstExpression* (*LitInfixParseFn)(LitParser*, LitAstExpression*, bool);
 
 
 typedef LitValue (*LitNativeFunctionFn)(LitVM*, size_t, LitValue*);
@@ -673,13 +673,11 @@ struct LitWriter
 };
 
 
-struct LitExpression
+struct LitAstExpression
 {
     LitExprType type;
     size_t line;
 };
-
-
 
 struct LitPrivate
 {
@@ -721,61 +719,61 @@ struct LitParseRule
 /*
  * Expressions
  */
-struct LitExprList
+struct LitAstExprList
 {
     size_t capacity;
     size_t count;
-    LitExpression** values;
+    LitAstExpression** values;
 };
 
-struct LitLiteralExpr
+struct LitAstLiteralExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitValue value;
 };
 
-struct LitBinaryExpr
+struct LitAstBinaryExpr
 {
-    LitExpression exobj;
-    LitExpression* left;
-    LitExpression* right;
+    LitAstExpression exobj;
+    LitAstExpression* left;
+    LitAstExpression* right;
     LitTokType op;
     bool ignore_left;
 };
 
-struct LitUnaryExpr
+struct LitAstUnaryExpr
 {
-    LitExpression exobj;
-    LitExpression* right;
+    LitAstExpression exobj;
+    LitAstExpression* right;
     LitTokType op;
 };
 
-struct LitVarExpr
+struct LitAstVarExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     const char* name;
     size_t length;
 };
 
-struct LitAssignExpr
+struct LitAstAssignExpr
 {
-    LitExpression exobj;
-    LitExpression* to;
-    LitExpression* value;
+    LitAstExpression exobj;
+    LitAstExpression* to;
+    LitAstExpression* value;
 };
 
-struct LitCallExpr
+struct LitAstCallExpr
 {
-    LitExpression exobj;
-    LitExpression* callee;
-    LitExprList args;
-    LitExpression* init;
+    LitAstExpression exobj;
+    LitAstExpression* callee;
+    LitAstExprList args;
+    LitAstExpression* init;
 };
 
-struct LitGetExpr
+struct LitAstGetExpr
 {
-    LitExpression exobj;
-    LitExpression* where;
+    LitAstExpression exobj;
+    LitAstExpression* where;
     const char* name;
     size_t length;
     int jump;
@@ -783,200 +781,200 @@ struct LitGetExpr
     bool ignore_result;
 };
 
-struct LitSetExpr
+struct LitAstSetExpr
 {
-    LitExpression exobj;
-    LitExpression* where;
+    LitAstExpression exobj;
+    LitAstExpression* where;
     const char* name;
     size_t length;
-    LitExpression* value;
+    LitAstExpression* value;
 };
 
-struct LitParameter
+struct LitAstParameter
 {
     const char* name;
     size_t length;
-    LitExpression* default_value;
+    LitAstExpression* default_value;
 };
 
-struct LitParamList
+struct LitAstParamList
 {
     size_t capacity;
     size_t count;
-    LitParameter* values;
+    LitAstParameter* values;
 };
 
 
-struct LitLambdaExpr
+struct LitAstLambdaExpr
 {
-    LitExpression exobj;
-    LitParamList parameters;
-    LitExpression* body;
+    LitAstExpression exobj;
+    LitAstParamList parameters;
+    LitAstExpression* body;
 };
 
-struct LitArrayExpr
+struct LitAstArrayExpr
 {
-    LitExpression exobj;
-    LitExprList values;
+    LitAstExpression exobj;
+    LitAstExprList values;
 };
 
-struct LitObjectExpr
+struct LitAstObjectExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitValueList keys;
-    LitExprList values;
+    LitAstExprList values;
 };
 
-struct LitSubscriptExpr
+struct LitAstIndexExpr
 {
-    LitExpression exobj;
-    LitExpression* array;
-    LitExpression* index;
+    LitAstExpression exobj;
+    LitAstExpression* array;
+    LitAstExpression* index;
 };
 
-struct LitThisExpr
+struct LitAstThisExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
 };
 
-struct LitSuperExpr
+struct LitAstSuperExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitString* method;
     bool ignore_emit;
     bool ignore_result;
 };
 
-struct LitRangeExpr
+struct LitAstRangeExpr
 {
-    LitExpression exobj;
-    LitExpression* from;
-    LitExpression* to;
+    LitAstExpression exobj;
+    LitAstExpression* from;
+    LitAstExpression* to;
 };
 
-struct LitTernaryExpr
+struct LitAstTernaryExpr
 {
-    LitExpression exobj;
-    LitExpression* condition;
-    LitExpression* if_branch;
-    LitExpression* else_branch;
+    LitAstExpression exobj;
+    LitAstExpression* condition;
+    LitAstExpression* if_branch;
+    LitAstExpression* else_branch;
 };
 
-struct LitInterpolationExpr
+struct LitAstStrInterExpr
 {
-    LitExpression exobj;
-    LitExprList expressions;
+    LitAstExpression exobj;
+    LitAstExprList expressions;
 };
 
-struct LitReferenceExpr
+struct LitAstRefExpr
 {
-    LitExpression exobj;
-    LitExpression* to;
+    LitAstExpression exobj;
+    LitAstExpression* to;
 };
 
 /*
  * Statements
  */
 
-struct LitExpressionExpr
+struct LitAstExprExpr
 {
-    LitExpression exobj;
-    LitExpression* expression;
+    LitAstExpression exobj;
+    LitAstExpression* expression;
     bool pop;
 };
 
-struct LitBlockExpr
+struct LitAstBlockExpr
 {
-    LitExpression exobj;
-    LitExprList statements;
+    LitAstExpression exobj;
+    LitAstExprList statements;
 };
 
-struct LitAssignVarExpr
+struct LitAstAssignVarExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     const char* name;
     size_t length;
     bool constant;
-    LitExpression* init;
+    LitAstExpression* init;
 };
 
-struct LitIfExpr
+struct LitAstIfExpr
 {
-    LitExpression exobj;
-    LitExpression* condition;
-    LitExpression* if_branch;
-    LitExpression* else_branch;
-    LitExprList* elseif_conditions;
-    LitExprList* elseif_branches;
+    LitAstExpression exobj;
+    LitAstExpression* condition;
+    LitAstExpression* if_branch;
+    LitAstExpression* else_branch;
+    LitAstExprList* elseif_conditions;
+    LitAstExprList* elseif_branches;
 };
 
-struct LitWhileExpr
+struct LitAstWhileExpr
 {
-    LitExpression exobj;
-    LitExpression* condition;
-    LitExpression* body;
+    LitAstExpression exobj;
+    LitAstExpression* condition;
+    LitAstExpression* body;
 };
 
-struct LitForExpr
+struct LitAstForExpr
 {
-    LitExpression exobj;
-    LitExpression* init;
-    LitExpression* var;
-    LitExpression* condition;
-    LitExpression* increment;
-    LitExpression* body;
+    LitAstExpression exobj;
+    LitAstExpression* init;
+    LitAstExpression* var;
+    LitAstExpression* condition;
+    LitAstExpression* increment;
+    LitAstExpression* body;
     bool c_style;
 };
 
-struct LitContinueExpr
+struct LitAstContinueExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
 };
 
-struct LitBreakExpr
+struct LitAstBreakExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
 };
 
-struct LitFunctionExpr
+struct LitAstFunctionExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     const char* name;
     size_t length;
-    LitParamList parameters;
-    LitExpression* body;
+    LitAstParamList parameters;
+    LitAstExpression* body;
     bool exported;
 };
 
-struct LitReturnExpr
+struct LitAstReturnExpr
 {
-    LitExpression exobj;
-    LitExpression* expression;
+    LitAstExpression exobj;
+    LitAstExpression* expression;
 };
 
-struct LitMethodExpr
+struct LitAstMethodExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitString* name;
-    LitParamList parameters;
-    LitExpression* body;
+    LitAstParamList parameters;
+    LitAstExpression* body;
     bool is_static;
 };
 
-struct LitClassExpr
+struct LitAstClassExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitString* name;
     LitString* parent;
-    LitExprList fields;
+    LitAstExprList fields;
 };
 
-struct LitFieldExpr
+struct LitAstFieldExpr
 {
-    LitExpression exobj;
+    LitAstExpression exobj;
     LitString* name;
-    LitExpression* getter;
-    LitExpression* setter;
+    LitAstExpression* getter;
+    LitAstExpression* setter;
     bool is_static;
 };
 
@@ -988,7 +986,7 @@ struct LitVariable
     bool constant;
     bool used;
     LitValue constant_value;
-    LitExpression** declaration;
+    LitAstExpression** declaration;
 };
 
 
