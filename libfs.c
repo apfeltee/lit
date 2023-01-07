@@ -594,7 +594,7 @@ static LitValue objmethod_file_exists(LitVM* vm, LitValue instance, size_t argc,
 
 static LitValue objmethod_file_write(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1)
+    LIT_ENSURE_ARGS(vm->state, 1)
     size_t rt;
     LitString* value;
     value = lit_value_tostring(vm->state, argv[0]);

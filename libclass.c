@@ -165,7 +165,7 @@ static LitValue objfn_class_iterator(LitVM* vm, LitValue instance, size_t argc, 
     int mthcap;
     LitClass* klass;
     (void)argc;
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     klass = lit_value_asclass(instance);
     index = argv[0] == NULL_VALUE ? -1 : lit_value_asnumber(argv[0]);
     mthcap = (int)klass->methods.capacity;

@@ -847,7 +847,7 @@ static LitValue objfn_string_replace(LitVM* vm, LitValue instance, size_t argc, 
     LitString* string;
     LitString* what;
     LitString* with;
-    LIT_ENSURE_ARGS(2);
+    LIT_ENSURE_ARGS(vm->state, 2);
     if(!lit_value_isstring(argv[0]) || !lit_value_isstring(argv[1]))
     {
         lit_vm_raiseexitingerror(vm, "expected 2 string arguments");

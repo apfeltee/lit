@@ -320,7 +320,7 @@ static LitValue objfn_map_subscript(LitVM* vm, LitValue instance, size_t argc, L
 
 static LitValue objfn_map_addall(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     if(!lit_value_ismap(argv[0]))
     {
         lit_vm_raiseexitingerror(vm, "expected map as the argument");
@@ -341,7 +341,7 @@ static LitValue objfn_map_clear(LitVM* vm, LitValue instance, size_t argc, LitVa
 
 static LitValue objfn_map_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     (void)vm;
     int index;
     int value;

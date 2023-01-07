@@ -383,7 +383,7 @@ static LitValue objfn_array_insert(LitVM* vm, LitValue instance, size_t argc, Li
     int index;
     LitValue value;
     LitValueList* values;
-    LIT_ENSURE_ARGS(2);
+    LIT_ENSURE_ARGS(vm->state, 2);
     values = &lit_value_asarray(instance)->list;
     index = lit_value_checknumber(vm, argv, argc, 0);
 
@@ -413,7 +413,7 @@ static LitValue objfn_array_addall(LitVM* vm, LitValue instance, size_t argc, Li
     size_t i;
     LitArray* array;
     LitArray* toadd;
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     if(!lit_value_isarray(argv[0]))
     {
         lit_vm_raiseexitingerror(vm, "expected array as the argument");
@@ -429,7 +429,7 @@ static LitValue objfn_array_addall(LitVM* vm, LitValue instance, size_t argc, Li
 
 static LitValue objfn_array_indexof(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1)
+    LIT_ENSURE_ARGS(vm->state, 1)
 
         int index = lit_array_indexof(lit_value_asarray(instance), argv[0]);
     return index == -1 ? NULL_VALUE : lit_value_numbertovalue(vm->state, index);
@@ -440,7 +440,7 @@ static LitValue objfn_array_remove(LitVM* vm, LitValue instance, size_t argc, Li
 {
     int index;
     LitArray* array;
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     array = lit_value_asarray(instance);
     index = lit_array_indexof(array, argv[0]);
     if(index != -1)
@@ -463,7 +463,7 @@ static LitValue objfn_array_removeat(LitVM* vm, LitValue instance, size_t argc, 
 
 static LitValue objfn_array_contains(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     return lit_bool_to_value(vm->state, lit_array_indexof(lit_value_asarray(instance), argv[0]) != -1);
 }
 
@@ -481,7 +481,7 @@ static LitValue objfn_array_iterator(LitVM* vm, LitValue instance, size_t argc, 
     int number;
     LitArray* array;
     (void)vm;
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     array = lit_value_asarray(instance);
     number = 0;
     if(lit_value_isnumber(argv[0]))

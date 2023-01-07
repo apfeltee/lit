@@ -444,7 +444,7 @@ static LitValue objfn_object_iterator(LitVM* vm, LitValue instance, size_t argc,
     int value;
     int index;
     LitInstance* self;
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     self = lit_value_asinstance(instance);
     index = argv[0] == NULL_VALUE ? -1 : lit_value_asnumber(argv[0]);
     value = util_table_iterator(&self->fields, index);

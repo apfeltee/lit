@@ -3,7 +3,7 @@
 
 static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     int number;
     LitRange* range;
     range = lit_value_asrange(instance);
@@ -24,7 +24,7 @@ static LitValue objfn_range_iterator(LitVM* vm, LitValue instance, size_t argc, 
 
 static LitValue objfn_range_iteratorvalue(LitVM* vm, LitValue instance, size_t argc, LitValue* argv)
 {
-    LIT_ENSURE_ARGS(1);
+    LIT_ENSURE_ARGS(vm->state, 1);
     (void)vm;
     (void)instance;
     return argv[0];
